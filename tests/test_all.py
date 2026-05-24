@@ -496,6 +496,41 @@ def test_18_slippage_config():
     print("✓ test_18_slippage_config 通过")
 
 
+def test_19_report_generator():
+    """测试报告生成器"""
+    from src.report_generator import ETFReportGenerator
+    
+    generator = ETFReportGenerator(data_dir='../etf_data_50')
+    
+    # 加载数据
+    latest = generator.load_data()
+    assert latest is not None
+    assert len(latest) == 10  # YYYY-MM-DD
+    
+    # 分析市场
+    market = generator.analyze_market()
+    assert 'total_qualified' in market
+    assert market['total_qualified'] > 0
+    
+    # 验证策略
+    results = generator.validate_strategy()
+    assert len(results) > 0
+    assert 'return' in results[0]
+    
+    # 生成报告
+    report = generator.generate_report(capital=20000)
+    assert 'ETF量化投资决策报告' in report
+    assert '基本信息' in report
+    assert '市场环境分析' in report
+    assert '策略历史表现' in report
+    assert '当前推荐标的' in report
+    assert '资金配置方案' in report
+    assert '风险控制' in report
+    assert '结论' in report
+    
+    print("✓ test_19_report_generator 通过")
+
+
 # ==================== 主入口 ====================
 
 def run_unit_tests():
@@ -523,6 +558,7 @@ def run_unit_tests():
         test_16_industry_filter,
         test_17_sensitivity_chart,
         test_18_slippage_config,
+        test_19_report_generator,
     ]
     
     failed = 0
