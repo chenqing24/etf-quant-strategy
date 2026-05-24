@@ -117,11 +117,30 @@ def main():
         print(f"  市场过滤: {'启用(MA' + str(args.market_ma) + ')' if not args.no_market_filter else '禁用'}")
         print('='*60)
         
-        print(f"\n回测结果:")
-        print(f"  收益率:   {result['return']:+.1f}%")
-        print(f"  最大回撤: {result['drawdown']:.1f}%")
-        print(f"  胜率:     {result['winrate']:.1f}%")
-        print(f"  交易次数: {result['trades']}")
+        print(f"\n{'='*60}")
+        print(f"回测结果:")
+        print(f"{'='*60}")
+        
+        # 收益指标
+        print(f"\n【收益指标】")
+        print(f"  总收益率:     {result['return']:+.1f}%")
+        print(f"  年化收益率:   {result['annual_return']:+.1f}%")
+        
+        # 风险指标
+        print(f"\n【风险指标】")
+        print(f"  最大回撤:     {result['drawdown']:.1f}%")
+        print(f"  卡玛比率:     {result['calmar']:.2f}")
+        print(f"  夏普比率:     {result['sharpe']:.2f}")
+        
+        # 交易指标
+        print(f"\n【交易指标】")
+        print(f"  交易次数:     {result['trades']}")
+        print(f"  胜率:         {result['winrate']:.1f}%")
+        print(f"  盈亏比:       {result['profit_loss_ratio']:.2f}")
+        print(f"  平均持仓天数: {result['avg_hold_days']:.1f}天")
+        print(f"  最大单笔盈利: {result['max_profit']:+.2f}%")
+        print(f"  最大单笔亏损: {result['max_loss']:.2f}%")
+        print(f"  持仓天数占比: {result['trade_days_ratio']:.1f}%")
         
         return result
         
