@@ -28,8 +28,13 @@ class StrategyConfig:
     
     # ===== 风控配置 =====
     stop_loss: float = -0.10                # 止损比例
-    stop_gain: float = 0.15                 # 止盈比例
+    stop_gain: float = 0.15                 # 固定止盈比例
     max_hold_days: int = 15                 # 最大持仓天数
+    
+    # ===== 移动止盈配置 =====
+    enable_trailing_stop: bool = False      # 是否启用移动止盈
+    trailing_threshold: float = 0.10        # 启动移动止盈的盈利门槛 (10%)
+    trailing_stop: float = 0.08             # 移动止盈回撤比例 (8%)
     
     # ===== 市场过滤配置 =====
     market_ma: int = 60                     # 市场均线周期
@@ -61,6 +66,10 @@ def run_strategy(
     stop_loss: float = -0.10,
     stop_gain: float = 0.15,
     max_hold_days: int = 15,
+    # 移动止盈参数
+    enable_trailing_stop: bool = False,
+    trailing_threshold: float = 0.10,
+    trailing_stop: float = 0.08,
     # 市场过滤
     market_ma: int = 60,
     enable_market_filter: bool = True,
@@ -97,6 +106,9 @@ def run_strategy(
         stop_loss=stop_loss,
         stop_gain=stop_gain,
         max_hold_days=max_hold_days,
+        enable_trailing_stop=enable_trailing_stop,
+        trailing_threshold=trailing_threshold,
+        trailing_stop=trailing_stop,
         market_ma=market_ma,
         enable_market_filter=enable_market_filter,
         # 用户未指定时使用默认排除码

@@ -86,6 +86,23 @@ class TradeExecutor:
             pnl = (current_price - pos['cost']) / pos['cost']
             hold_days = date_idx - pos['entry_idx']
             
+            # === 移动止盈检查 ===
+            if self.config.enable_trailing_stop:
+                # 追踪最高价
+                peak_price = pos.get('peak_price', pos['cost'])
+                if current_price > peak_price:
+                    peak_price = current_price
+                    pos['peak_price'] = peak_price
+                
+                # 盈利超过门槛后，启动移动止盈
+                if pnl >= self.config.trailing_threshold:
+                    # 从最高价回撤超过阈值
+                    drawdown = (peak_price - current_price) / peak_price
+                    if drawdown >= self.config.trailing_stop:
+                        to_close.append((code, '移动止盈', pnl, current_price, hold_days))
+                        continue
+            
+            # === 固定止损/止盈/超时检查 ===
             if pnl <= self.config.stop_loss:
                 to_close.append((code, '止损', pnl, current_price, hold_days))
             elif pnl >= self.config.stop_gain:
@@ -133,7 +150,8 @@ class TradeExecutor:
                     'cost': price,
                     'entry_idx': date_idx,
                     'entry_date': date,
-                    'shares': shares
+                    'shares': shares,
+                    'peak_price': price,  # 移动止盈追踪最高价
                 }
                 self.trades.append({
                     'date': date, 'code': code, 'action': 'buy', 'score': s,
@@ -173,7 +191,8 @@ class TradeExecutor:
                         'cost': price,
                         'entry_idx': date_idx,
                         'entry_date': date,
-                        'shares': shares
+                        'shares': shares,
+                        'peak_price': price,  # 移动止盈追踪最高价
                     }
                     self.trades.append({'date': date, 'code': code, 'action': 'buy', 'score': s})
     
