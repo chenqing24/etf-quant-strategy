@@ -280,6 +280,36 @@ def test_10_trailing_stop():
     print("✓ test_10_trailing_stop 通过")
 
 
+def test_11_cross_validation():
+    """测试交叉验证"""
+    from src.cross_validation import CrossValidator, ValidationWindow
+    
+    validator = CrossValidator(data_dir='../etf_data_50')
+    
+    # 短窗口测试
+    windows = [
+        ValidationWindow(
+            train_start='2024-01-01',
+            train_end='2024-12-31',
+            test_start='2025-05-01',
+            test_end='2025-06-30',
+            name='测试窗口'
+        ),
+    ]
+    
+    results = validator.run_cross_validation(windows=windows, rebalance_days=5)
+    
+    assert len(results) == 1
+    assert 'return' in results[0]
+    assert results[0]['return'] > -90
+    
+    # 测试稳定性分析
+    stability = validator.analyze_stability()
+    assert 'return_mean' in stability
+    
+    print("✓ test_11_cross_validation 通过")
+
+
 # ==================== 主入口 ====================
 
 def run_unit_tests():
@@ -299,6 +329,7 @@ def run_unit_tests():
         test_08_integration,
         test_09_factor_analysis,
         test_10_trailing_stop,
+        test_11_cross_validation,
     ]
     
     failed = 0

@@ -36,6 +36,10 @@ class StrategyConfig:
     trailing_threshold: float = 0.10        # 启动移动止盈的盈利门槛 (10%)
     trailing_stop: float = 0.08             # 移动止盈回撤比例 (8%)
     
+    # ===== 行业配置 =====
+    enable_industry_limit: bool = False    # 是否启用行业限制
+    max_industry_ratio: float = 0.4        # 单行业最大比例 (40%)
+    
     # ===== 市场过滤配置 =====
     market_ma: int = 60                     # 市场均线周期
     enable_market_filter: bool = True       # 是否启用市场过滤
