@@ -91,29 +91,13 @@ def run_backtest(
     # 持仓日期记录
     holding_dates = set()  # 记录有持仓的日期
     
-    # 首次买入
-    first_date = all_dates[0]
-    candidates = []
-    for code, df in data.items():
-        s, _ = selector.score(df, first_date)
-        if s >= config.score_threshold:
-            row = df[df['date'] == first_date]
-            if len(row) > 0:
-                candidates.append((code, s, row.iloc[0]['close']))
+    # 首次买入 - 需要等待市场上涨 (修复bug:不可以在市场下跌时买入)
+    # 策略: 等第一次市场上涨+满足选股条件再买入
+    first_buy_done = False  # 标记是否完成首次买入
     
-    if len(candidates) >= config.hold_count:
-        candidates.sort(key=lambda x: -x[1])
-        for i, (code, s, price) in enumerate(candidates[:config.hold_count]):
-            w = config.weights[i] if i < len(config.weights) else 0.5
-            shares = (equity * w) / price
-            holdings[code] = {
-                'cost': price, 
-                'entry_idx': 0, 
-                'entry_date': first_date,
-                'shares': shares
-            }
-            trades.append({'date': first_date, 'code': code, 'action': 'buy', 'score': s})
-            holding_dates.add(first_date)
+    # 冷却期: 市场过滤后等待N天再入场 (防止反复被割)
+    cooldown_days = 5  # 冷却5天
+    last_market_filter_trigger = -999  # 上次市场过滤触发的日期索引
     
     # 主循环
     for date_idx, date in enumerate(all_dates):
@@ -168,6 +152,9 @@ def run_backtest(
         
         # 市场过滤清仓
         if market_filter and not market_filter.is_bullish(date):
+            # 触发冷却期
+            last_market_filter_trigger = date_idx
+            
             for code in list(holdings.keys()):
                 row = data[code][data[code]['date'] == date]
                 if len(row) > 0:
@@ -185,10 +172,36 @@ def run_backtest(
                     })
                     del holdings[code]
                     equity_history.append(equity)
-            continue
+            # 不再continue！允许同一天或第二天重新入场
+            
+            # 如果没有持仓，尝试重新入场（但要等冷却期 + 市场上涨）
+            market_ok = not market_filter or market_filter.is_bullish(date)
+            if not holdings and market_ok and (date_idx - last_market_filter_trigger) >= cooldown_days:
+                candidates = []
+                for code, df in data.items():
+                    s, _ = selector.score(df, date)
+                    if s >= config.score_threshold:
+                        row = df[df['date'] == date]
+                        if len(row) > 0:
+                            candidates.append((code, s, row.iloc[0]['close']))
+                
+                if len(candidates) >= config.hold_count:
+                    candidates.sort(key=lambda x: -x[1])
+                    for i, (code, s, price) in enumerate(candidates[:config.hold_count]):
+                        w = config.weights[i] if i < len(config.weights) else 0.5
+                        shares = (equity * w) / price
+                        holdings[code] = {
+                            'cost': price, 
+                            'entry_idx': date_idx,
+                            'entry_date': date,
+                            'shares': shares
+                        }
+                        trades.append({'date': date, 'code': code, 'action': 'buy', 'score': s, 'from': 'reentry'})
+                        holding_dates.add(date)
         
-        # 调仓
-        if date_idx % config.rebalance_days == 0:
+        # 调仓 - 只有在市场上涨时才调仓
+        market_ok = not market_filter or market_filter.is_bullish(date)
+        if market_ok and date_idx % config.rebalance_days == 0:
             candidates = []
             for code, df in data.items():
                 s, _ = selector.score(df, date)
