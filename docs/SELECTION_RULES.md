@@ -154,7 +154,7 @@ exclude_codes = {
 | `top_n` | 30 | 初选ETF数量 |
 | `score_threshold` | 6 | 买入分数门槛 |
 | `hold_count` | 2 | 持仓数量 |
-| `weights` | [0.6, 0.4] | 仓位权重 |
+| `weights` | (0.5, 0.5) | 仓位权重 (各50%) |
 | `exclude_codes` | 11只 | 排除ETF列表 |
 
 ## 6. 风控参数
