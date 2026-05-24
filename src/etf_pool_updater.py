@@ -322,12 +322,23 @@ ETF总数: {len(pool)}只
         self._send_dingtalk(header_msg)
         print("  头部已发送")
         
-        # 分批发送ETF列表
-        batch_size = 10
-        for i in range(0, len(scored_etfs), batch_size):
-            batch = scored_etfs[i:i+batch_size]
-            lines = [f"{item['score']}分 {item['code']} {item['name']}" for item in batch]
-            self._send_dingtalk('\n'.join(lines))
+        # 发送ETF列表 (每条消息一个ETF)
+        import threading
+        import time
+        
+        def send_async(item):
+            line = f"{item['score']}分 {item['code']}\n{item['name']}"
+            self._send_dingtalk(line)
+            time.sleep(0.3)  # 避免发送过快
+        
+        threads = []
+        for item in scored_etfs:
+            t = threading.Thread(target=send_async, args=(item,))
+            t.start()
+            threads.append(t)
+        
+        for t in threads:
+            t.join(timeout=30)
         
         print("  ✓ 已推送钉钉 (含评分)")
     
@@ -370,9 +381,48 @@ ETF总数: {len(pool)}只
         scored_etfs.sort(key=lambda x: -x['score'])
         return scored_etfs
     
-    def _send_dingtalk(self, msg: str):
+    def _send_dingtalk(self, msg: str, session: dict = None):
         """发送钉钉消息"""
         import subprocess, json
+        
+        if session is None:
+            try:
+                result = subprocess.run(
+                    ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
+                    capture_output=True, text=True, timeout=15
+                )
+                sessions = json.loads(result.stdout)
+                if sessions:
+                    session = sessions[0]
+            except:
+                return
+        
+        if session:
+            subprocess.run([
+                'qwenpaw', 'channels', 'send',
+                '--agent-id', 'default',
+                '--channel', 'dingtalk',
+                '--target-user', session.get('user_id', ''),
+                '--target-session', session.get('session_id', ''),
+                '--text', msg
+            ], timeout=20)
+    
+    def send_to_dingtalk(self):
+        """发送简化的钉钉通知"""
+        pool = self.load_pool()
+        
+        # 获取分类统计
+        categories = {}
+        for code, name, cat in pool:
+            categories[cat] = categories.get(cat, 0) + 1
+        cat_summary = " ".join([f"{k}:{v}" for k, v in sorted(categories.items(), key=lambda x: -x[1])])
+        
+        # 计算每个ETF的评分
+        scored_etfs = self._get_etf_scores(pool)
+        
+        # 先获取session（复用）
+        import subprocess, json
+        session = None
         try:
             result = subprocess.run(
                 ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
@@ -381,16 +431,39 @@ ETF总数: {len(pool)}只
             sessions = json.loads(result.stdout)
             if sessions:
                 session = sessions[0]
-                subprocess.run([
-                    'qwenpaw', 'channels', 'send',
-                    '--agent-id', 'default',
-                    '--channel', 'dingtalk',
-                    '--target-user', session.get('user_id', ''),
-                    '--target-session', session.get('session_id', ''),
-                    '--text', msg
-                ], timeout=20)
-        except Exception as e:
-            print(f"  ⚠ 发送失败: {e}")
+        except:
+            pass
+        
+        # 发送头部
+        header_msg = f"""📊 ETF股票池更新
+
+🗓️ 更新日期: {datetime.now().strftime('%Y-%m-%d')}
+📈 ETF总数: {len(pool)}只
+
+📋 分类统计:
+{cat_summary}"""
+        
+        self._send_dingtalk(header_msg, session)
+        print("  头部已发送")
+        
+        # 发送ETF列表 (串行分批发送，每批3个换行)
+        batch_size = 3
+        for i in range(0, len(scored_etfs), batch_size):
+            batch = scored_etfs[i:i+batch_size]
+            lines = [f"{item['score']}分 {item['code']}" for item in batch]
+            names = [item['name'] for item in batch]
+            
+            # 第一行：评分和代码
+            msg_batch = '\n'.join(lines)
+            self._send_dingtalk(msg_batch, session)
+            
+            # 第二行：名称（紧跟上一条）
+            msg_names = '\n'.join(names)
+            self._send_dingtalk(msg_names, session)
+            import time
+            time.sleep(0.5)
+        
+        print("  ✓ 已推送钉钉 (含评分)")
     
     def run_full_update(self):
         """执行完整更新流程"""
