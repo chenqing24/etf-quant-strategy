@@ -48,7 +48,7 @@ python -m src.decision_cli -m daily
 # 完整评估
 python -m src.decision_cli -m eval
 
-# 每月ETF池更新 (每月1日)
+# 每2周ETF池更新 (每月1日、15日)
 python -m src.decision_cli -m update_pool
 
 # 记录交易
@@ -120,12 +120,15 @@ etf_strategy/
 │   ├── data_fetcher.py      # 腾讯API数据采集
 │   ├── report_generator.py  # 决策报告生成
 │   ├── trade_tracker.py     # 交易追踪
+│   ├── performance_analyzer.py  # 绩效分析
+│   ├── etf_pool_updater.py  # ETF池管理
 │   ├── decision_cli.py      # 命令行入口
 │   └── ...
 ├── docs/
 │   ├── USAGE.md             # 使用说明
 │   ├── CRON_SETUP.md        # 定时任务配置
-│   └── ETF_SKILL_PLAN.md    # 整体规划
+│   └── ARCHITECTURE.md       # 架构设计
+├── etf_pool.json            # ETF股票池
 ├── etf_data_live/           # 本地缓存数据
 ├── etf_reports/             # 历史报告
 ├── etf_trades.json          # 交易记录
