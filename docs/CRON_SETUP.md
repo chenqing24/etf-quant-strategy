@@ -8,11 +8,11 @@
 30 14 * * 1-5 cd /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy && python -m src.decision_cli -m daily
 
 # ============================================================
-# 每月1日执行 (ETF股票池更新)
+# 每2周执行 (ETF股票池更新)
 # ============================================================
 
-# 月度ETF池更新 - 每月1日上午9点
-0 9 1 * * cd /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy && python -m src.decision_cli -m update_pool
+# ETF池更新 - 每两周 (1日、15日) 上午9点
+0 9 1,15 * * cd /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy && python -m src.decision_cli -m update_pool
 
 # ============================================================
 # 可选：带钉钉推送 (需要先设置webhook)

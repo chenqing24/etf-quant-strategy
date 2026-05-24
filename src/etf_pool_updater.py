@@ -144,8 +144,8 @@ class ETFListUpdater:
             last_update = datetime.strptime(data['updated'], '%Y-%m-%d')
             days_since = (datetime.now() - last_update).days
             
-            # 超过25天需要更新
-            return days_since >= 25
+            # 超过14天需要更新 (每2周)
+            return days_since >= 14
     
     def update_pool_from_api(self) -> Dict:
         """从API更新ETF池 (模拟)
