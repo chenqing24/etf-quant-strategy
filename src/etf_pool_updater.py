@@ -315,8 +315,11 @@ ETF总数: {len(pool)}只
 📋 分类统计:
 {cat_summary}
 
-📋 ETF列表:
-{', '.join([f"{c}({n})" for c, n, _ in pool])}"""
+📋 ETF列表:"""
+
+        # 换行显示每个ETF
+        for code, name, cat in pool:
+            msg += f"\n{cat}: {code} {name}"
 
         # 通过QwenPaw发送
         import subprocess, json
