@@ -313,14 +313,16 @@ ETF总数: {len(pool)}只
 📈 ETF总数: {len(pool)}只
 
 📋 分类统计:
-{cat_summary}
-
-📋 ETF列表:"""
+{cat_summary}"""
 
         # 换行显示每个ETF
+        etf_lines = []
         for code, name, cat in pool:
-            msg += f"\n{cat}: {code} {name}"
-
+            etf_lines.append(f"{cat}: {code} {name}")
+        
+        # 钉钉每条消息限制，先发送头部
+        msg += f"\n\n📋 ETF列表 ({len(pool)}只):"
+        
         # 通过QwenPaw发送
         import subprocess, json
         result = subprocess.run(
@@ -331,6 +333,8 @@ ETF总数: {len(pool)}只
             sessions = json.loads(result.stdout)
             if sessions:
                 session = sessions[0]
+                
+                # 先发头部
                 subprocess.run([
                     'qwenpaw', 'channels', 'send',
                     '--agent-id', 'default',
@@ -339,7 +343,22 @@ ETF总数: {len(pool)}只
                     '--target-session', session.get('session_id', ''),
                     '--text', msg
                 ], timeout=20)
-                print("  ✓ 已推送钉钉")
+                
+                # ETF列表分批发送 (每批10条)
+                batch_size = 10
+                for i in range(0, len(etf_lines), batch_size):
+                    batch = etf_lines[i:i+batch_size]
+                    batch_msg = '\n'.join(batch)
+                    subprocess.run([
+                        'qwenpaw', 'channels', 'send',
+                        '--agent-id', 'default',
+                        '--channel', 'dingtalk',
+                        '--target-user', session.get('user_id', ''),
+                        '--target-session', session.get('session_id', ''),
+                        '--text', batch_msg
+                    ], timeout=20)
+                
+                print("  ✓ 已推送钉钉 (分批发送)")
         except Exception as e:
             print(f"  ⚠ 钉钉推送失败: {e}")
     
