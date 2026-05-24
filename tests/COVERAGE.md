@@ -28,10 +28,11 @@
 | industry_filter | test_16_industry_filter | 行业集中度过滤 |
 | sensitivity_chart | test_17_sensitivity_chart | 敏感性图表可视化 |
 | slippage_config | test_18_slippage_config | 滑点配置 |
+| report_generator | test_19_report_generator | 固定模板报告 |
 
 ### 测试统计
 
-- 单元测试: 18个
+- 单元测试: 19个
 - 回归测试: 3个 (含3个测试场景)
 
 ### 功能覆盖
