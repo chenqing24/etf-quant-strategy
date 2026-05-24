@@ -134,18 +134,59 @@ class TencentETFetcher:
         else:
             df.to_csv(path, index=False)
     
-    def update_all(self, days: int = 7):
-        """增量更新所有ETF
+    def get_local_latest_date(self, code: str) -> str:
+        """获取本地存储的最新日期"""
+        path = os.path.join(self.data_dir, f"{code}.csv")
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            return pd.to_datetime(df['date']).max().strftime('%Y-%m-%d')
+        return None
+    
+    def fetch_etf_incremental(self, code: str, days: int = 7) -> pd.DataFrame:
+        """增量获取ETF数据
         
-        Args:
-            days: 额外获取的天数(用于补全)
+        1. 检查本地最新日期
+        2. 计算需要补充的天数
+        3. 只获取缺失的数据
         """
-        results = self.fetch_all(days=days)
+        local_latest = self.get_local_latest_date(code)
         
-        for code, df in results.items():
-            self.save_etf(code, df)
+        if local_latest:
+            # 计算需要获取的天数
+            from datetime import datetime, timedelta
+            local_date = datetime.strptime(local_latest, '%Y-%m-%d')
+            today = datetime.now()
+            days_diff = (today - local_date).days
+            
+            if days_diff <= 1:
+                # 本地数据已是最新，无需请求
+                print(f"  {code}: 本地已是最新 ({local_latest})")
+                return pd.DataFrame()
+            
+            # 需要补充的天数 + 缓冲
+            fetch_days = min(days_diff + 3, days)
+            print(f"  {code}: 本地最新{local_latest}, 补充{fetch_days}天", end=" ... ")
+        else:
+            # 首次获取，获取足够的历史数据
+            fetch_days = 365  # 首次获取1年数据
+            print(f"  {code}: 首次获取 {fetch_days}天", end=" ... ")
         
-        return results
+        df = self.fetch_etf(code, days=fetch_days)
+        
+        if len(df) > 0:
+            print(f"OK ({len(df)}条)")
+        else:
+            print("失败")
+        
+        return df
+    
+    def update_all(self, days: int = 7):
+        """增量更新所有ETF (检查本地缓存，只获取最新)
+        
+        Returns:
+            {code: DataFrame}
+        """
+        return self.update_all_incremental()
     
     def get_latest_date(self) -> str:
         """获取本地数据最新日期"""
