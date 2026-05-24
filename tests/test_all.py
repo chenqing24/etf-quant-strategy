@@ -385,6 +385,50 @@ def test_14_sensitivity():
     print("✓ test_14_sensitivity 通过")
 
 
+def test_15_notifier():
+    """测试信号推送"""
+    from src.notifier import SignalNotifier, TradeSignal
+    
+    notifier = SignalNotifier(enable_console=True)
+    
+    # 测试买入信号
+    signal = TradeSignal(
+        date='2025-05-24',
+        code='510300',
+        action='buy',
+        price=3.456,
+        reason='MA120+MA60',
+        score=8
+    )
+    notifier.send_signal(signal)
+    
+    # 测试卖出信号
+    signal2 = TradeSignal(
+        date='2025-05-24',
+        code='510500',
+        action='sell',
+        price=5.123,
+        reason='止盈',
+        pnl=0.15
+    )
+    notifier.send_signal(signal2)
+    
+    # 验证信号记录
+    signals = notifier.get_signals()
+    assert len(signals) == 2
+    
+    # 测试每日总结
+    notifier.send_daily_summary({
+        'return': 51.9,
+        'drawdown': -22.6,
+        'sharpe': 2.07,
+        'winrate': 61.1,
+        'trades': 37,
+    })
+    
+    print("✓ test_15_notifier 通过")
+
+
 # ==================== 主入口 ====================
 
 def run_unit_tests():
@@ -408,6 +452,7 @@ def run_unit_tests():
         test_12_cache,
         test_13_trading_cost,
         test_14_sensitivity,
+        test_15_notifier,
     ]
     
     failed = 0

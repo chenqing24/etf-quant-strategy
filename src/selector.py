@@ -101,6 +101,82 @@ class Selector:
             reasons.append(f"放量{int(row['vol_ratio']*100-100)}%")
         
         return score, reasons
+    
+    # IC加权因子 (通过历史数据验证的因子权重)
+    IC_WEIGHTS = {
+        'ma120': 3,      # IC最高的因子，给最高权重
+        'ma60': 2,
+        'ma60_up': 2,
+        'ma20': 1,
+        'vol': 2,
+        'rsi': 1,
+        'macd': 1,
+    }
+    
+    def score_with_ic(self, df: pd.DataFrame, date: str) -> Tuple[int, List[str]]:
+        """IC加权7因子打分
+        
+        根据因子IC值动态调整权重，目前使用预设的IC权重
+        未来可通过factor_analysis.IC分析结果动态调整
+        
+        Returns:
+            (加权分数, 选股理由列表)
+        """
+        row = df[df['date'] == date]
+        
+        if len(row) == 0:
+            return 0, []
+        
+        row = row.iloc[0]
+        
+        # 无效数据
+        if pd.isna(row.get('ma20')):
+            return 0, []
+        
+        weighted_score = 0
+        reasons = []
+        
+        # 1. 站上120日线 (+IC权重: 3)
+        if not pd.isna(row.get('ma120')) and row['close'] > row['ma120']:
+            weighted_score += self.IC_WEIGHTS['ma120']
+            reasons.append('MA120')
+        
+        # 2. 60日均线向上 (+IC权重: 2)
+        if len(df[df['date'] <= date]) >= 5:
+            recent = df[df['date'] <= date].tail(5)
+            if (len(recent) >= 5 and 
+                not pd.isna(recent['ma60'].iloc[-1]) and 
+                not pd.isna(recent['ma60'].iloc[0]) and
+                recent['ma60'].iloc[-1] > recent['ma60'].iloc[0]):
+                weighted_score += self.IC_WEIGHTS['ma60_up']
+                reasons.append('MA60向上')
+        
+        # 3. 站上60日线 (+IC权重: 2)
+        if not pd.isna(row.get('ma60')) and row['close'] > row['ma60']:
+            weighted_score += self.IC_WEIGHTS['ma60']
+            reasons.append('MA60')
+        
+        # 4. 站上20日线 (+IC权重: 1)
+        if row['close'] > row['ma20']:
+            weighted_score += self.IC_WEIGHTS['ma20']
+            reasons.append('MA20')
+        
+        # 5. 放量 (+IC权重: 2)
+        if not pd.isna(row.get('vol_ratio')) and row['vol_ratio'] > 1.5:
+            weighted_score += self.IC_WEIGHTS['vol']
+            reasons.append(f"放量{int(row['vol_ratio']*100-100)}%")
+        
+        # 6. RSI健康 (+IC权重: 1)
+        if not pd.isna(row.get('rsi_14')) and row['rsi_14'] < 70:
+            weighted_score += self.IC_WEIGHTS['rsi']
+            reasons.append('RSI')
+        
+        # 7. MACD金叉 (+IC权重: 1)
+        if not pd.isna(row.get('macd')) and row['macd'] > 0:
+            weighted_score += self.IC_WEIGHTS['macd']
+            reasons.append('MACD')
+        
+        return int(weighted_score), reasons
 
 
 __all__ = ['Selector']
