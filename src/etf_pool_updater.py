@@ -245,6 +245,117 @@ class ETFListUpdater:
             # 添加sh前缀
             codes.append(f'sh{code}')
         return codes
+    
+    def generate_report(self) -> str:
+        """生成更新报告"""
+        pool = self.load_pool()
+        categories = {}
+        for code, name, cat in pool:
+            categories[cat] = categories.get(cat, 0) + 1
+        
+        last_update = datetime.now().strftime('%Y-%m-%d')
+        
+        report = f"""======================================================================
+ETF股票池更新报告
+======================================================================
+
+【更新信息】
+更新日期: {last_update}
+ETF总数: {len(pool)}只
+
+【分类统计】
+"""
+        for cat, count in sorted(categories.items(), key=lambda x: -x[1]):
+            report += f"  {cat}: {count}只\n"
+        
+        report += f"""
+【完整列表】
+"""
+        for code, name, cat in pool:
+            report += f"  {code} {name} ({cat})\n"
+        
+        report += f"""
+【建议关注】
+  - 科创50 (159899): 科创板核心指数
+  - 中证A500: 新一代宽基指数
+
+======================================================================
+"""
+        return report
+    
+    def save_report(self, path: str = None):
+        """保存报告到文件"""
+        if path is None:
+            path = f"etf_reports/pool_update_{datetime.now().strftime('%Y%m%d')}.txt"
+        
+        os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+        
+        report = self.generate_report()
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(report)
+        
+        print(f"  报告已保存: {path}")
+        return path
+    
+    def send_to_dingtalk(self):
+        """发送简化的钉钉通知"""
+        pool = self.load_pool()
+        categories = {}
+        for code, name, cat in pool:
+            categories[cat] = categories.get(cat, 0) + 1
+        
+        # 简化版消息
+        cat_summary = " ".join([f"{k}:{v}" for k, v in sorted(categories.items(), key=lambda x: -x[1])[:5]])
+        
+        msg = f"""📊 ETF股票池更新
+
+🗓️ 更新日期: {datetime.now().strftime('%Y-%m-%d')}
+📈 ETF总数: {len(pool)}只
+
+📋 分类统计:
+{cat_summary}
+
+📝 完整列表:
+{', '.join([f"{c}({n})" for c, n, _ in pool[:10]])}..."""
+
+        # 通过QwenPaw发送
+        import subprocess, json
+        result = subprocess.run(
+            ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
+            capture_output=True, text=True, timeout=15
+        )
+        try:
+            sessions = json.loads(result.stdout)
+            if sessions:
+                session = sessions[0]
+                subprocess.run([
+                    'qwenpaw', 'channels', 'send',
+                    '--agent-id', 'default',
+                    '--channel', 'dingtalk',
+                    '--target-user', session.get('user_id', ''),
+                    '--target-session', session.get('session_id', ''),
+                    '--text', msg
+                ], timeout=20)
+                print("  ✓ 已推送钉钉")
+        except Exception as e:
+            print(f"  ⚠ 钉钉推送失败: {e}")
+    
+    def run_full_update(self):
+        """执行完整更新流程"""
+        print("\n" + "="*50)
+        print("📊 ETF股票池更新")
+        print("="*50)
+        
+        # 1. 检查更新状态
+        stats = self.update_pool_from_api()
+        
+        # 2. 保存报告
+        report_file = self.save_report()
+        
+        # 3. 钉钉推送
+        self.send_to_dingtalk()
+        
+        return stats
 
 
 def test_updater():

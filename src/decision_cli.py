@@ -355,7 +355,7 @@ def main():
     elif args.mode == 'update_pool':
         from src.etf_pool_updater import ETFListUpdater
         updater = ETFListUpdater('etf_pool.json')
-        updater.run_monthly_update()
+        updater.run_full_update()
 
 
 if __name__ == '__main__':
