@@ -42,11 +42,14 @@
 ```bash
 cd /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy
 
-# 每日检查 (自动触发)
+# 每日检查 (工作日下午2:30)
 python -m src.decision_cli -m daily
 
 # 完整评估
 python -m src.decision_cli -m eval
+
+# 每月ETF池更新 (每月1日)
+python -m src.decision_cli -m update_pool
 
 # 记录交易
 python -m src.decision_cli -m trade --code 516050 --action buy --price 1.384 --quantity 13000
