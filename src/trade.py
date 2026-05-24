@@ -134,7 +134,10 @@ class TradeExecutor:
             return
         
         candidates = []
+        exclude_codes = self.config.exclude_codes or set()
         for code, df in data.items():
+            if code in exclude_codes:
+                continue
             s, _ = self.selector.score(df, date)
             if s >= self.config.score_threshold:
                 row = df[df['date'] == date]
@@ -161,7 +164,10 @@ class TradeExecutor:
     def _rebalance(self, date: str, date_idx: int, data: Dict[str, pd.DataFrame]):
         """调仓"""
         candidates = []
+        exclude_codes = self.config.exclude_codes or set()
         for code, df in data.items():
+            if code in exclude_codes:
+                continue
             s, _ = self.selector.score(df, date)
             if s >= self.config.score_threshold:
                 row = df[df['date'] == date]

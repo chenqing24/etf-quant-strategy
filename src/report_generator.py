@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, List, Tuple
 import json
 
-from .config import run_strategy
+from .config import run_strategy, StrategyConfig
 from .selector import Selector
 from .indicator import Indicator
 from .data_loader import DataLoader
@@ -61,8 +61,14 @@ class ETFReportGenerator:
         selector = Selector()
         indicator = Indicator()
         
+        # 获取排除列表
+        exclude_codes = StrategyConfig().exclude_codes
+        
         scores = []
         for code, df in self.data.items():
+            # 排除特殊ETF (红利、港股、证券、债券等)
+            if code in exclude_codes:
+                continue
             if len(df) < 60:
                 continue
             df = indicator.calculate(df)

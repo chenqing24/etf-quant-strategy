@@ -54,7 +54,10 @@ def run_backtest(
     
     if market_ok:
         candidates = []
+        exclude_codes = config.exclude_codes or set()
         for code, df in data.items():
+            if code in exclude_codes:
+                continue
             s, _ = selector.score(df, first_date)
             if s >= config.score_threshold:
                 row = df[df['date'] == first_date]
