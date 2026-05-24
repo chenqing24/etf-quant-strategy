@@ -26,7 +26,8 @@ etf_strategy/
 │   ├── POSITION_MANAGEMENT.md  # 仓位管理 ★
 │   └── SYSTEM_ARCHITECTURE.md  # 完整系统架构 ★
 │   ├── SYSTEM_ARCHITECTURE.md  # 完整系统架构 ★
-│   └── BUILD_REVIEW.md         # 构建Review与改进 ★
+│   ├── BUILD_REVIEW.md         # 构建Review与改进 ★
+│   └── DEVELOPMENT_PLAN.md     # 开发计划 ★
 ├── etf_data_50/            # ETF数据 (54只)
 └── main.py                 # 入口
 ```
