@@ -9,23 +9,22 @@ etf_strategy/
 │   ├── config.py           # 配置层
 │   ├── data_loader.py      # 数据层
 │   ├── indicator.py        # 指标计算
-│   ├── selector.py         # 选股层
+│   ├── selector.py         # 选股层 (7因子模型)
 │   ├── market_filter.py    # 市场过滤
+│   ├── trade.py            # 交易执行
+│   ├── metrics.py          # 指标计算
 │   ├── backtest.py         # 回测引擎
 │   └── main.py             # 入口
 ├── tests/                  # 测试用例
-│   ├── test_indicator.py
-│   ├── test_selector.py
-│   ├── test_backtest.py
-│   └── test_integration.py
-├── data/                   # 数据目录
-│   └── etf_data_50/        # 原始数据CSV
-├── scripts/                # 脚本
-│   └── run_test.py
+│   ├── __init__.py
+│   ├── test_all.py         # 单元测试
+│   └── test_regression.py  # 回归测试
 ├── docs/                   # 文档
-│   ├── PRD.md
-│   └── ARCHITECTURE.md
-└── README.md
+│   ├── PRD.md              # 需求文档
+│   ├── ARCHITECTURE.md     # 技术架构
+│   └── SELECTION_RULES.md  # 选股规则 ★
+├── etf_data_50/            # ETF数据 (54只)
+└── main.py                 # 入口
 ```
 
 ## 2. 模块设计
