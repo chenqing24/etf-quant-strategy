@@ -310,6 +310,81 @@ def test_11_cross_validation():
     print("✓ test_11_cross_validation 通过")
 
 
+def test_12_cache():
+    """测试缓存机制"""
+    from src.cache import CacheManager
+    
+    cache = CacheManager('.cache/test_unit')
+    
+    # 测试写入/读取
+    test_data = {'key': 'value', 'num': 123}
+    cache.set('test', test_data, 'param1')
+    retrieved = cache.get('test', 'param1')
+    assert retrieved == test_data, "缓存读取失败"
+    
+    # 测试不存在
+    missing = cache.get('nonexistent')
+    assert missing is None, "不应返回不存在的数据"
+    
+    # 统计
+    stats = cache.get_stats()
+    assert stats['cache_count'] >= 1
+    
+    # 清理
+    cache.clear()
+    
+    print("✓ test_12_cache 通过")
+
+
+def test_13_trading_cost():
+    """测试交易成本计算"""
+    from src.trading_cost import calculate_slippage, apply_trading_cost
+    
+    # 基础滑点
+    slip1 = calculate_slippage(price=1.0, volume=10000, side='buy')
+    assert slip1 > 0, "滑点应为正"
+    
+    # 大单成本更高
+    slip2 = calculate_slippage(price=1.0, volume=200000, side='buy')
+    assert slip2 > slip1, "大单滑点应更高"
+    
+    # 卖出滑点更高
+    slip3 = calculate_slippage(price=1.0, volume=10000, side='sell')
+    assert slip3 > slip1, "卖出滑点应更高"
+    
+    # 应用成本后的价格
+    price = apply_trading_cost(price=1.0, volume=10000, side='buy', fee_rate=0.0003)
+    assert price > 1.0, "买入价格应更高"
+    
+    print("✓ test_13_trading_cost 通过")
+
+
+def test_14_sensitivity():
+    """测试参数敏感性分析"""
+    from src.sensitivity_analysis import SensitivityAnalyzer
+    
+    analyzer = SensitivityAnalyzer(data_dir='../etf_data_50')
+    
+    # 简单参数网格
+    param_grid = {'rebalance_days': [5, 10]}
+    
+    df = analyzer.grid_search(
+        param_grid,
+        test_start='2025-05-06',
+        test_end='2025-06-30',
+    )
+    
+    # 应该返回结果
+    assert len(df) == 2
+    assert 'sharpe' in df.columns
+    
+    # 稳健参数
+    robust = analyzer.find_robust_params()
+    assert isinstance(robust, dict)
+    
+    print("✓ test_14_sensitivity 通过")
+
+
 # ==================== 主入口 ====================
 
 def run_unit_tests():
@@ -330,6 +405,9 @@ def run_unit_tests():
         test_09_factor_analysis,
         test_10_trailing_stop,
         test_11_cross_validation,
+        test_12_cache,
+        test_13_trading_cost,
+        test_14_sensitivity,
     ]
     
     failed = 0
