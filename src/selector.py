@@ -22,9 +22,11 @@ class Selector:
         """
         results = []
         
+        exclude_codes = config.exclude_codes or set()
+        
         for code, df in data.items():
             # 排除规则
-            if code in config.exclude_codes:
+            if code in exclude_codes:
                 continue
             
             # 训练期筛选
@@ -39,7 +41,7 @@ class Selector:
             results.append({'code': code, 'return': ret})
         
         results.sort(key=lambda x: -x['return'])
-        selected = {r['code'] for r in results[:30]}
+        selected = {r['code'] for r in results[:config.top_n]}
         
         print(f"选出 {len(selected)} 只ETF (训练期: {config.train_start} ~ {config.train_end})")
         return selected
