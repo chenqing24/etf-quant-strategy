@@ -79,7 +79,7 @@ class ETFReportGenerator:
             if len(df) < 60:
                 continue
             df = indicator.calculate(df)
-            s, reasons = selector.score(df, self.latest_date)
+            s, reasons = selector.score_with_ic(df, self.latest_date)
             if s >= 6:
                 row = df[df['date'] == self.latest_date]
                 if len(row) > 0:
