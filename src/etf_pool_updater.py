@@ -300,41 +300,87 @@ ETF总数: {len(pool)}只
     def send_to_dingtalk(self):
         """发送简化的钉钉通知"""
         pool = self.load_pool()
+        
+        # 获取分类统计
         categories = {}
         for code, name, cat in pool:
             categories[cat] = categories.get(cat, 0) + 1
-        
-        # 简化版消息 (不用省略符)
         cat_summary = " ".join([f"{k}:{v}" for k, v in sorted(categories.items(), key=lambda x: -x[1])])
         
-        msg = f"""📊 ETF股票池更新
+        # 计算每个ETF的评分
+        scored_etfs = self._get_etf_scores(pool)
+        
+        # 发送头部
+        header_msg = f"""📊 ETF股票池更新
 
 🗓️ 更新日期: {datetime.now().strftime('%Y-%m-%d')}
 📈 ETF总数: {len(pool)}只
 
 📋 分类统计:
 {cat_summary}"""
-
-        # 换行显示每个ETF
-        etf_lines = []
+        
+        self._send_dingtalk(header_msg)
+        print("  头部已发送")
+        
+        # 分批发送ETF列表
+        batch_size = 10
+        for i in range(0, len(scored_etfs), batch_size):
+            batch = scored_etfs[i:i+batch_size]
+            lines = [f"{item['score']}分 {item['code']} {item['name']}" for item in batch]
+            self._send_dingtalk('\n'.join(lines))
+        
+        print("  ✓ 已推送钉钉 (含评分)")
+    
+    def _get_etf_scores(self, pool: List) -> List[Dict]:
+        """获取ETF评分"""
+        from .indicator import Indicator
+        from .data_loader import DataLoader
+        
+        scored_etfs = []
+        loader = DataLoader()
+        
         for code, name, cat in pool:
-            etf_lines.append(f"{cat}: {code} {name}")
+            try:
+                df = loader.load_etf_data(code)
+                if df is None or len(df) < 120:
+                    scored_etfs.append({'code': code, 'name': name, 'cat': cat, 'score': 0})
+                    continue
+                
+                # 计算指标
+                df_ind = Indicator.calculate(df)
+                latest_date = df_ind['date'].iloc[-1]
+                latest = df_ind[df_ind['date'] == latest_date].iloc[0]
+                
+                # 7因子打分
+                from .selector import ETFSelector
+                selector = ETFSelector()
+                score, reasons = selector.score_with_ic(df_ind, latest_date)
+                
+                scored_etfs.append({
+                    'code': code,
+                    'name': name,
+                    'cat': cat,
+                    'score': score,
+                    'reasons': reasons
+                })
+            except Exception:
+                scored_etfs.append({'code': code, 'name': name, 'cat': cat, 'score': 0})
         
-        # 钉钉每条消息限制，先发送头部
-        msg += f"\n\n📋 ETF列表 ({len(pool)}只):"
-        
-        # 通过QwenPaw发送
+        # 按评分降序排序
+        scored_etfs.sort(key=lambda x: -x['score'])
+        return scored_etfs
+    
+    def _send_dingtalk(self, msg: str):
+        """发送钉钉消息"""
         import subprocess, json
-        result = subprocess.run(
-            ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
-            capture_output=True, text=True, timeout=15
-        )
         try:
+            result = subprocess.run(
+                ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
+                capture_output=True, text=True, timeout=15
+            )
             sessions = json.loads(result.stdout)
             if sessions:
                 session = sessions[0]
-                
-                # 先发头部
                 subprocess.run([
                     'qwenpaw', 'channels', 'send',
                     '--agent-id', 'default',
@@ -343,24 +389,8 @@ ETF总数: {len(pool)}只
                     '--target-session', session.get('session_id', ''),
                     '--text', msg
                 ], timeout=20)
-                
-                # ETF列表分批发送 (每批10条)
-                batch_size = 10
-                for i in range(0, len(etf_lines), batch_size):
-                    batch = etf_lines[i:i+batch_size]
-                    batch_msg = '\n'.join(batch)
-                    subprocess.run([
-                        'qwenpaw', 'channels', 'send',
-                        '--agent-id', 'default',
-                        '--channel', 'dingtalk',
-                        '--target-user', session.get('user_id', ''),
-                        '--target-session', session.get('session_id', ''),
-                        '--text', batch_msg
-                    ], timeout=20)
-                
-                print("  ✓ 已推送钉钉 (分批发送)")
         except Exception as e:
-            print(f"  ⚠ 钉钉推送失败: {e}")
+            print(f"  ⚠ 发送失败: {e}")
     
     def run_full_update(self):
         """执行完整更新流程"""
