@@ -166,10 +166,19 @@ class Selector:
             weighted_score += self.IC_WEIGHTS['vol']
             reasons.append(f"放量{int(row['vol_ratio']*100-100)}%")
         
-        # 6. RSI健康 (+IC权重: 1)
-        if not pd.isna(row.get('rsi_14')) and row['rsi_14'] < 70:
-            weighted_score += self.IC_WEIGHTS['rsi']
-            reasons.append('RSI')
+        # 6. RSI健康 (+IC权重: 1) 或 超买扣分
+        if not pd.isna(row.get('rsi_14')):
+            rsi = row['rsi_14']
+            if rsi < 70:
+                weighted_score += self.IC_WEIGHTS['rsi']
+                reasons.append('RSI')
+            elif rsi < 80:
+                # 超买警告，不扣分但也不加分
+                reasons.append('RSI⚠️')
+            else:
+                # 严重超买，扣分
+                weighted_score -= 2
+                reasons.append('RSI⚠️⚠️')
         
         # 7. MACD金叉 (+IC权重: 1)
         if not pd.isna(row.get('macd')) and row['macd'] > 0:
