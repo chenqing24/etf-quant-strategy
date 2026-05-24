@@ -44,6 +44,10 @@ class StrategyConfig:
     market_ma: int = 60                     # 市场均线周期
     enable_market_filter: bool = True       # 是否启用市场过滤
     
+    # ===== 交易成本配置 =====
+    enable_slippage: bool = False           # 是否启用滑点模拟
+    slippage_rate: float = 0.001            # 滑点比例 (千分之一)
+    
     # ===== 交易成本 =====
     fee_rate: float = 0.0003                # 手续费率
     
@@ -77,6 +81,9 @@ def run_strategy(
     # 市场过滤
     market_ma: int = 60,
     enable_market_filter: bool = True,
+    # 交易成本
+    enable_slippage: bool = False,
+    slippage_rate: float = 0.001,
     # 数据配置
     data_dir: str = 'etf_data_50',
     market_code: str = '510300',
@@ -115,6 +122,8 @@ def run_strategy(
         trailing_stop=trailing_stop,
         market_ma=market_ma,
         enable_market_filter=enable_market_filter,
+        enable_slippage=enable_slippage,
+        slippage_rate=slippage_rate,
         # 用户未指定时使用默认排除码
         exclude_codes=exclude_codes if exclude_codes is not None else default_config.exclude_codes,
     )

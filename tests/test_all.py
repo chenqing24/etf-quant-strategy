@@ -429,6 +429,73 @@ def test_15_notifier():
     print("✓ test_15_notifier 通过")
 
 
+def test_16_industry_filter():
+    """测试行业集中度过滤"""
+    from src.industry_filter import IndustryFilter
+    
+    filter = IndustryFilter(max_industry_pct=0.3)
+    
+    # 模拟候选
+    candidates = {'510300', '510500', '159919', '512880', '512170', 
+                  '512200', '159928', '159825', '512010', '512500'}
+    
+    # 行业过滤
+    filtered = filter.filter_by_industry(candidates, max_per_industry=3)
+    assert len(filtered) <= len(candidates)
+    
+    # 行业占比计算
+    weights = {code: 1.0/len(filtered) for code in filtered}
+    ratio = filter.calculate_industry_ratio(weights)
+    assert len(ratio) > 0
+    
+    # 打印行业配置
+    filter.print_industry_allocation(weights)
+    
+    print("✓ test_16_industry_filter 通过")
+
+
+def test_17_sensitivity_chart():
+    """测试敏感性图表"""
+    try:
+        import matplotlib
+        from src.sensitivity_chart import SensitivityChart
+        import pandas as pd
+        import numpy as np
+        
+        # 模拟数据
+        np.random.seed(42)
+        results = pd.DataFrame({
+            'rebalance_days': [5, 10, 15, 20, 5, 10, 15, 20],
+            'stop_loss': [-0.08, -0.08, -0.08, -0.08, -0.10, -0.10, -0.10, -0.10],
+            'return': np.random.uniform(-10, 30, 8),
+            'sharpe': np.random.uniform(-0.5, 2.0, 8),
+        })
+        
+        chart = SensitivityChart()
+        chart.plot_single_param(results, 'rebalance_days', 'sharpe')
+        chart.plot_heatmap(results, 'rebalance_days', 'stop_loss', 'return')
+        
+        print("✓ test_17_sensitivity_chart 通过 (matplotlib)")
+    except ImportError:
+        print("⚠ matplotlib未安装，跳过图表测试")
+        print("✓ test_17_sensitivity_chart 通过 (跳过)")
+
+
+def test_18_slippage_config():
+    """测试滑点配置"""
+    from src.config import StrategyConfig
+    
+    config = StrategyConfig(enable_slippage=True, slippage_rate=0.002)
+    assert config.enable_slippage == True
+    assert config.slippage_rate == 0.002
+    
+    # 测试默认值
+    config2 = StrategyConfig()
+    assert config2.enable_slippage == False
+    
+    print("✓ test_18_slippage_config 通过")
+
+
 # ==================== 主入口 ====================
 
 def run_unit_tests():
@@ -453,6 +520,9 @@ def run_unit_tests():
         test_13_trading_cost,
         test_14_sensitivity,
         test_15_notifier,
+        test_16_industry_filter,
+        test_17_sensitivity_chart,
+        test_18_slippage_config,
     ]
     
     failed = 0

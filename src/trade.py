@@ -111,7 +111,7 @@ class TradeExecutor:
                 to_close.append((code, '超时', pnl, current_price, hold_days))
         
         for code, reason, pnl, price, hold_days in to_close:
-            self._close_position(code, date, pnl, reason, hold_days)
+            self._close_position(code, date, pnl, reason, hold_days, data)
     
     def _handle_market_filter(self, date: str, date_idx: int,
                               data: Dict[str, pd.DataFrame], holding_dates: set):
@@ -196,9 +196,23 @@ class TradeExecutor:
                     }
                     self.trades.append({'date': date, 'code': code, 'action': 'buy', 'score': s})
     
-    def _close_position(self, code: str, date: str, pnl: float, reason: str, hold_days: int):
+    def _close_position(self, code: str, date: str, pnl: float, reason: str, hold_days: int,
+                      data: Dict[str, pd.DataFrame] = None):
         """平仓"""
+        from .trading_cost import calculate_slippage
+        
         if code in self.holdings:
+            # 应用滑点 (卖出时价格更低)
+            if self.config.enable_slippage and data and code in data:
+                df = data[code]
+                row = df[df['date'] == date]
+                if len(row) > 0:
+                    price = row.iloc[0]['close']
+                    pos = self.holdings[code]
+                    trade_value = pos['shares'] * price
+                    slip = calculate_slippage(price, trade_value, side='sell')
+                    pnl = pnl - slip  # 滑点减少收益
+            
             self.equity *= (1 + pnl) * (1 - self.config.fee_rate)
             self.trades.append({
                 'date': date,

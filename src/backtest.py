@@ -8,6 +8,7 @@ from .selector import Selector
 from .market_filter import MarketFilter
 from .trade import TradeExecutor
 from .metrics import calculate_metrics
+from .trading_cost import apply_trading_cost
 
 
 def run_backtest(
@@ -63,6 +64,11 @@ def run_backtest(
         if len(candidates) >= config.hold_count:
             candidates.sort(key=lambda x: -x[1])
             for i, (code, s, price) in enumerate(candidates[:config.hold_count]):
+                # 应用滑点 (买入时价格更高)
+                if config.enable_slippage:
+                    trade_value = executor.equity * (config.weights[i] if i < len(config.weights) else 0.5)
+                    price = apply_trading_cost(price, trade_value, side='buy')
+                
                 w = config.weights[i] if i < len(config.weights) else 0.5
                 shares = (executor.equity * w) / price
                 executor.holdings[code] = {
