@@ -304,8 +304,8 @@ ETF总数: {len(pool)}只
         for code, name, cat in pool:
             categories[cat] = categories.get(cat, 0) + 1
         
-        # 简化版消息
-        cat_summary = " ".join([f"{k}:{v}" for k, v in sorted(categories.items(), key=lambda x: -x[1])[:5]])
+        # 简化版消息 (不用省略符)
+        cat_summary = " ".join([f"{k}:{v}" for k, v in sorted(categories.items(), key=lambda x: -x[1])])
         
         msg = f"""📊 ETF股票池更新
 
@@ -315,8 +315,8 @@ ETF总数: {len(pool)}只
 📋 分类统计:
 {cat_summary}
 
-📝 完整列表:
-{', '.join([f"{c}({n})" for c, n, _ in pool[:10]])}..."""
+📋 ETF列表:
+{', '.join([f"{c}({n})" for c, n, _ in pool])}"""
 
         # 通过QwenPaw发送
         import subprocess, json
