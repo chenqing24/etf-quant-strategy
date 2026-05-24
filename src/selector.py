@@ -186,6 +186,21 @@ class Selector:
             reasons.append('MACD')
         
         return int(weighted_score), reasons
+    
+    def evaluate(self, df: pd.DataFrame, date: str) -> Tuple[int, List[str]]:
+        """统一评分入口
+        
+        所有评分调用应使用此方法
+        默认使用IC加权评分(含RSI扣分)
+        """
+        return self.score_with_ic(df, date)
+    
+    def evaluate_legacy(self, df: pd.DataFrame, date: str) -> Tuple[int, List[str]]:
+        """旧版评分入口(无RSI扣分)
+        
+        用于对比测试
+        """
+        return self.score(df, date)
 
 
 __all__ = ['Selector']

@@ -138,7 +138,7 @@ class TradeExecutor:
         for code, df in data.items():
             if code in exclude_codes:
                 continue
-            s, _ = self.selector.score(df, date)
+            s, _ = self.selector.evaluate(df, date)
             if s >= self.config.score_threshold:
                 row = df[df['date'] == date]
                 if len(row) > 0:
@@ -168,7 +168,7 @@ class TradeExecutor:
         for code, df in data.items():
             if code in exclude_codes:
                 continue
-            s, _ = self.selector.score(df, date)
+            s, _ = self.selector.evaluate(df, date)
             if s >= self.config.score_threshold:
                 row = df[df['date'] == date]
                 if len(row) > 0:

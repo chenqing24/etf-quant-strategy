@@ -58,7 +58,7 @@ def run_backtest(
         for code, df in data.items():
             if code in exclude_codes:
                 continue
-            s, _ = selector.score(df, first_date)
+            s, _ = selector.evaluate(df, first_date)
             if s >= config.score_threshold:
                 row = df[df['date'] == first_date]
                 if len(row) > 0:

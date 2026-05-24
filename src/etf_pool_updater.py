@@ -365,7 +365,7 @@ ETF总数: {len(pool)}只
                 # 7因子打分
                 from .selector import ETFSelector
                 selector = ETFSelector()
-                score, reasons = selector.score_with_ic(df_ind, latest_date)
+                score, reasons = selector.evaluate(df_ind, latest_date)
                 
                 scored_etfs.append({
                     'code': code,
