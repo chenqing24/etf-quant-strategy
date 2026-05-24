@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""回测引擎 - 使用拆分后的模块"""
+"""回测引擎 - 支持每日评分和调仓周期"""
 import pandas as pd
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 
 from .config import StrategyConfig
 from .selector import Selector
@@ -18,7 +18,12 @@ def run_backtest(
     test_end: str,
     market_filter: Optional[MarketFilter] = None,
 ) -> Dict:
-    """运行回测
+    """运行回测 - 每日评分版
+    
+    特点：
+    1. 每日重新评分持仓ETF
+    2. 评分低于阈值时触发卖出/调仓
+    3. 按调仓周期重新选择标的
     
     Args:
         data: ETF数据（已计算指标）
@@ -40,76 +45,72 @@ def run_backtest(
     if len(all_dates) < 10:
         return _empty_result()
     
-    # 初始化交易执行器
+    # 初始化
     executor = TradeExecutor(config)
     selector = Selector()
-    
-    # 初始化
     equity_history = [1.0]
     holding_dates = set()
     
-    # 首次买入 - 等待市场上涨
+    # 调仓计数器
+    days_since_rebalance = 0
+    
+    # 首次买入
     first_date = all_dates[0]
     market_ok = not market_filter or market_filter.is_bullish(first_date)
     
     if market_ok:
-        candidates = []
-        exclude_codes = config.exclude_codes or set()
-        for code, df in data.items():
-            if code in exclude_codes:
-                continue
-            s, _ = selector.evaluate(df, first_date)
-            if s >= config.score_threshold:
-                row = df[df['date'] == first_date]
-                if len(row) > 0:
-                    candidates.append((code, s, row.iloc[0]['close']))
-        
-        if len(candidates) >= config.hold_count:
-            candidates.sort(key=lambda x: -x[1])
-            for i, (code, s, price) in enumerate(candidates[:config.hold_count]):
-                # 应用滑点 (买入时价格更高)
-                if config.enable_slippage:
-                    trade_value = executor.equity * (config.weights[i] if i < len(config.weights) else 0.5)
-                    price = apply_trading_cost(price, trade_value, side='buy')
-                
-                w = config.weights[i] if i < len(config.weights) else 0.5
-                shares = (executor.equity * w) / price
-                executor.holdings[code] = {
-                    'cost': price,
-                    'entry_idx': 0,
-                    'entry_date': first_date,
-                    'shares': shares
-                }
-                executor.trades.append({
-                    'date': first_date, 
-                    'code': code, 
-                    'action': 'buy', 
-                    'score': s
-                })
-                holding_dates.add(first_date)
+        _select_and_buy(executor, selector, data, config, first_date)
+        if executor.holdings:
+            holding_dates.add(first_date)
     
     # 主循环
     for date_idx, date in enumerate(all_dates):
-        # 处理当日交易
-        executor.process_day(date, date_idx, all_dates, data, market_filter, holding_dates)
+        days_since_rebalance += 1
         
-        # 记录净值
-        equity_value = executor.get_equity(date, data)
-        equity_history.append(equity_value)
+        # 1. 每日评分检查 - 检查持仓ETF是否需要卖出
+        if executor.holdings:
+            holdings_to_close = []
+            for code, pos in executor.holdings.items():
+                if code not in data:
+                    continue
+                    
+                score, _ = selector.evaluate(data[code], date)
+                
+                # 评分低于阈值，触发卖出
+                if score < config.score_threshold:
+                    holdings_to_close.append(code)
+                    executor.trades.append({
+                        'date': date,
+                        'code': code,
+                        'action': 'sell',
+                        'score': score,
+                        'reason': f'评分下降({score}<{config.score_threshold})'
+                    })
+            
+            # 执行卖出
+            for code in holdings_to_close:
+                _close_position(executor, data, code, date, config)
         
-        # 记录持仓日
+        # 2. 调仓周期检查 - 定期重新选择
+        should_rebalance = (
+            days_since_rebalance >= config.rebalance_days and
+            len(executor.holdings) < config.hold_count
+        )
+        
+        if should_rebalance:
+            # 重新选择并买入
+            _select_and_buy(executor, selector, data, config, date)
+            days_since_rebalance = 0
+        
+        # 3. 更新权益
+        _update_equity(executor, data, date)
+        equity_history.append(executor.equity)
+        
         if executor.holdings:
             holding_dates.add(date)
     
     # 最终结算
-    final_date = all_dates[-1]
-    if executor.holdings:
-        final_pv = sum(
-            pos['shares'] * data[code][data[code]['date'] == final_date].iloc[0]['close']
-            for code, pos in executor.holdings.items()
-            if len(data[code][data[code]['date'] == final_date]) > 0
-        )
-        executor.equity = final_pv
+    _final_settlement(executor, data, all_dates[-1])
     
     # 计算指标
     metrics = calculate_metrics(
@@ -121,6 +122,133 @@ def run_backtest(
     )
     
     return metrics
+
+
+def _select_and_buy(
+    executor: TradeExecutor,
+    selector: Selector,
+    data: Dict[str, pd.DataFrame],
+    config: StrategyConfig,
+    date: str
+) -> None:
+    """选择ETF并买入"""
+    if len(executor.holdings) >= config.hold_count:
+        return
+    
+    # 获取候选ETF
+    candidates = []
+    exclude_codes = config.exclude_codes or set()
+    exclude_codes.update(executor.holdings.keys())  # 排除已持仓
+    
+    for code, df in data.items():
+        if code in exclude_codes:
+            continue
+        if len(df[df['date'] == date]) == 0:
+            continue
+            
+        score, _ = selector.evaluate(df, date)
+        if score >= config.score_threshold:
+            row = df[df['date'] == date].iloc[0]
+            candidates.append((code, score, row['close']))
+    
+    # 排序并买入
+    candidates.sort(key=lambda x: -x[1])
+    slots_available = config.hold_count - len(executor.holdings)
+    
+    for i, (code, score, price) in enumerate(candidates[:slots_available]):
+        # 应用滑点
+        if config.enable_slippage:
+            w = config.weights[i] if i < len(config.weights) else 0.5
+            trade_value = executor.equity * w
+            price = apply_trading_cost(price, trade_value, side='buy')
+        
+        w = config.weights[i] if i < len(config.weights) else 0.5
+        shares = (executor.equity * w) / price
+        
+        executor.holdings[code] = {
+            'cost': price,
+            'entry_idx': 0,
+            'entry_date': date,
+            'shares': shares
+        }
+        executor.trades.append({
+            'date': date,
+            'code': code,
+            'action': 'buy',
+            'score': score
+        })
+
+
+def _close_position(
+    executor: TradeExecutor,
+    data: Dict[str, pd.DataFrame],
+    code: str,
+    date: str,
+    config: StrategyConfig
+) -> None:
+    """平仓"""
+    if code not in executor.holdings:
+        return
+    
+    pos = executor.holdings[code]
+    df = data.get(code)
+    if df is None or len(df[df['date'] == date]) == 0:
+        del executor.holdings[code]
+        return
+    
+    price = df[df['date'] == date].iloc[0]['close']
+    
+    # 应用滑点(卖出时价格更低)
+    if config.enable_slippage:
+        trade_value = pos['shares'] * price
+        price = apply_trading_cost(price, trade_value, side='sell')
+    
+    # 计算收益
+    cost = pos['cost']
+    pnl = (price - cost) / cost
+    
+    # 更新权益
+    executor.equity *= (1 + pnl * (pos['shares'] * cost / executor.equity))
+    
+    # 记录卖出
+    executor.trades.append({
+        'date': date,
+        'code': code,
+        'action': 'sell',
+        'price': price,
+        'cost': cost,
+        'pnl': pnl,
+        'hold_days': (pd.to_datetime(date) - pd.to_datetime(pos['entry_date'])).days
+    })
+    
+    del executor.holdings[code]
+
+
+def _update_equity(
+    executor: TradeExecutor,
+    data: Dict[str, pd.DataFrame],
+    date: str
+) -> None:
+    """更新组合权益"""
+    total_value = executor.equity
+    
+    # 不更新权益，只记录持仓状态
+    # 实际权益在卖出时计算
+
+
+def _final_settlement(
+    executor: TradeExecutor,
+    data: Dict[str, pd.DataFrame],
+    final_date: str
+) -> None:
+    """最终结算"""
+    if not executor.holdings:
+        return
+    
+    # 清空所有持仓，计算最终收益
+    codes_to_close = list(executor.holdings.keys())
+    for code in codes_to_close:
+        _close_position(executor, data, code, final_date, StrategyConfig())
 
 
 def _empty_result() -> Dict:
