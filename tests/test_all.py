@@ -1,148 +1,263 @@
 #!/usr/bin/env python3
-"""测试用例入口"""
+"""
+ETF量化策略 - 测试套件
+========================================
+运行:
+    python tests/test_all.py        # 单元测试
+    python tests/test_regression.py # 回归测试
+"""
 import sys
 from pathlib import Path
 
-# 添加src到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-def test_trade_executor():
-    """测试交易执行器"""
+
+# ==================== 单元测试 ====================
+
+def test_01_config():
+    """测试配置"""
     from src.config import StrategyConfig
-    from src.trade import TradeExecutor
-    
-    config = StrategyConfig(rebalance_days=5)
-    executor = TradeExecutor(config)
-    
-    # 测试初始化
-    assert executor.equity == 1.0
-    assert len(executor.holdings) == 0
-    assert executor.cooldown_days == 0
-    
-    # 测试重置
-    executor.equity = 0.5
-    executor.reset()
-    assert executor.equity == 1.0
-    
-    print("✓ TradeExecutor 测试通过")
-
-
-def test_metrics():
-    """测试指标计算"""
-    from src.metrics import calculate_metrics
-    
-    # 简单场景
-    metrics = calculate_metrics(
-        equity=1.5,
-        equity_history=[1.0, 1.1, 1.2, 1.5],
-        trades=[],
-        all_dates=['2025-01-01', '2025-01-02', '2025-01-03', '2025-01-04'],
-        holding_dates={'2025-01-02', '2025-01-03'}
-    )
-    
-    assert metrics['return'] == 50.0  # 50%收益
-    assert metrics['trade_days_ratio'] == 50.0  # 50%持仓
-    
-    print("✓ 指标计算 测试通过")
-
-
-def test_selector():
-    """测试选股器"""
-    from src.config import StrategyConfig
-    from src.selector import Selector
     
     config = StrategyConfig()
-    selector = Selector()
     
-    # 验证排除码
+    # 默认参数
+    assert config.rebalance_days == 10
+    assert config.score_threshold == 6
+    assert config.hold_count == 2
+    
+    # 排除码
     assert '159825' in config.exclude_codes
     assert '513360' in config.exclude_codes
     
-    print("✓ 选股器 测试通过")
+    # 可配置参数
+    config2 = StrategyConfig(rebalance_days=5, score_threshold=4)
+    assert config2.rebalance_days == 5
+    assert config2.score_threshold == 4
+    
+    print("✓ test_01_config 通过")
 
 
-def test_market_filter():
+def test_02_data_loader():
+    """测试数据加载"""
+    from src.data_loader import DataLoader
+    
+    loader = DataLoader()
+    data = loader.load('../etf_data_50')
+    
+    assert len(data) > 0, "应加载到数据"
+    assert '510300' in data, "应包含沪深300"
+    
+    # 数据格式
+    df = data['510300']
+    assert 'date' in df.columns
+    assert 'close' in df.columns
+    assert df['close'].dtype in ['float64', 'float32']
+    
+    print("✓ test_02_data_loader 通过")
+
+
+def test_03_indicator():
+    """测试指标计算"""
+    from src.indicator import Indicator
+    import pandas as pd
+    import numpy as np
+    
+    # 创建测试数据
+    df = pd.DataFrame({
+        'date': pd.date_range('2024-01-01', periods=150).strftime('%Y-%m-%d'),
+        'close': np.linspace(100, 150, 150),
+        'volume': np.random.randint(1000000, 5000000, 150),
+    })
+    
+    result = Indicator.calculate(df)
+    
+    # 验证MA
+    assert 'ma20' in result.columns
+    assert abs(result['ma20'].iloc[-1] - 145) < 5  # 接近最后价格
+    
+    # 验证量比
+    assert 'vol_ratio' in result.columns
+    
+    # 验证RSI
+    assert 'rsi_14' in result.columns
+    assert (result['rsi_14'].dropna() >= 0).all()
+    assert (result['rsi_14'].dropna() <= 100).all()
+    
+    print("✓ test_03_indicator 通过")
+
+
+def test_04_selector():
+    """测试选股"""
+    from src.selector import Selector
+    from src.config import StrategyConfig
+    from src.data_loader import DataLoader
+    from src.indicator import Indicator
+    
+    # 加载真实数据
+    loader = DataLoader()
+    data = loader.load('../etf_data_50')
+    
+    # 选ETF
+    config = StrategyConfig()
+    selector = Selector()
+    selected = selector.select_etfs(data, config)
+    
+    assert 20 <= len(selected) <= 50, "应选出合理数量"
+    
+    # 测试打分
+    data_with_indicator = Indicator.calculate_all(data)
+    score, reasons = selector.score(data_with_indicator['510300'], '2025-06-01')
+    
+    assert isinstance(score, int)
+    assert score >= 0
+    assert isinstance(reasons, list)
+    
+    print("✓ test_04_selector 通过")
+
+
+def test_05_market_filter():
     """测试市场过滤"""
     from src.market_filter import MarketFilter
     import pandas as pd
     
-    # 创建测试数据
-    df = pd.DataFrame({
+    # 上涨趋势
+    df1 = pd.DataFrame({
         'date': ['2025-01-01', '2025-01-02', '2025-01-03'],
-        'close': [100, 110, 105],
+        'close': [100, 110, 120],
         'volume': [1000, 1000, 1000]
     })
+    mf1 = MarketFilter(df1, ma=2)
+    assert mf1.is_bullish('2025-01-03') == True
     
-    mf = MarketFilter(df, ma=2)
+    # 下跌趋势
+    df2 = pd.DataFrame({
+        'date': ['2025-01-01', '2025-01-02', '2025-01-03'],
+        'close': [120, 110, 100],
+        'volume': [1000, 1000, 1000]
+    })
+    mf2 = MarketFilter(df2, ma=2)
+    assert mf2.is_bullish('2025-01-03') == False
     
-    # 第一天ma2还没形成
-    assert mf.is_bullish('2025-01-01') == True
-    
-    # 第二天价格110 > ma105
-    assert mf.is_bullish('2025-01-02') == True
-    
-    # 第三天价格105 < ma108.33(按ma=2计算: (110+105)/2)
-    assert mf.is_bullish('2025-01-03') == False
-    
-    print("✓ 市场过滤 测试通过")
+    print("✓ test_05_market_filter 通过")
 
 
-def test_backtest_integration():
-    """集成测试: 完整回测流程"""
+def test_06_trade_executor():
+    """测试交易执行"""
+    from src.trade import TradeExecutor
+    from src.config import StrategyConfig
+    
+    config = StrategyConfig(rebalance_days=5, hold_count=2)
+    executor = TradeExecutor(config)
+    
+    assert executor.equity == 1.0
+    assert len(executor.holdings) == 0
+    assert executor.cooldown_days == 0
+    
+    # 重置测试
+    executor.equity = 0.8
+    executor.reset()
+    assert executor.equity == 1.0
+    
+    print("✓ test_06_trade_executor 通过")
+
+
+def test_07_metrics():
+    """测试指标计算"""
+    from src.metrics import calculate_metrics
+    
+    # 场景1: 盈利
+    m = calculate_metrics(
+        equity=2.0,
+        equity_history=[1.0, 1.5, 2.0],
+        trades=[],
+        all_dates=['2025-01-01', '2025-01-02', '2025-01-03'],
+        holding_dates={'2025-01-02'}
+    )
+    assert m['return'] == 100.0
+    assert m['trade_days_ratio'] > 0
+    
+    # 场景2: 无交易
+    m2 = calculate_metrics(
+        equity=1.0,
+        equity_history=[1.0],
+        trades=[],
+        all_dates=['2025-01-01'],
+        holding_dates=set()
+    )
+    assert m2['return'] == 0.0
+    
+    print("✓ test_07_metrics 通过")
+
+
+def test_08_integration():
+    """集成测试"""
     from src.config import run_strategy
     
-    # 使用最小数据快速测试
-    try:
-        result = run_strategy(
-            test_start='2025-05-06',
-            test_end='2025-06-30',
-            rebalance_days=5,
-            data_dir='../etf_data_50'
-        )
-        
-        # 验证返回值
-        assert 'return' in result
-        assert 'drawdown' in result
-        assert 'winrate' in result
-        assert 'trades' in result
-        
-        # 验证基本合理性
-        assert result['return'] > -100  # 不会亏光
-        assert result['drawdown'] <= 0  # 回撤是负数
-        assert 0 <= result['winrate'] <= 100  # 胜率0-100%
-        
-        print(f"✓ 集成测试通过: 收益{result['return']:+.1f}%, 回撤{result['drawdown']:.1f}%")
-        
-    except Exception as e:
-        print(f"✗ 集成测试失败: {e}")
-        raise
+    # 短周期测试
+    result = run_strategy(
+        test_start='2025-05-06',
+        test_end='2025-06-30',
+        rebalance_days=10,
+        data_dir='../etf_data_50'
+    )
+    
+    # 验证返回值
+    required_keys = ['return', 'drawdown', 'winrate', 'trades', 
+                     'annual_return', 'sharpe', 'calmar']
+    
+    for key in required_keys:
+        assert key in result, f"缺少字段: {key}"
+    
+    # 验证合理性
+    assert result['return'] > -90, "不应该亏超过90%"
+    assert -100 <= result['drawdown'] <= 0, "回撤应在-100~0之间"
+    assert 0 <= result['winrate'] <= 100, "胜率应在0~100之间"
+    
+    print(f"✓ test_08_integration 通过 (收益{result['return']:+.1f}%)")
 
 
-def run_all_tests():
-    """运行所有测试"""
+# ==================== 主入口 ====================
+
+def run_unit_tests():
+    """运行单元测试"""
     print("="*50)
-    print("运行测试用例")
+    print("单元测试")
     print("="*50)
     
-    try:
-        test_trade_executor()
-        test_metrics()
-        test_selector()
-        test_market_filter()
-        test_backtest_integration()
-        
-        print("\n" + "="*50)
-        print("✓ 所有测试通过!")
+    tests = [
+        test_01_config,
+        test_02_data_loader,
+        test_03_indicator,
+        test_04_selector,
+        test_05_market_filter,
+        test_06_trade_executor,
+        test_07_metrics,
+        test_08_integration,
+    ]
+    
+    failed = 0
+    for t in tests:
+        try:
+            t()
+        except Exception as e:
+            print(f"✗ {t.__name__} 失败: {e}")
+            import traceback
+            traceback.print_exc()
+            failed += 1
+    
+    print()
+    if failed == 0:
         print("="*50)
-        return True
-        
-    except Exception as e:
-        print(f"\n✗ 测试失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        print("✓ 所有单元测试通过!")
+        print("="*50)
+    else:
+        print("="*50)
+        print(f"✗ {failed} 个测试失败")
+        print("="*50)
+    
+    return failed == 0
 
 
 if __name__ == '__main__':
-    success = run_all_tests()
+    success = run_unit_tests()
     sys.exit(0 if success else 1)

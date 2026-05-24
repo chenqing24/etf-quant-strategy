@@ -34,7 +34,8 @@ class DataLoader:
         
         for f in data_dir.glob('*.csv'):
             df = self._process_df(pd.read_csv(f))
-            if len(df) > 100:  # 过滤掉数据太少的
+            # 过滤数据不足500天(约2年)的ETF，确保指标计算准确
+            if len(df) >= 500:
                 self.data[f.stem] = df
         
         print(f"加载 {len(self.data)} 只ETF数据")
