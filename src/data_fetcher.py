@@ -15,21 +15,45 @@ class TencentETFetcher:
     BASE_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
     
     # ETF代码列表 (需要带sh/sz前缀)
-    ETF_CODES = [
-        'sh510300', 'sh510500', 'sh159919', 'sh159915',  # 宽基
-        'sh512880', 'sh512170', 'sh512200', 'sh512690',  # 金融
-        'sh159928', 'sh159825', 'sh510630',              # 消费
-        'sh512010', 'sh512500', 'sh159838', 'sh159952',  # 医药
-        'sh159997', 'sh159995', 'sh512760', 'sh159801',  # 科技
-        'sh159823', 'sh515050',                           # 科技
-        'sh159857', 'sh516160', 'sh159806',              # 新能源
-        'sh159942', 'sh510050',                           # 周期
-        'sh512660', 'sh159995',                          # 军工
-        'sh159920', 'sh159867', 'sh513360',             # 港股
-        'sh518880', 'sh159934',                          # 商品
-        'sh511010', 'sh511880', 'sh511990',             # 债券
-        'sh516050', 'sh159577', 'sh515000', 'sh513100', # 新兴产业
-    ]
+    # 优先使用动态池，否则使用默认列表
+    _cached_codes = None
+    
+    @classmethod
+    def get_etf_codes(cls) -> List[str]:
+        """获取ETF代码列表 (支持动态池)"""
+        if cls._cached_codes is not None:
+            return cls._cached_codes
+        
+        # 尝试从池文件加载
+        try:
+            from .etf_pool_updater import ETFListUpdater
+            updater = ETFListUpdater('etf_pool.json')
+            codes = updater.get_tencent_codes()
+            if codes:
+                cls._cached_codes = codes
+                return codes
+        except:
+            pass
+        
+        # 使用默认列表
+        cls._cached_codes = [
+            'sh510300', 'sh510500', 'sh159919', 'sh159915',
+            'sh512880', 'sh512170', 'sh512200',
+            'sh159928', 'sh159825',
+            'sh512010', 'sh512500', 'sh159952',
+            'sh159997', 'sh159995', 'sh512760', 'sh159801',
+            'sh159823', 'sh515050',
+            'sh159857', 'sh516160', 'sh159806',
+            'sh159942', 'sh510050',
+            'sh512660',
+            'sh159920', 'sh159867',
+            'sh518880', 'sh159934',
+            'sh511010',
+            'sh516050', 'sh159577', 'sh515000', 'sh513100',
+        ]
+        return cls._cached_codes
+    
+    ETF_CODES = property(lambda self: self.get_etf_codes())
     
     def __init__(self, data_dir: str = 'etf_data_live'):
         self.data_dir = data_dir
