@@ -103,18 +103,50 @@ class ETFDecisionEngine:
         # 2. 提取关键建议
         print("\n[2/3] 分析建议...")
         # 简化解析，提取买入建议
-        action = 'hold'
-        new_code = None
+        action = '观望'
+        new_code = ''
+        new_name = ''
+        new_price = 0
         
-        if '516050' in report and '首推' in report:
-            # 检查是否已经在仓
+        # 从报告中提取交易建议
+        lines = report.split('\n')
+        for i, line in enumerate(lines):
+            if '今日交易建议' in line:
+                # 往下找操作信息
+                for j in range(i, min(i+10, len(lines))):
+                    if '买入' in lines[j]:
+                        action = '买入'
+                        # 提取代码和名称
+                        for k in range(j, min(j+5, len(lines))):
+                            if '516050' in lines[k] or '515050' in lines[k] or '159' in lines[k]:
+                                parts = lines[k].split()
+                                for p in parts:
+                                    if p.isdigit() and len(p) == 6:
+                                        new_code = p
+                                        # 找名称
+                                        if k+1 < len(lines):
+                                            name_line = lines[k+1]
+                                            if '科创' in name_line or '科技' in name_line or '创新' in name_line or '工业' in name_line or '稀土' in name_line or '计算机' in name_line or '新能源' in name_line:
+                                                new_name = name_line.strip()
+                                # 找价格
+                                for m in range(j, min(j+10, len(lines))):
+                                    if '价格' in lines[m]:
+                                        try:
+                                            price_str = ''.join(c for c in lines[m] if c.isdigit() or c == '.')
+                                            new_price = float(price_str) if price_str else 0
+                                        except:
+                                            pass
+                        break
+                break
+        
+        if action == '买入':
             positions = self.tracker.get_holdings()
             codes = [p.code for p in positions]
-            
-            if '516050' not in codes:
-                action = 'buy'
-                new_code = '516050'
-                print(f"  建议买入: 516050 科创成长")
+            if new_code in codes:
+                action = '持仓'
+                new_code = ''
+        
+        print(f"  今日操作: {action} {new_code} {new_name}")
         
         # 3. 发送通知
         print("\n[3/3] 发送通知...")
@@ -122,6 +154,8 @@ class ETFDecisionEngine:
             self.notifier.send_daily_summary({
                 'action': action,
                 'new_code': new_code,
+                'name': new_name,
+                'price': new_price,
                 'report_file': report_file,
             })
         

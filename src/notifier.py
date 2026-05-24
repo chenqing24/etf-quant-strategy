@@ -107,23 +107,49 @@ class SignalNotifier:
             print(f"✗ 钉钉推送异常: {e}")
     
     def send_daily_summary(self, results: Dict):
-        """发送每日总结"""
-        message = [
-            "【每日策略总结】",
-            "",
-            f"📊 收益: {results.get('return', 0):+.1f}%",
-            f"📉 回撤: {results.get('drawdown', 0):.1f}%",
-            f"📈 夏普: {results.get('sharpe', 0):.2f}",
-            f"🎯 胜率: {results.get('winrate', 0):.1f}%",
-            f"🔢 交易次数: {results.get('trades', 0)}",
-        ]
+        """发送每日总结 - 简化的移动端版本"""
+        action = results.get('action', '观望')
+        code = results.get('new_code', '')
+        name = results.get('name', '')
+        price = results.get('price', 0)
         
+        # 简化版钉钉消息 (移动端友好)
+        if action == '买入':
+            message = [
+                "📈 ETF量化决策",
+                "",
+                f"🟢 操作: 买入",
+                f"📊 标的: {code} {name}",
+                f"💰 价格: {price:.3f}",
+                f"🛡️ 止损: {price*0.95:.3f} (-5%)",
+                f"🎯 止盈: {price*1.08:.3f} (+8%)",
+            ]
+        elif action == '卖出':
+            message = [
+                "📈 ETF量化决策",
+                "",
+                f"🔴 操作: 卖出 | {code}",
+            ]
+        else:
+            message = [
+                "📈 ETF量化决策",
+                "",
+                f"⚪ 操作: 观望",
+                f"📊 等待更好的机会",
+            ]
+        
+        # 控制台输出 (完整版)
         if self.enable_console:
             print(f"\n{'='*50}")
             print("📊 每日策略总结")
             print(f"{'='*50}")
-            print("\n".join(message))
+            for line in message:
+                print(line)
             print(f"{'='*50}\n")
+        
+        # 钉钉推送 (简化版)
+        if self.webhook_url and action != '观望':
+            self._send_dingtalk("\n".join(message))
     
     def get_signals(self) -> List[TradeSignal]:
         """获取所有信号"""
