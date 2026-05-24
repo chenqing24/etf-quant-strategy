@@ -154,10 +154,18 @@ class ETFReportGenerator:
         avg_drawdown = sum(r['drawdown'] for r in self.validation_results) / len(self.validation_results)
         avg_sharpe = sum(r['sharpe'] for r in self.validation_results) / len(self.validation_results)
         
-        # 构建报告
+        # 计算交易建议
+        top = self.current_etfs[0] if self.current_etfs else None
+        position = 0
+        action = "观望"
+        if top:
+            position = int(capital * 0.9 / top['price'] / 100) * 100
+            action = f"买入 {top['code']} {top['name']} {position}股"
+        
+        # 构建报告 - 交易建议放开头和结尾
         report = f"""
 {'='*70}
-ETF量化投资决策报告
+📈 ETF量化投资决策报告
 {'='*70}
 
 【基本信息】
@@ -165,6 +173,17 @@ ETF量化投资决策报告
 数据最新日期: {latest}
 投资本金: {capital:,}元
 策略模式: 单持仓 + 5%止损 + 8%止盈 + 移动止盈
+
+{'='*70}
+🚨 今日交易建议 (必读)
+{'='*70}
+
+【操作】{action}
+【目标】{top['code']} {top['name']}
+【价格】{top['price']:.3f}元
+【数量】{position}股 ({capital*0.9:,.0f}元)
+【止损】-5% ({top['price']*0.95:.3f}元)
+【止盈】+8% ({top['price']*1.08:.3f}元)
 
 {'='*70}
 一、市场环境分析
@@ -281,6 +300,17 @@ ETF量化投资决策报告
 - 市场环境: {'积极' if market['bullish'] else '中性'} (符合条件{market['total_qualified']}只)
 - 策略表现: {'优秀' if avg_sharpe > 0.5 else '一般'} (夏普{avg_sharpe:.2f})
 - 风险等级: {'中等偏低' if avg_drawdown > -30 else '中等'} (回撤{avg_drawdown:.0f}%)
+
+{'='*70}
+🚨 今日交易建议 (结论)
+{'='*70}
+
+【操作】{action}
+【目标】{top['code']} {top['name']}
+【价格】{top['price']:.3f}元
+【数量】{position}股 ({capital*0.9:,.0f}元)
+【止损】-5% ({top['price']*0.95:.3f}元)
+【止盈】+8% ({top['price']*1.08:.3f}元)
 
 【操作建议】
 {'✓ 建议积极参与，严格执行止损' if market['bullish'] else '建议轻仓观望'}
