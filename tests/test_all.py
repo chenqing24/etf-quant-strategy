@@ -216,6 +216,70 @@ def test_08_integration():
     print(f"✓ test_08_integration 通过 (收益{result['return']:+.1f}%)")
 
 
+def test_09_factor_analysis():
+    """测试因子有效性分析"""
+    from src.factor_analysis import FactorAnalysis
+    import numpy as np
+    import pandas as pd
+    
+    # 测试IC计算 - 正相关
+    f1 = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+    r1 = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10])
+    ic1 = FactorAnalysis.calculate_ic(f1, r1)
+    assert abs(ic1 - 1.0) < 0.01, "正相关IC应接近1"
+    
+    # 测试IC计算 - 负相关
+    r2 = np.array([0.10, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01])
+    ic2 = FactorAnalysis.calculate_ic(f1, r2)
+    assert abs(ic2 + 1.0) < 0.01, "负相关IC应接近-1"
+    
+    # 测试含NaN的IC
+    f3 = np.array([1.0, 2.0, np.nan, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+    ic3 = FactorAnalysis.calculate_ic(f3, r1)
+    assert abs(ic3 - 1.0) < 0.01, "NaN应被忽略"
+    
+    # 测试IR计算
+    rolling_ic = np.array([0.1, 0.15, 0.08, 0.12, 0.2, 0.18, 0.1, 0.15, 0.12, 0.08])
+    ic_mean, ic_std, ir = FactorAnalysis.calculate_ir(pd.Series(rolling_ic))
+    assert ic_mean > 0, "IC均值应为正"
+    assert ir > 0, "IR应大于0"
+    
+    print("✓ test_09_factor_analysis 通过")
+
+
+def test_10_trailing_stop():
+    """测试移动止盈"""
+    from src.config import StrategyConfig, run_strategy
+    
+    # 测试配置
+    config = StrategyConfig(enable_trailing_stop=True)
+    assert config.enable_trailing_stop == True
+    assert config.trailing_threshold == 0.10
+    assert config.trailing_stop == 0.08
+    
+    # 关闭移动止盈
+    config2 = StrategyConfig(enable_trailing_stop=False)
+    assert config2.enable_trailing_stop == False
+    
+    # 集成测试 - 移动止盈功能
+    result = run_strategy(
+        test_start='2025-05-06',
+        test_end='2025-06-30',
+        rebalance_days=5,
+        enable_trailing_stop=True,
+        trailing_threshold=0.10,
+        trailing_stop=0.08,
+        data_dir='../etf_data_50'
+    )
+    
+    # 验证返回
+    assert 'return' in result
+    assert 'drawdown' in result
+    assert result['return'] > -90
+    
+    print("✓ test_10_trailing_stop 通过")
+
+
 # ==================== 主入口 ====================
 
 def run_unit_tests():
@@ -233,6 +297,8 @@ def run_unit_tests():
         test_06_trade_executor,
         test_07_metrics,
         test_08_integration,
+        test_09_factor_analysis,
+        test_10_trailing_stop,
     ]
     
     failed = 0
