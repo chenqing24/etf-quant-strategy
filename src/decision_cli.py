@@ -148,8 +148,13 @@ class ETFDecisionEngine:
         
         print(f"  今日操作: {action} {new_code} {new_name}")
         
-        # 3. 发送通知
+        # 3. 发送通知到钉钉
         print("\n[3/3] 发送通知...")
+        
+        # 通过QwenPaw渠道发送
+        self._send_to_dingtalk(action, new_code, new_name, new_price)
+        
+        # 也支持webhook
         if self.webhook_url:
             self.notifier.send_daily_summary({
                 'action': action,
@@ -206,6 +211,41 @@ class ETFDecisionEngine:
                 
         except ValueError as e:
             print(f"  输入错误: {e}")
+    
+    def _send_to_dingtalk(self, action: str, code: str, name: str, price: float):
+        """通过QwenPaw渠道发送消息到钉钉"""
+        if action in ('观望', '持仓'):
+            return
+        
+        # 格式化消息
+        if action == '买入':
+            msg = f"📈 ETF量化决策\n\n🟢 操作: 买入\n📊 标的: {code} {name}\n💰 价格: {price:.3f}\n🛡️ 止损: {price*0.95:.3f} (-5%)\n🎯 止盈: {price*1.08:.3f} (+8%)"
+        elif action == '卖出':
+            msg = f"📈 ETF量化决策\n\n🔴 操作: 卖出 | {code}"
+        else:
+            return
+        
+        # 调用QwenPaw发送
+        import subprocess, json
+        result = subprocess.run(
+            ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
+            capture_output=True, text=True, timeout=15
+        )
+        try:
+            sessions = json.loads(result.stdout)
+            if sessions:
+                session = sessions[0]
+                subprocess.run([
+                    'qwenpaw', 'channels', 'send',
+                    '--agent-id', 'default',
+                    '--channel', 'dingtalk',
+                    '--target-user', session.get('user_id', '陈庆#3g=='),
+                    '--target-session', session.get('session_id', 'TukxwR4='),
+                    '--text', msg
+                ], timeout=20)
+                print(f"  ✓ 已推送钉钉: {action} {code}")
+        except Exception as e:
+            print(f"  ⚠ 钉钉推送失败: {e}")
     
     def print_trade_history(self):
         """打印交易历史"""
