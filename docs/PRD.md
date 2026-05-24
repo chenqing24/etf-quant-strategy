@@ -226,7 +226,24 @@ market_turned_bullish = self.was_bearish_prev and market_ok
 can_reenter = market_turned_bullish or (date_idx - last_trigger) >= cooldown
 ```
 
-### 8.2 参数优化路径
+### 8.2 初始买入bug（已修复）
+
+| 项目 | 内容 |
+|------|------|
+| 问题 | 回测第一天就买入，未检查市场是否上涨 |
+| 现象 | 可能买在市场高点 |
+| 修复 | 首次买入需等待市场上涨信号 |
+
+**修复代码**:
+```python
+# 首次买入 - 需等待市场上涨
+market_ok = not market_filter or market_filter.is_bullish(first_date)
+if market_ok:
+    # 执行买入
+    ...
+```
+
+### 8.3 参数优化路径
 
 | 阶段 | 发现 | 结果 |
 |------|------|------|
