@@ -446,22 +446,15 @@ ETF总数: {len(pool)}只
         self._send_dingtalk(header_msg, session)
         print("  头部已发送")
         
-        # 发送ETF列表 (串行分批发送，每批3个换行)
-        batch_size = 3
+        # 发送ETF列表 (每批5个换行显示)
+        batch_size = 5
         for i in range(0, len(scored_etfs), batch_size):
             batch = scored_etfs[i:i+batch_size]
-            lines = [f"{item['score']}分 {item['code']}" for item in batch]
-            names = [item['name'] for item in batch]
-            
-            # 第一行：评分和代码
+            lines = [f"{item['score']}分 {item['code']} {item['name']}" for item in batch]
             msg_batch = '\n'.join(lines)
             self._send_dingtalk(msg_batch, session)
-            
-            # 第二行：名称（紧跟上一条）
-            msg_names = '\n'.join(names)
-            self._send_dingtalk(msg_names, session)
             import time
-            time.sleep(0.5)
+            time.sleep(0.3)
         
         print("  ✓ 已推送钉钉 (含评分)")
     
