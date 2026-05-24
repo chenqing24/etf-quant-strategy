@@ -112,6 +112,13 @@ class SignalNotifier:
         code = results.get('new_code', '')
         name = results.get('name', '')
         price = results.get('price', 0)
+        trend_data = results.get('trend', None)
+        indicators = results.get('indicators', None)
+        
+        # ETF名称映射
+        from .report_generator import ETF_NAMES
+        if not name:
+            name = ETF_NAMES.get(code, code)
         
         # 简化版钉钉消息 (移动端友好)
         if action == '买入':
@@ -124,6 +131,27 @@ class SignalNotifier:
                 f"🛡️ 止损: {price*0.95:.3f} (-5%)",
                 f"🎯 止盈: {price*1.08:.3f} (+8%)",
             ]
+            # 添加趋势图
+            if trend_data:
+                prices = trend_data.get('prices', [])
+                arrows = trend_data.get('arrows', [])
+                changes = trend_data.get('changes', [])
+                
+                if prices:
+                    price_strs = [f"{p:.3f}" for p in prices]
+                    change_strs = [f"{c:+.1f}%" for c in changes]
+                    
+                    message.append("")
+                    message.append(f"近5日: {'→'.join(price_strs)}")
+                    message.append(f"       {'  '.join(arrows)}")
+                    message.append(f"涨跌: {' '.join(change_strs)}")
+            
+            # 添加技术指标
+            if indicators:
+                message.append("")
+                message.append("📉 技术指标:")
+                message.append(f"MA20:{indicators.get('ma20', 0):.3f} MA60:{indicators.get('ma60', 0):.3f}")
+                message.append(f"RSI14:{indicators.get('rsi_14', 0):.1f} 量比:{indicators.get('vol_ratio', 0):.2f}")
         elif action == '卖出':
             message = [
                 "📈 ETF量化决策",

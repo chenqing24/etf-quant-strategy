@@ -31,6 +31,7 @@ class ETFDecisionEngine:
         self.tracker = TradeTracker(data_dir)
         self.analyzer = PerformanceAnalyzer(data_dir)
         self.notifier = SignalNotifier(webhook_url=webhook_url)
+        self._etf_data = {}  # 缓存ETF数据用于趋势图
     
     def run_daily_check(self):
         """每日检查"""
@@ -88,6 +89,11 @@ class ETFDecisionEngine:
         print("\n" + "="*60)
         print("🔄 完整策略评估")
         print("="*60)
+        
+        # 0. 加载ETF数据用于趋势图
+        from .data_loader import DataLoader
+        self._etf_data = DataLoader().load('../etf_data_50')
+        print(f"加载 {len(self._etf_data)} 只ETF数据")
         
         # 1. 生成决策报告
         print("\n[1/3] 生成决策报告...")
@@ -151,8 +157,30 @@ class ETFDecisionEngine:
         # 3. 发送通知到钉钉
         print("\n[3/3] 发送通知...")
         
+        # 生成趋势数据和指标
+        trend_data = None
+        indicators = None
+        if new_code and self._etf_data and new_code in self._etf_data:
+            try:
+                from .trend_chart import get_trend_summary
+                from .indicator import Indicator
+                trend_data = get_trend_summary(self._etf_data[new_code], new_code, 5)
+                
+                # 计算技术指标
+                df_ind = Indicator.calculate(self._etf_data[new_code])
+                latest = df_ind.iloc[-1]
+                indicators = {
+                    'ma20': latest.get('ma20', 0),
+                    'ma60': latest.get('ma60', 0),
+                    'ma120': latest.get('ma120', 0),
+                    'rsi_14': latest.get('rsi_14', 0),
+                    'vol_ratio': latest.get('vol_ratio', 0),
+                }
+            except Exception as e:
+                print(f"  ⚠ 数据处理失败: {e}")
+        
         # 通过QwenPaw渠道发送
-        self._send_to_dingtalk(action, new_code, new_name, new_price)
+        self._send_to_dingtalk(action, new_code, new_name, new_price, trend_data, indicators)
         
         # 也支持webhook
         if self.webhook_url:
@@ -212,14 +240,40 @@ class ETFDecisionEngine:
         except ValueError as e:
             print(f"  输入错误: {e}")
     
-    def _send_to_dingtalk(self, action: str, code: str, name: str, price: float):
+    def _send_to_dingtalk(self, action: str, code: str, name: str, price: float, trend_data: dict = None, indicators: dict = None):
         """通过QwenPaw渠道发送消息到钉钉"""
         if action in ('观望', '持仓'):
             return
         
+        # ETF名称映射
+        from .report_generator import ETF_NAMES
+        if not name:
+            name = ETF_NAMES.get(code, code)
+        
         # 格式化消息
         if action == '买入':
             msg = f"📈 ETF量化决策\n\n🟢 操作: 买入\n📊 标的: {code} {name}\n💰 价格: {price:.3f}\n🛡️ 止损: {price*0.95:.3f} (-5%)\n🎯 止盈: {price*1.08:.3f} (+8%)"
+            
+            # 添加趋势图
+            if trend_data and trend_data.get('prices'):
+                prices = trend_data['prices']
+                arrows = trend_data['arrows']
+                changes = trend_data['changes']
+                
+                price_strs = [f"{p:.3f}" for p in prices]
+                change_strs = [f"{c:+.1f}%" for c in changes]
+                
+                msg += f"\n\n📊 近5日趋势:"
+                msg += f"\n{''.join(price_strs)}"
+                msg += f"\n{'  '.join(arrows)}"
+                msg += f"\n涨跌: {' '.join(change_strs)}"
+            
+            # 添加技术指标
+            if indicators:
+                msg += f"\n\n📉 技术指标:"
+                msg += f"\nMA20:{indicators['ma20']:.3f} MA60:{indicators['ma60']:.3f} MA120:{indicators['ma120']:.3f}"
+                msg += f"\nRSI14:{indicators['rsi_14']:.1f} 量比:{indicators['vol_ratio']:.2f}"
+                
         elif action == '卖出':
             msg = f"📈 ETF量化决策\n\n🔴 操作: 卖出 | {code}"
         else:
@@ -239,7 +293,7 @@ class ETFDecisionEngine:
                     'qwenpaw', 'channels', 'send',
                     '--agent-id', 'default',
                     '--channel', 'dingtalk',
-                    '--target-user', session.get('user_id', '陈庆#3g=='),
+                    '--target-user', session.get('user_id', ''),
                     '--target-session', session.get('session_id', 'TukxwR4='),
                     '--text', msg
                 ], timeout=20)
