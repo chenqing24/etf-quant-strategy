@@ -78,23 +78,21 @@ class ReportBuilder:
         msg_time = datetime.now().strftime('%Y-%m-%d %H:%M')
         
         lines = [
-            f"📈 ETF量化决策  🕐 {msg_time}",
+            f"## 📈 ETF量化决策",
             "",
+            f"**操作**: 🟢 买入",
+            f"**标的**: {code} {name}",
+            f"**信号价**: {price:.3f}",
         ]
         
         if action == '买入':
-            lines.extend([
-                f"🟢 买入 {code} {name}",
-                f"💰 信号价: {price:.3f}",
-            ])
-            
             # 添加实时数据
             if realtime and realtime.get('price'):
                 rt_price = realtime.get('price', 0)
                 rt_change = realtime.get('change_pct', 0)
                 deviation = ((rt_price - price) / price * 100) if price > 0 else 0
                 
-                lines.append(f"📡 实时价: {rt_price:.3f} ({rt_change:+.2f}%)")
+                lines.append(f"**实时价**: {rt_price:.3f} ({rt_change:+.2f}%)")
                 
                 # 偏离警告
                 if abs(deviation) > 5:
@@ -110,7 +108,12 @@ class ReportBuilder:
                         status = "❄️过冷"
                     else:
                         status = "正常"
-                    lines.append(f"📊 RSI14: {rsi:.1f} {status}")
+                    lines.append(f"**RSI14**: {rsi:.1f} {status}")
+            
+            # 分隔线
+            lines.append("")
+            lines.append("---")
+            lines.append("")
             
             # 添加止盈止损
             lines.extend([
@@ -119,13 +122,22 @@ class ReportBuilder:
             ])
             
         elif action == '卖出':
-            lines.append(f"🔴 卖出 {code} {name}")
+            lines.extend([
+                "",
+                "---",
+                "",
+                f"**操作**: 🔴 卖出",
+                f"**标的**: {code} {name}",
+            ])
             if pnl:
-                lines.append(f"📈 盈亏: {pnl:+.2f}%")
+                lines.append(f"**盈亏**: {pnl:+.2f}%")
         else:
             lines.extend([
-                f"⚪ 操作: 观望",
-                f"📊 等待更好的机会",
+                "",
+                "---",
+                "",
+                f"**操作**: ⚪ 观望",
+                f"**说明**: 等待更好的机会",
             ])
         
         return "\n".join(lines)
