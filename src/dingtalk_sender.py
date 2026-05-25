@@ -68,23 +68,20 @@ class DingTalkSender:
             
             session = sessions[0]
             user_id = session.get('user_id', '')
+            session_id = session.get('session_id', '')
             
-            if not user_id:
-                logger.warning("无法获取用户ID")
+            if not user_id or not session_id:
+                logger.warning(f"无法获取用户ID或会话ID: user_id={user_id}, session_id={session_id}")
                 return False
             
             # 2. 发送消息
-            # QwenPaw渠道支持markdown格式
-            msg_payload = {
-                'content': message
-            }
-            
             result = subprocess.run([
                 'qwenpaw', 'channels', 'send',
                 '--agent-id', 'default',
                 '--channel', 'dingtalk',
                 '--target-user', user_id,
-                '--content', message,
+                '--target-session', session_id,
+                '--text', message,
             ], capture_output=True, text=True, timeout=30)
             
             if result.returncode == 0:

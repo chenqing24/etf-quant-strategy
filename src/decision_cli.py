@@ -32,7 +32,8 @@ class ETFDecisionEngine:
         self.fetcher = TencentETFetcher(data_dir)
         self.tracker = TradeTracker(data_dir)
         self.analyzer = PerformanceAnalyzer(data_dir)
-        self.notifier = SignalNotifier(webhook_url=webhook_url)
+        # 注意：钉钉发送已迁移到ScenarioAdapter
+        self.notifier = SignalNotifier()
         self._etf_data = {}  # 缓存ETF数据用于趋势图
     
     def run_daily_check(self):
