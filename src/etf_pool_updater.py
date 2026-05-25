@@ -242,8 +242,16 @@ class ETFListUpdater:
         pool = self.load_pool()
         codes = []
         for code, _, _ in pool:
-            # 添加sh前缀
-            codes.append(f'sh{code}')
+            # 根据代码判断交易所前缀
+            # 51xxxx, 58xxxx → 沪市(sh)
+            # 15xxxx, 30xxxx → 深市(sz)
+            if code.startswith('51') or code.startswith('58'):
+                prefix = 'sh'
+            elif code.startswith('15') or code.startswith('30'):
+                prefix = 'sz'
+            else:
+                prefix = 'sh'  # 默认沪市
+            codes.append(f'{prefix}{code}')
         return codes
     
     def generate_report(self) -> str:
