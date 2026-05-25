@@ -55,6 +55,9 @@ class ReportBuilder:
     def build_simple(self, results: Dict) -> str:
         """构建简版报告（钉钉/移动端）
         
+        钉钉Markdown支持：标题(#)、加粗(**)、分隔线(---)、列表(-)
+        钉钉Markdown不支持：表格语法
+        
         Args:
             results: {
                 'action': '买入'|'卖出'|'观望',
@@ -75,70 +78,60 @@ class ReportBuilder:
         pnl = results.get('pnl', 0)
         
         name = self.get_etf_name(code)
-        msg_time = datetime.now().strftime('%Y-%m-%d %H:%M')
+        msg_time = datetime.now().strftime('%m-%d %H:%M')
+        
+        # 钉钉换行规则：行尾加2个空格
+        def ln(text): return text + "  " if text else text
         
         lines = [
-            f"## 📈 ETF量化决策",
+            ln(f"## 📈 ETF量化决策 {msg_time}"),
             "",
-            f"**操作**: 🟢 买入",
-            f"**标的**: {code} {name}",
-            f"**信号价**: {price:.3f}",
         ]
         
         if action == '买入':
+            lines.extend([
+                ln(f"**🟢 买入** {code} {name}"),
+                ln(f"信号价: **{price:.3f}**"),
+            ])
+            
             # 添加实时数据
             if realtime and realtime.get('price'):
                 rt_price = realtime.get('price', 0)
                 rt_change = realtime.get('change_pct', 0)
                 deviation = ((rt_price - price) / price * 100) if price > 0 else 0
                 
-                lines.append(f"**实时价**: {rt_price:.3f} ({rt_change:+.2f}%)")
+                lines.append(ln(f"实时价: **{rt_price:.3f}** ({rt_change:+.2f}%)"))
                 
                 # 偏离警告
                 if abs(deviation) > 5:
-                    lines.append(f"⚠️ 偏离信号 {deviation:+.1f}%")
+                    lines.append(ln(f"⚠️ 偏离信号 {deviation:+.1f}%"))
             
-            # 添加RSI状态
+            # RSI状态
             if indicators:
                 rsi = indicators.get('rsi_14', 0)
                 if rsi:
-                    if rsi > 70:
+                    if rsi > 75:
                         status = "🔥过热"
-                    elif rsi < 30:
-                        status = "❄️过冷"
+                    elif rsi > 30:
+                        status = "✅正常"
                     else:
-                        status = "正常"
-                    lines.append(f"**RSI14**: {rsi:.1f} {status}")
+                        status = "💤超卖"
+                    lines.append(ln(f"RSI14: **{rsi:.1f}** {status}"))
             
-            # 分隔线
-            lines.append("")
-            lines.append("---")
-            lines.append("")
-            
-            # 添加止盈止损
-            lines.extend([
-                f"🛡️ 止损: {price*0.95:.3f} (-5%)",
-                f"🎯 止盈: {price*1.08:.3f} (+8%)",
-            ])
+            # 分隔线 + 风控
+            lines.append("")  # 空行
+            lines.append("---")  # 分隔线
+            lines.append("")  # 空行
+            lines.append(ln(f"🛡️ 止损: **{price*0.95:.3f}** (-5%)"))
+            lines.append(ln(f"🎯 止盈: **{price*1.08:.3f}** (+8%)"))
             
         elif action == '卖出':
-            lines.extend([
-                "",
-                "---",
-                "",
-                f"**操作**: 🔴 卖出",
-                f"**标的**: {code} {name}",
-            ])
+            lines.append(ln(f"**🔴 卖出** {code} {name}"))
             if pnl:
-                lines.append(f"**盈亏**: {pnl:+.2f}%")
+                lines.append(ln(f"盈亏: **{pnl:+.2f}%**"))
         else:
-            lines.extend([
-                "",
-                "---",
-                "",
-                f"**操作**: ⚪ 观望",
-                f"**说明**: 等待更好的机会",
-            ])
+            lines.append(ln(f"**⚪ 观望**"))
+            lines.append("等待更好的机会")
         
         return "\n".join(lines)
     

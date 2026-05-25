@@ -6,8 +6,8 @@
 from typing import Dict, Optional
 import logging
 
-from .report_builder import ReportBuilder, get_builder
-from .dingtalk_sender import DingTalkSender, get_sender
+from src.report_builder import ReportBuilder, get_builder
+from src.dingtalk_sender import DingTalkSender, get_sender
 
 logger = logging.getLogger(__name__)
 

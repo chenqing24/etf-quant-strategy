@@ -154,7 +154,7 @@ class ETFDecisionEngine:
         print("="*60)
         
         # 0. 加载ETF数据用于趋势图
-        from .data_loader import DataLoader
+        from src.data_loader import DataLoader
         self._etf_data = DataLoader().load('../etf_data_50')
         print(f"加载 {len(self._etf_data)} 只ETF数据")
         
@@ -224,7 +224,7 @@ class ETFDecisionEngine:
         realtime = {}
         if new_code:
             try:
-                from .data_manager import DataFacade
+                from src.data_manager import DataFacade
                 facade = DataFacade(self.data_dir)
                 hot_record = facade.hot.get(new_code)
                 if hot_record:
@@ -242,8 +242,8 @@ class ETFDecisionEngine:
         indicators = None
         if new_code and self._etf_data and new_code in self._etf_data:
             try:
-                from .trend_chart import get_trend_summary
-                from .indicator import Indicator
+                from src.trend_chart import get_trend_summary
+                from src.indicator import Indicator
                 trend_data = get_trend_summary(self._etf_data[new_code], new_code, 5)
                 
                 # 计算技术指标
@@ -292,7 +292,7 @@ class ETFDecisionEngine:
     
     def execute_trade(self, code: str, action: str, price: float, quantity: int):
         """执行交易"""
-        from .industry_mapping import INDUSTRY_MAPPING
+        from src.industry_mapping import INDUSTRY_MAPPING
         
         name = INDUSTRY_MAPPING.get(code, code)
         
@@ -331,90 +331,6 @@ class ETFDecisionEngine:
                 
         except ValueError as e:
             print(f"  输入错误: {e}")
-    
-    def _send_to_dingtalk(self, action: str, code: str, name: str, price: float, 
-                          trend_data: dict = None, indicators: dict = None,
-                          realtime: dict = None, data_timestamp: str = None):
-        """通过QwenPaw渠道发送消息到钉钉
-        
-        使用钉钉专属Markdown模板
-        """
-        if action in ('观望', '持仓'):
-            return
-        
-        # ETF名称映射
-        from .report_generator import ETF_NAMES
-        if not name:
-            name = ETF_NAMES.get(code, code)
-        
-        # 获取当前时间
-        msg_time = datetime.now().strftime('%Y-%m-%d %H:%M')
-        
-        # 构建钉钉消息（使用emoji格式）
-        if action == '买入':
-            lines = [
-                f"📈 ETF量化决策  🕐 {msg_time}",
-                "",
-                f"🟢 买入 {code} {name}",
-                f"💰 信号价: {price:.3f}",
-            ]
-            
-            # 添加实时数据
-            if realtime and realtime.get('price'):
-                rt_price = realtime.get('price', 0)
-                rt_change = realtime.get('change_pct', 0)
-                deviation = ((rt_price - price) / price * 100) if price > 0 else 0
-                
-                lines.append(f"📡 实时价: {rt_price:.3f} ({rt_change:+.2f}%)")
-                
-                # 偏离警告
-                if abs(deviation) > 5:
-                    lines.append(f"⚠️ 偏离信号 {deviation:+.1f}%")
-            
-            # 添加RSI状态
-            if indicators and indicators.get('rsi_14'):
-                rsi = indicators['rsi_14']
-                if rsi > 70:
-                    status = "🔥过热"
-                elif rsi < 30:
-                    status = "❄️过冷"
-                else:
-                    status = "正常"
-                lines.append(f"📊 RSI14: {rsi:.1f} {status}")
-            
-            # 添加止盈止损
-            lines.append(f"🛡️ 止损: {price*0.95:.3f} (-5%)")
-            lines.append(f"🎯 止盈: {price*1.08:.3f} (+8%)")
-            
-            msg = "\n".join(lines)
-                
-        elif action == '卖出':
-            msg = f"📈 ETF量化决策  🕐 {msg_time}\n\n🔴 卖出 {code} {name}"
-        else:
-            return
-        
-        # 调用QwenPaw发送（使用markdown格式）
-        import subprocess, json
-        result = subprocess.run(
-            ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
-            capture_output=True, text=True, timeout=15
-        )
-        try:
-            sessions = json.loads(result.stdout)
-            if sessions:
-                session = sessions[0]
-                subprocess.run([
-                    'qwenpaw', 'channels', 'send',
-                    '--agent-id', 'default',
-                    '--channel', 'dingtalk',
-                    '--target-user', session.get('user_id', ''),
-                    '--target-session', session.get('session_id', 'TukxwR4='),
-                    '--msg-type', 'markdown',
-                    '--text', msg
-                ], timeout=20)
-                print(f"  ✓ 已推送钉钉: {action} {code}")
-        except Exception as e:
-            print(f"  ⚠ 钉钉推送失败: {e}")
     
     def print_trade_history(self):
         """打印交易历史"""
