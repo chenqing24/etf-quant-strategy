@@ -14,6 +14,8 @@ from src.data_fetcher import TencentETFetcher
 from src.trade_tracker import TradeTracker
 from src.performance_analyzer import PerformanceAnalyzer
 from src.notifier import SignalNotifier
+from src.data_manager import DataFacade
+from src.scenario_adapter import ScenarioAdapter, notify_decision
 
 
 class ETFDecisionEngine:
@@ -38,6 +40,11 @@ class ETFDecisionEngine:
         print("\n" + "="*60)
         print(f"📅 每日检查 - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         print("="*60)
+        
+        # 0. 预热实时数据 (14:25环节)
+        prefetch_result = self._prefetch_realtime_data()
+        data_timestamp = prefetch_result['prefetch_time']
+        print(f"  数据更新时间: {data_timestamp}")
         
         # 1. 更新数据
         print("\n[1/4] 更新数据...")
@@ -84,10 +91,65 @@ class ETFDecisionEngine:
             'message': '持仓正常，无需操作'
         }
     
-    def run_full_evaluation(self):
-        """完整策略评估"""
+    def _prefetch_realtime_data(self) -> dict:
+        """预热实时数据 (14:25环节)
+        
+        Returns:
+            预热结果
+        """
+        from scripts.prefetch_data import ETFDataPrefetcher
+        
+        print("\n[预热] 拉取实时数据...")
+        prefetcher = ETFDataPrefetcher(self.data_dir)
+        results = prefetcher.prefetch_all()
+        
+        # 返回预热时间和成功数量
+        return {
+            'prefetch_time': results.get('prefetch_time', datetime.now().isoformat()),
+            'success_count': results.get('success', 0),
+            'total_count': results.get('total', 0),
+        }
+    
+    def _get_data_timestamp(self) -> str:
+        """获取数据时间戳
+        
+        优先使用热数据层的时间戳（实时数据）
+        其次使用历史数据最新日期
+        """
+        facade = DataFacade(self.data_dir)
+        hot_count = facade.hot.count()
+        
+        if hot_count > 0:
+            # 有热数据，使用热数据的最新时间戳
+            hot_data = facade.hot.get_all()
+            if hot_data:
+                latest_timestamp = max(
+                    record.timestamp for record in hot_data.values()
+                )
+                return f"{latest_timestamp} (实时)"
+        
+        # 无热数据，使用历史数据
+        if self._etf_data:
+            latest_date = max(df['date'].max() for df in self._etf_data.values())
+            return f"{latest_date} (历史)"
+        
+        return "未知"
+    
+    def run_full_evaluation(self, silent: bool = False):
+        """完整策略评估
+        
+        Args:
+            silent: 是否静默模式（不发送钉钉，由cron的agent响应代替）
+        """
         print("\n" + "="*60)
         print("🔄 完整策略评估")
+        print("="*60)
+        
+        # 0. 预热实时数据 (14:25环节)
+        prefetch_result = self._prefetch_realtime_data()
+        data_timestamp = prefetch_result['prefetch_time']
+        
+        print(f"  数据更新时间: {data_timestamp}")
         print("="*60)
         
         # 0. 加载ETF数据用于趋势图
@@ -157,6 +219,23 @@ class ETFDecisionEngine:
         # 3. 发送通知到钉钉
         print("\n[3/3] 发送通知...")
         
+        # 获取实时数据（从热数据层）
+        realtime = {}
+        if new_code:
+            try:
+                from .data_manager import DataFacade
+                facade = DataFacade(self.data_dir)
+                hot_record = facade.hot.get(new_code)
+                if hot_record:
+                    realtime = {
+                        'price': hot_record.price,
+                        'change_pct': hot_record.change_pct,
+                        'volume': hot_record.volume,
+                        'timestamp': hot_record.timestamp,
+                    }
+            except Exception as e:
+                print(f"  ⚠ 获取实时数据失败: {e}")
+        
         # 生成趋势数据和指标
         trend_data = None
         indicators = None
@@ -179,18 +258,30 @@ class ETFDecisionEngine:
             except Exception as e:
                 print(f"  ⚠ 数据处理失败: {e}")
         
-        # 通过QwenPaw渠道发送
-        self._send_to_dingtalk(action, new_code, new_name, new_price, trend_data, indicators)
+        # 获取数据时间戳
+        data_timestamp = self._get_data_timestamp()
         
-        # 也支持webhook
-        if self.webhook_url:
-            self.notifier.send_daily_summary({
-                'action': action,
-                'new_code': new_code,
-                'name': new_name,
-                'price': new_price,
-                'report_file': report_file,
-            })
+        # 构建结果数据（供ScenarioAdapter使用）
+        results = {
+            'action': action,
+            'code': new_code,
+            'name': new_name,
+            'price': new_price,
+            'realtime': realtime,
+            'indicators': indicators,
+            'data_timestamp': data_timestamp,
+        }
+        
+        # 发送通知（除非是静默模式）
+        if not getattr(self, '_silent_mode', False):
+            # 使用新的ScenarioAdapter（钉钉移动端）
+            adapter = ScenarioAdapter.for_mobile()
+            adapter.build_and_send(results, report_file=None)
+        
+        # PC端控制台输出完整报告
+        if report_file:
+            adapter_pc = ScenarioAdapter.for_console()
+            adapter_pc.build_report(results, report_file)
         
         return {
             'action': action,
@@ -240,8 +331,13 @@ class ETFDecisionEngine:
         except ValueError as e:
             print(f"  输入错误: {e}")
     
-    def _send_to_dingtalk(self, action: str, code: str, name: str, price: float, trend_data: dict = None, indicators: dict = None):
-        """通过QwenPaw渠道发送消息到钉钉"""
+    def _send_to_dingtalk(self, action: str, code: str, name: str, price: float, 
+                          trend_data: dict = None, indicators: dict = None,
+                          realtime: dict = None, data_timestamp: str = None):
+        """通过QwenPaw渠道发送消息到钉钉
+        
+        使用钉钉专属Markdown模板
+        """
         if action in ('观望', '持仓'):
             return
         
@@ -250,36 +346,53 @@ class ETFDecisionEngine:
         if not name:
             name = ETF_NAMES.get(code, code)
         
-        # 格式化消息
+        # 获取当前时间
+        msg_time = datetime.now().strftime('%Y-%m-%d %H:%M')
+        
+        # 构建钉钉消息（使用emoji格式）
         if action == '买入':
-            msg = f"📈 ETF量化决策\n\n🟢 操作: 买入\n📊 标的: {code} {name}\n💰 价格: {price:.3f}\n🛡️ 止损: {price*0.95:.3f} (-5%)\n🎯 止盈: {price*1.08:.3f} (+8%)"
+            lines = [
+                f"📈 ETF量化决策  🕐 {msg_time}",
+                "",
+                f"🟢 买入 {code} {name}",
+                f"💰 信号价: {price:.3f}",
+            ]
             
-            # 添加趋势图
-            if trend_data and trend_data.get('prices'):
-                prices = trend_data['prices']
-                arrows = trend_data['arrows']
-                changes = trend_data['changes']
+            # 添加实时数据
+            if realtime and realtime.get('price'):
+                rt_price = realtime.get('price', 0)
+                rt_change = realtime.get('change_pct', 0)
+                deviation = ((rt_price - price) / price * 100) if price > 0 else 0
                 
-                price_strs = [f"{p:.3f}" for p in prices]
-                change_strs = [f"{c:+.1f}%" for c in changes]
+                lines.append(f"📡 实时价: {rt_price:.3f} ({rt_change:+.2f}%)")
                 
-                msg += f"\n\n📊 近5日趋势:"
-                msg += f"\n{''.join(price_strs)}"
-                msg += f"\n{'  '.join(arrows)}"
-                msg += f"\n涨跌: {' '.join(change_strs)}"
+                # 偏离警告
+                if abs(deviation) > 5:
+                    lines.append(f"⚠️ 偏离信号 {deviation:+.1f}%")
             
-            # 添加技术指标
-            if indicators:
-                msg += f"\n\n📉 技术指标:"
-                msg += f"\nMA20:{indicators['ma20']:.3f} MA60:{indicators['ma60']:.3f} MA120:{indicators['ma120']:.3f}"
-                msg += f"\nRSI14:{indicators['rsi_14']:.1f} 量比:{indicators['vol_ratio']:.2f}"
+            # 添加RSI状态
+            if indicators and indicators.get('rsi_14'):
+                rsi = indicators['rsi_14']
+                if rsi > 70:
+                    status = "🔥过热"
+                elif rsi < 30:
+                    status = "❄️过冷"
+                else:
+                    status = "正常"
+                lines.append(f"📊 RSI14: {rsi:.1f} {status}")
+            
+            # 添加止盈止损
+            lines.append(f"🛡️ 止损: {price*0.95:.3f} (-5%)")
+            lines.append(f"🎯 止盈: {price*1.08:.3f} (+8%)")
+            
+            msg = "\n".join(lines)
                 
         elif action == '卖出':
-            msg = f"📈 ETF量化决策\n\n🔴 操作: 卖出 | {code}"
+            msg = f"📈 ETF量化决策  🕐 {msg_time}\n\n🔴 卖出 {code} {name}"
         else:
             return
         
-        # 调用QwenPaw发送
+        # 调用QwenPaw发送（使用markdown格式）
         import subprocess, json
         result = subprocess.run(
             ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
@@ -295,6 +408,7 @@ class ETFDecisionEngine:
                     '--channel', 'dingtalk',
                     '--target-user', session.get('user_id', ''),
                     '--target-session', session.get('session_id', 'TukxwR4='),
+                    '--msg-type', 'markdown',
                     '--text', msg
                 ], timeout=20)
                 print(f"  ✓ 已推送钉钉: {action} {code}")
@@ -320,7 +434,7 @@ class ETFDecisionEngine:
 def main():
     parser = argparse.ArgumentParser(description='ETF量化决策引擎')
     parser.add_argument('--mode', '-m', 
-                       choices=['daily', 'eval', 'trade', 'history', 'perf', 'update_pool'],
+                       choices=['daily', 'eval', 'trade', 'history', 'perf', 'update_pool', 'export'],
                        default='daily', help='运行模式')
     parser.add_argument('--capital', '-c', type=float, default=20000,
                        help='本金')
@@ -329,6 +443,14 @@ def main():
     parser.add_argument('--price', type=float, help='价格')
     parser.add_argument('--quantity', type=int, help='数量')
     parser.add_argument('--webhook', type=str, help='钉钉Webhook URL')
+    parser.add_argument('--silent', action='store_true', help='静默模式（不发送钉钉，由cron响应代替）')
+    
+    # ── US-005: 查询参数 ──────────────────────────────────────────
+    parser.add_argument('--date', type=str,
+                       help='查询日期 (YYYY-MM-DD / YYYY-MM / YYYY)')
+    parser.add_argument('--filepath', type=str,
+                       help='CSV导出路径 (mode=export)')
+    # ─────────────────────────────────────────────────────────────
     
     args = parser.parse_args()
     
@@ -338,24 +460,97 @@ def main():
         webhook_url=args.webhook
     )
     
+    # 设置静默模式
+    if args.silent:
+        engine._silent_mode = True
+    
     # 执行
     if args.mode == 'daily':
         engine.run_daily_check()
     elif args.mode == 'eval':
-        engine.run_full_evaluation()
+        engine.run_full_evaluation(silent=args.silent)
     elif args.mode == 'trade':
         if args.code and args.action and args.price and args.quantity:
             engine.execute_trade(args.code, args.action, args.price, args.quantity)
         else:
             print("错误: 需要指定 --code --action --price --quantity")
     elif args.mode == 'history':
-        engine.print_trade_history()
+        # US-005: 支持 date / code 过滤
+        _run_history_query(engine, args)
     elif args.mode == 'perf':
         engine.analyzer.print_summary()
+    elif args.mode == 'export':
+        # US-005: CSV导出
+        _run_export(engine, args)
     elif args.mode == 'update_pool':
         from src.etf_pool_updater import ETFListUpdater
         updater = ETFListUpdater('etf_pool.json')
         updater.run_full_update()
+
+
+# ── US-005: 新增 CLI 子命令实现 ─────────────────────────────────
+
+def _run_history_query(engine: ETFDecisionEngine, args):
+    """
+    US-005: 查询交易记录
+    
+    Examples:
+        python -m src.decision_cli -m history
+        python -m src.decision_cli -m history --date 20260525
+        python -m src.decision_cli -m history --date 2026-05 --code 510300
+    """
+    trades = engine.tracker.query_trades(
+        date=args.date,
+        code=args.code,
+        action=args.action,
+    )
+    
+    print(f"\n{'=' * 80}")
+    filter_note = f"(过滤: date={args.date}, code={args.code}, action={args.action})" if (args.date or args.code or args.action) else ""
+    print(f"📜 交易历史 {filter_note}")
+    print(f"{'=' * 80}")
+    print(f"{'日期':<12} {'代码':<10} {'名称':<8} {'行为':<6} {'成交价':>8} {'数量':>6} "
+          f"{'金额':>10} {'实时价':>8} {'偏差%':>7} {'RSI14':>7} {'涨幅%':>7} {'评分':>5}")
+    print("-"*80)
+    
+    if not trades:
+        print("  (无记录)")
+        return
+    
+    for t in trades:
+        note_pnl = f" 盈亏:{t.actual_pnl:+.2f}" if t.action == 'sell' else ""
+        note_rt = (f" 实时:{t.realtime_price:.3f}" if t.realtime_price > 0
+                   else "")
+        note_dev = (f" 偏差:{t.price_deviation:+.2f}%" if t.price_deviation != 0
+                    else "")
+        note_rsi = (f" RSI:{t.rsi_14:.1f}" if t.rsi_14 > 0 else "")
+        note_chng = (f" 涨幅:{t.day_change_pct:+.2f}%" if t.day_change_pct != 0
+                     else "")
+        note_score = f" 评分:{t.score}" if t.score > 0 else ""
+        
+        print(f"  {t.date:<10} {t.code:<10} {t.name:<8} {t.action:<6} "
+              f"{t.price:>8.3f} {t.quantity:>6} {t.amount:>10.1f}"
+              f"{note_rt}{note_dev}{note_rsi}{note_chng}{note_score}{note_pnl}")
+    
+    print("-"*80)
+    print(f"  共 {len(trades)} 笔记录")
+
+
+def _run_export(engine: ETFDecisionEngine, args):
+    """
+    US-005: 导出CSV
+    
+    Example:
+        python -m src.decision_cli -m export --filepath trades.csv
+    """
+    filepath = args.filepath or 'etf_trades.csv'
+    
+    # 确保 data_dir 存在
+    import os
+    os.makedirs(os.path.dirname(filepath) or '.', exist_ok=True)
+    
+    count = engine.tracker.export_csv(filepath)
+    print(f"\n✓ 导出完成: {filepath} ({count} 笔记录)")
 
 
 if __name__ == '__main__':
