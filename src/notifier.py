@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""信号推送"""
-import json
-import time
-from typing import Dict, List, Optional
+"""信号推送模块
+
+注意：钉钉发送功能已迁移到 dingtalk_sender.py
+使用 ScenarioAdapter 进行统一的通知发送
+"""
+from datetime import datetime
+from typing import Dict, List
 from dataclasses import dataclass
 
 
@@ -19,22 +22,18 @@ class TradeSignal:
 
 
 class SignalNotifier:
-    """信号通知器
+    """信号通知器（控制台输出）
     
-    支持多种推送方式:
-    - 钉钉Webhook
-    - 控制台输出(测试用)
+    注意：钉钉发送功能已迁移到 ScenarioAdapter
+    本类仅保留控制台输出功能
     """
     
-    def __init__(self, 
-                 webhook_url: str = None,
-                 enable_console: bool = True):
-        self.webhook_url = webhook_url
+    def __init__(self, enable_console: bool = True):
         self.enable_console = enable_console
         self.signals: List[TradeSignal] = []
     
     def send_signal(self, signal: TradeSignal):
-        """发送交易信号"""
+        """发送交易信号（仅控制台）"""
         self.signals.append(signal)
         
         # 格式化消息
@@ -47,10 +46,6 @@ class SignalNotifier:
             print(f"{'='*50}")
             print(message)
             print(f"{'='*50}\n")
-        
-        # 钉钉推送 (可选)
-        if self.webhook_url:
-            self._send_dingtalk(message)
     
     def _format_message(self, signal: TradeSignal) -> str:
         """格式化消息"""
@@ -76,108 +71,28 @@ class SignalNotifier:
         
         return "\n".join(lines)
     
-    def _send_dingtalk(self, message: str):
-        """发送钉钉消息"""
+    def send_full_report_to_console(self, report_file: str):
+        """将完整报告输出到控制台
+        
+        Args:
+            report_file: 完整报告文件路径
+        """
+        if not report_file:
+            return
+        
         try:
-            import requests
+            with open(report_file, 'r', encoding='utf-8') as f:
+                full_report = f.read()
             
-            headers = {'Content-Type': 'application/json'}
-            data = {
-                'msgtype': 'text',
-                'text': {
-                    'content': f"[ETF量化] {message}"
-                }
-            }
-            
-            response = requests.post(
-                self.webhook_url,
-                headers=headers,
-                data=json.dumps(data),
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                print(f"✓ 钉钉消息发送成功")
-            else:
-                print(f"✗ 钉钉消息发送失败: {response.status_code}")
+            if self.enable_console:
+                print(f"\n{'='*60}")
+                print("📊 每日策略总结 (完整报告)")
+                print(f"{'='*60}")
+                print(full_report)
+                print(f"{'='*60}\n")
                 
-        except ImportError:
-            print("⚠️ requests库未安装，跳过钉钉推送")
         except Exception as e:
-            print(f"✗ 钉钉推送异常: {e}")
-    
-    def send_daily_summary(self, results: Dict):
-        """发送每日总结 - 简化的移动端版本"""
-        action = results.get('action', '观望')
-        code = results.get('new_code', '')
-        name = results.get('name', '')
-        price = results.get('price', 0)
-        trend_data = results.get('trend', None)
-        indicators = results.get('indicators', None)
-        
-        # ETF名称映射
-        from .report_generator import ETF_NAMES
-        if not name:
-            name = ETF_NAMES.get(code, code)
-        
-        # 简化版钉钉消息 (移动端友好)
-        if action == '买入':
-            message = [
-                "📈 ETF量化决策",
-                "",
-                f"🟢 操作: 买入",
-                f"📊 标的: {code} {name}",
-                f"💰 价格: {price:.3f}",
-                f"🛡️ 止损: {price*0.95:.3f} (-5%)",
-                f"🎯 止盈: {price*1.08:.3f} (+8%)",
-            ]
-            # 添加趋势图
-            if trend_data:
-                prices = trend_data.get('prices', [])
-                arrows = trend_data.get('arrows', [])
-                changes = trend_data.get('changes', [])
-                
-                if prices:
-                    price_strs = [f"{p:.3f}" for p in prices]
-                    change_strs = [f"{c:+.1f}%" for c in changes]
-                    
-                    message.append("")
-                    message.append(f"近5日: {'→'.join(price_strs)}")
-                    message.append(f"       {'  '.join(arrows)}")
-                    message.append(f"涨跌: {' '.join(change_strs)}")
-            
-            # 添加技术指标
-            if indicators:
-                message.append("")
-                message.append("📉 技术指标:")
-                message.append(f"MA20:{indicators.get('ma20', 0):.3f} MA60:{indicators.get('ma60', 0):.3f}")
-                message.append(f"RSI14:{indicators.get('rsi_14', 0):.1f} 量比:{indicators.get('vol_ratio', 0):.2f}")
-        elif action == '卖出':
-            message = [
-                "📈 ETF量化决策",
-                "",
-                f"🔴 操作: 卖出 | {code}",
-            ]
-        else:
-            message = [
-                "📈 ETF量化决策",
-                "",
-                f"⚪ 操作: 观望",
-                f"📊 等待更好的机会",
-            ]
-        
-        # 控制台输出 (完整版)
-        if self.enable_console:
-            print(f"\n{'='*50}")
-            print("📊 每日策略总结")
-            print(f"{'='*50}")
-            for line in message:
-                print(line)
-            print(f"{'='*50}\n")
-        
-        # 钉钉推送 (简化版)
-        if self.webhook_url and action != '观望':
-            self._send_dingtalk("\n".join(message))
+            print(f"⚠️ 读取报告文件失败: {e}")
     
     def get_signals(self) -> List[TradeSignal]:
         """获取所有信号"""
@@ -213,15 +128,6 @@ def test_notifier():
         pnl=0.15
     )
     notifier.send_signal(signal2)
-    
-    # 测试每日总结
-    notifier.send_daily_summary({
-        'return': 51.9,
-        'drawdown': -22.6,
-        'sharpe': 2.07,
-        'winrate': 61.1,
-        'trades': 37,
-    })
     
     print("✓ 通知器测试通过")
     return True
