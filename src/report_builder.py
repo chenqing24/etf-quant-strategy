@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+"""统一报告构建器
+
+支持简版报告（钉钉/移动端）和详细报告（PC端）
+"""
+from typing import Dict, Optional
+from datetime import datetime
+
+
+class ReportBuilder:
+    """统一报告构建器"""
+    
+    def __init__(self):
+        self._etf_names = self._load_etf_names()
+    
+    @staticmethod
+    def _load_etf_names() -> Dict[str, str]:
+        """加载ETF名称映射"""
+        return {
+            '510300': '沪深300',
+            '510500': '中证500',
+            '159919': '沪深300ETF',
+            '159915': '创业板ETF',
+            '512880': '证券ETF',
+            '512170': '医疗ETF',
+            '512200': '房地产ETF',
+            '159928': '消费ETF',
+            '159825': '农业ETF',
+            '512010': '医药ETF',
+            '512500': '中证500ETF',
+            '159952': '创业板ETF',
+            '159997': '券商ETF',
+            '159995': '芯片ETF',
+            '512760': '芯片ETF',
+            '159801': '芯片ETF',
+            '159823': '新能源车',
+            '515050': '5GETF',
+            '159857': '光伏ETF',
+            '516160': '新能源ETF',
+            '159806': '新能源车',
+            '159942': '教育ETF',
+            '510050': '上证50',
+            '512660': '军工ETF',
+            '159920': '中证500ETF',
+            '159867': '农业ETF',
+            '518880': '黄金ETF',
+            '159934': '黄金ETF',
+            '159577': '游戏ETF',
+        }
+    
+    def get_etf_name(self, code: str) -> str:
+        """获取ETF名称"""
+        return self._etf_names.get(code, code)
+    
+    def build_simple(self, results: Dict) -> str:
+        """构建简版报告（钉钉/移动端）
+        
+        Args:
+            results: {
+                'action': '买入'|'卖出'|'观望',
+                'code': '510300',
+                'price': 3.856,
+                'realtime': {'price': 3.860, 'change_pct': 1.5},
+                'indicators': {'rsi_14': 72},
+                'pnl': 5.2
+            }
+        Returns:
+            str: Markdown格式简版报告
+        """
+        action = results.get('action', '观望')
+        code = results.get('code', '')
+        price = results.get('price', 0)
+        realtime = results.get('realtime', {})
+        indicators = results.get('indicators', {})
+        pnl = results.get('pnl', 0)
+        
+        name = self.get_etf_name(code)
+        msg_time = datetime.now().strftime('%Y-%m-%d %H:%M')
+        
+        lines = [
+            f"📈 ETF量化决策  🕐 {msg_time}",
+            "",
+        ]
+        
+        if action == '买入':
+            lines.extend([
+                f"🟢 买入 {code} {name}",
+                f"💰 信号价: {price:.3f}",
+            ])
+            
+            # 添加实时数据
+            if realtime and realtime.get('price'):
+                rt_price = realtime.get('price', 0)
+                rt_change = realtime.get('change_pct', 0)
+                deviation = ((rt_price - price) / price * 100) if price > 0 else 0
+                
+                lines.append(f"📡 实时价: {rt_price:.3f} ({rt_change:+.2f}%)")
+                
+                # 偏离警告
+                if abs(deviation) > 5:
+                    lines.append(f"⚠️ 偏离信号 {deviation:+.1f}%")
+            
+            # 添加RSI状态
+            if indicators:
+                rsi = indicators.get('rsi_14', 0)
+                if rsi:
+                    if rsi > 70:
+                        status = "🔥过热"
+                    elif rsi < 30:
+                        status = "❄️过冷"
+                    else:
+                        status = "正常"
+                    lines.append(f"📊 RSI14: {rsi:.1f} {status}")
+            
+            # 添加止盈止损
+            lines.extend([
+                f"🛡️ 止损: {price*0.95:.3f} (-5%)",
+                f"🎯 止盈: {price*1.08:.3f} (+8%)",
+            ])
+            
+        elif action == '卖出':
+            lines.append(f"🔴 卖出 {code} {name}")
+            if pnl:
+                lines.append(f"📈 盈亏: {pnl:+.2f}%")
+        else:
+            lines.extend([
+                f"⚪ 操作: 观望",
+                f"📊 等待更好的机会",
+            ])
+        
+        return "\n".join(lines)
+    
+    def build_full(self, results: Dict, report_file: str = None) -> str:
+        """构建详细报告（PC端）
+        
+        Args:
+            results: 决策结果
+            report_file: 可选的完整报告文件路径
+        Returns:
+            str: 详细报告内容
+        """
+        # 如果提供了报告文件，读取完整内容
+        if report_file:
+            try:
+                with open(report_file, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception:
+                pass
+        
+        # 否则构建标准详细报告
+        action = results.get('action', '观望')
+        code = results.get('code', '')
+        name = self.get_etf_name(code)
+        price = results.get('price', 0)
+        
+        lines = [
+            "=" * 60,
+            "📊 ETF量化决策详细报告",
+            "=" * 60,
+            f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "",
+            f"操作: {action}",
+            f"标的: {code} {name}",
+            f"价格: {price:.4f}",
+            "",
+            "=" * 60,
+        ]
+        
+        return "\n".join(lines)
+
+
+# 单例实例
+_builder = None
+
+def get_builder() -> ReportBuilder:
+    """获取报告构建器单例"""
+    global _builder
+    if _builder is None:
+        _builder = ReportBuilder()
+    return _builder
