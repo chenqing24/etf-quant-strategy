@@ -194,8 +194,8 @@ class Selector:
                         weighted_score += self.IC_WEIGHTS['rsi']
                         reasons.append('RSI')
                     else:
-                        # RSI超卖但MA20未向上，不加分（防止接飞刀）
-                        reasons.append('RSI')
+                        # RSI超卖但MA20未向上，不加分也不记录（防止接飞刀）
+                        pass
                 else:
                     weighted_score += self.IC_WEIGHTS['rsi']
                     reasons.append('RSI')
