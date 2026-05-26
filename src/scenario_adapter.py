@@ -70,11 +70,11 @@ class ScenarioAdapter:
                 return True
         else:
             # PC/控制台：直接打印到标准输出
-            print("\n" + "=" * 60)
-            print("📊 报告内容")
-            print("=" * 60)
-            print(message)
-            print("=" * 60 + "\n")
+            logger.info("=" * 60)
+            logger.info("📊 报告内容")
+            logger.info("=" * 60)
+            logger.info(message)
+            logger.info("=" * 60)
             return True
     
     def build_and_send(self, results: Dict, report_file: str = None) -> bool:

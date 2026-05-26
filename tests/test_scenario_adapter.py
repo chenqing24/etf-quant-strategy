@@ -98,9 +98,10 @@ class TestScenarioAdapter(unittest.TestCase):
         adapter = ScenarioAdapter.for_console()
         message = "测试消息"
         
-        with patch('builtins.print') as mock_print:
+        # 控制台输出现在使用logger.info (logging.getLogger)
+        with patch('src.scenario_adapter.logger') as mock_logger:
             adapter.send_report(message)
-            mock_print.assert_called()
+            mock_logger.info.assert_called()
 
 
 class TestCLIScenarioMode(unittest.TestCase):
