@@ -7,6 +7,9 @@ import pandas as pd
 from pathlib import Path
 from typing import Optional, Dict
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CacheManager:
@@ -102,7 +105,7 @@ class CacheManager:
             }
             self._save_meta()
         except Exception as e:
-            print(f"缓存写入失败: {e}")
+            logger.error(f"缓存写入失败: {e}")
     
     def clear(self, name: str = None):
         """清除缓存
