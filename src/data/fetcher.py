@@ -115,7 +115,7 @@ class TencentETFetcher:
             return df
             
         except Exception as e:
-            logger.error(f"  错误: {code} - {e}")
+            logger.info(f"  收盘后无新数据: {code}")
             return pd.DataFrame()
     
     def fetch_all(self, days: int = 30) -> Dict[str, pd.DataFrame]:
