@@ -180,8 +180,7 @@ class ETFDecisionEngine:
         logger.info(f"加载 {len(self._etf_data)} 只ETF数据")
         
         # 1. 生成决策报告
-        if not simple:
-            print("\n[1/3] 生成决策报告...")
+        logger.info("[1/3] 生成决策报告...")
         
         # 设置简版模式（传递给report_generator内部组件）
         from src.selector import Selector
@@ -332,17 +331,17 @@ class ETFDecisionEngine:
         
         if action == 'buy':
             self.tracker.record_buy(code, name, price, quantity, '策略推荐')
-            print(f"✓ 已记录买入: {code} {name}")
+            logger.info(f"✓ 已记录买入: {code} {name}")
         else:
             pnl = (price - 1.0) * quantity  # TODO: 准确计算
             self.tracker.record_sell(code, price, pnl)
-            print(f"✓ 已记录卖出: {code} {name}")
+            logger.info(f"✓ 已记录卖出: {code} {name}")
     
     def input_actual_result(self, code: str):
         """要求用户输入实际结果"""
-        print("\n" + "="*60)
-        print(f"📝 请输入 {code} 的实际交易结果")
-        print("="*60)
+        logger.info("=" * 60)
+        logger.info(f"📝 请输入 {code} 的实际交易结果")
+        logger.info("=" * 60)
         
         try:
             entry_price = float(input("  买入价格: "))
@@ -352,34 +351,32 @@ class ETFDecisionEngine:
             if exit_price > 0:
                 # 已卖出
                 actual_pnl = (exit_price - entry_price) * quantity
-                print(f"\n  实际盈亏: {actual_pnl:+.2f}元")
+                logger.info(f"  实际盈亏: {actual_pnl:+.2f}元")
                 
                 # 更新记录
                 trade = self.tracker.record_sell(code, exit_price, actual_pnl)
                 self.tracker.update_performance(actual_pnl)
                 
-                print("✓ 已更新交易记录")
+                logger.info("✓ 已更新交易记录")
             else:
                 # 持有中，更新买入价
-                print("  记录为持仓...")
+                logger.info("  记录为持仓...")
                 
         except ValueError as e:
-            print(f"  输入错误: {e}")
+            logger.error(f"  输入错误: {e}")
     
     def print_trade_history(self):
         """打印交易历史"""
         trades = self.tracker.load_trades()
         
-        print("\n" + "="*60)
-        print("📜 交易历史")
-        print("="*60)
+        logger.info("=" * 60)
+        logger.info("📜 交易历史")
+        logger.info("=" * 60)
         
         for t in trades[-10:]:  # 最近10笔
             pnl_str = f" 盈亏:{t.actual_pnl:+.2f}元" if t.action == 'sell' else ""
-            print(f"  {t.date} {t.code} {t.name} {t.action} "
+            logger.info(f"  {t.date} {t.code} {t.name} {t.action} "
                   f"价格:{t.price} 数量:{t.quantity}{pnl_str}")
-        
-        print()
 
 
 def main():
@@ -436,7 +433,7 @@ def main():
         if args.code and args.action and args.price and args.quantity:
             engine.execute_trade(args.code, args.action, args.price, args.quantity)
         else:
-            print("错误: 需要指定 --code --action --price --quantity")
+            logger.error("错误: 需要指定 --code --action --price --quantity")
     elif args.mode == 'history':
         # US-005: 支持 date / code 过滤
         _run_history_query(engine, args)
