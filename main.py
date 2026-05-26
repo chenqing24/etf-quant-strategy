@@ -27,7 +27,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='ETF量化策略回测')
     
     # 数据配置
-    parser.add_argument('--data-dir', default='../etf_data_50', help='数据目录')
+    parser.add_argument('--data-dir', default='etf_data_live', help='数据目录')
     parser.add_argument('--market-code', default='510300', help='市场基准代码(默认沪深300)')
     
     # 训练期

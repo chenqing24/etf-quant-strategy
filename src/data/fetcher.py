@@ -102,16 +102,17 @@ class TencentETFetcher:
                 return pd.DataFrame()
             
             # 转换为DataFrame
+            # ⚠️ 腾讯API数组顺序: [date, open, close, high, low, volume]
+            #   索引:                [0]    [1]   [2]    [3]   [4]   [5]
             records = []
             for item in records_data:
-                date, open_p, high, low, close, volume = item
                 records.append({
-                    'date': date,
-                    'open': float(open_p),
-                    'high': float(high),
-                    'low': float(low),
-                    'close': float(close),
-                    'volume': float(volume)
+                    'date': item[0],      # 日期
+                    'open': float(item[1]),    # 开盘价
+                    'close': float(item[2]),   # 收盘价 ← 注意：是索引2
+                    'high': float(item[3]),    # 最高价 ← 注意：是索引3
+                    'low': float(item[4]),      # 最低价 ← 注意：是索引4
+                    'volume': float(item[5])    # 成交量
                 })
             
             df = pd.DataFrame(records)

@@ -1,11 +1,10 @@
 {
-  "515880": {
-    "name": "通信ETF国泰",
-    "price": 1.548,
-    "yclose": 1.562,
-    "pct": -0.9,
-    "code_raw": "515880",
-    "data_source": "tencent"
+  "510300": {
+    "name": "沪深300ETF华泰柏瑞",
+    "price": 4.912,
+    "yclose": 4.937,
+    "pct": 0,
+    "data_source": "sina"
   },
-  "_cache_time": 1779786711.409425
+  "_cache_time": 1779806699.219318
 }

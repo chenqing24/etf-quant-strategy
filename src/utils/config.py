@@ -8,7 +8,7 @@ class StrategyConfig:
     """ETF量化策略配置 - 所有参数可配置，无硬编码"""
     
     # ===== 数据配置 =====
-    data_dir: str = 'etf_data_50'          # 数据目录
+    data_dir: str = 'etf_data_live'          # 数据目录
     market_code: str = '510300'             # 市场基准代码（沪深300）
     
     # ===== 训练期配置 =====
@@ -106,7 +106,7 @@ def run_strategy(
     enable_slippage: bool = False,
     slippage_rate: float = 0.001,
     # 数据配置
-    data_dir: str = 'etf_data_50',
+    data_dir: str = 'etf_data_live',
     market_code: str = '510300',
     train_start: str = '2022-01-01',
     train_end: str = '2024-12-31',

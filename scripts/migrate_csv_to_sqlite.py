@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-CSV迁移到SQLite脚本
-将 etf_data_live/*.csv 迁移到 etf_data_live/etf.db daily表
+CSV迁移到SQLite脚本 - ⚠️ 已废弃，请使用 repair_data.py
+
+此脚本用于历史数据迁移，存在以下问题：
+1. CSV字段顺序(date,open,high,low,close)与腾讯API(date,open,close,high,low)不一致
+2. 直接按位置存储会导致high/low/close错位
+
+**正确做法**：从腾讯API直接获取数据，使用 repair_data.py
 
 Usage:
     python scripts/migrate_csv_to_sqlite.py
 
-验收标准:
-    SELECT COUNT(*) FROM daily ≈ 12092 ±5%
-    SELECT COUNT(DISTINCT code) FROM daily = 33
+⚠️ 警告：此脚本仅用于参考，不建议执行
 """
 
 import sqlite3, glob, os, re
@@ -21,13 +24,18 @@ DB_PATH = COLD_DIR / "etf.db"
 def extract_code(filename: str) -> str:
     """从文件名提取代码（去掉sh/sz前缀）"""
     name = os.path.basename(filename)
-    # sh510300.csv -> 510300
     m = re.match(r'^(sh|sz)(\d+)\.csv$', name, re.I)
     if m:
         return m.group(2)
     return name.replace('.csv', '')
 
 def migrate():
+    print("⚠️ 警告：此脚本已废弃，请使用 repair_data.py")
+    print("⚠️ 原因：CSV字段顺序与腾讯API不一致，直接迁移会导致数据错误")
+    return
+    
+    # 以下代码仅作参考，不执行
+    """
     conn = sqlite3.connect(str(DB_PATH))
     cur = conn.cursor()
 
@@ -44,6 +52,9 @@ def migrate():
                 parts = line.strip().split(',')
                 if len(parts) < 6:
                     continue
+                # ⚠️ 注意：CSV格式是 date,open,high,low,close,volume
+                # 但腾讯API格式是 date,open,close,high,low,volume
+                # 如果直接按位置存储，需要做字段映射！
                 date, open_, high, low, close, vol = parts[:6]
                 try:
                     cur.execute(
@@ -57,22 +68,9 @@ def migrate():
         print(f"  {code}: {rows} rows")
 
     conn.commit()
-
-    # 验证
-    cur.execute('SELECT COUNT(*) FROM daily')
-    db_total = cur.fetchone()[0]
-    cur.execute('SELECT COUNT(DISTINCT code) FROM daily')
-    etf_count = cur.fetchone()[0]
-    cur.execute('SELECT MIN(date), MAX(date) FROM daily')
-    date_range = cur.fetchone()
-
-    print(f"\n=== 迁移结果 ===")
-    print(f"总数据量: {db_total} (CSV总行数≈12092)")
-    print(f"ETF数量: {etf_count}")
-    print(f"日期范围: {date_range[0]} ~ {date_range[1]}")
-
+    # ... 验证代码 ...
     conn.close()
-    return db_total
+    """
 
 if __name__ == '__main__':
     migrate()
