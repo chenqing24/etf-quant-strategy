@@ -17,6 +17,7 @@ def run_backtest(
     test_start: str,
     test_end: str,
     market_filter: Optional[MarketFilter] = None,
+    allow_oversold: bool = True,
 ) -> Dict:
     """运行回测 - 每日评分版
     
@@ -31,6 +32,7 @@ def run_backtest(
         test_start: 测试开始日期
         test_end: 测试结束日期
         market_filter: 市场过滤器
+        allow_oversold: 是否允许RSI超卖时买入（True=混合策略，False=纯趋势策略）
         
     Returns:
         回测结果字典
@@ -59,7 +61,7 @@ def run_backtest(
     market_ok = not market_filter or market_filter.is_bullish(first_date)
     
     if market_ok:
-        _select_and_buy(executor, selector, data, config, first_date)
+        _select_and_buy(executor, selector, data, config, first_date, allow_oversold)
         if executor.holdings:
             holding_dates.add(first_date)
     
@@ -99,7 +101,7 @@ def run_backtest(
         
         if should_rebalance:
             # 重新选择并买入
-            _select_and_buy(executor, selector, data, config, date)
+            _select_and_buy(executor, selector, data, config, date, allow_oversold)
             days_since_rebalance = 0
         
         # 3. 更新权益
@@ -129,9 +131,14 @@ def _select_and_buy(
     selector: Selector,
     data: Dict[str, pd.DataFrame],
     config: StrategyConfig,
-    date: str
+    date: str,
+    allow_oversold: bool = True,
 ) -> None:
-    """选择ETF并买入"""
+    """选择ETF并买入
+    
+    Args:
+        allow_oversold: 是否允许RSI超卖时买入（True=混合策略，False=纯趋势策略）
+    """
     if len(executor.holdings) >= config.hold_count:
         return
     
@@ -149,6 +156,12 @@ def _select_and_buy(
         score, _ = selector.evaluate(df, date)
         if score >= config.score_threshold:
             row = df[df['date'] == date].iloc[0]
+            rsi = row['rsi_14']
+            
+            # 纯趋势策略：RSI<30 不买入
+            if not allow_oversold and rsi < 30:
+                continue
+            
             candidates.append((code, score, row['close']))
     
     # 排序并买入
