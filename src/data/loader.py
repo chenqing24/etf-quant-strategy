@@ -15,7 +15,7 @@ class DataLoader:
     def __init__(self):
         self.data: Dict[str, pd.DataFrame] = {}
     
-    def load(self, data_dir: str = 'etf_data_live') -> Dict[str, pd.DataFrame]:
+    def load(self, data_dir: str = '../etf_data_50') -> Dict[str, pd.DataFrame]:
         """加载ETF数据 - 优先从SQLite读取
         
         优先级:

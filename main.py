@@ -20,7 +20,7 @@ from pathlib import Path
 # 添加src到路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.config import StrategyConfig, run_strategy
+from src.utils.config import StrategyConfig, run_strategy
 
 
 def parse_args():
