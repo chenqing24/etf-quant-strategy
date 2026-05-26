@@ -14,13 +14,13 @@ from src.data.loader import DataLoader
 
 # 尝试导入热冷数据管理器
 try:
-    from .data_manager import DataFacade
+    from src.data.manager import DataFacade
 except ImportError:
     DataFacade = None
 
 # 尝试导入交易校验器
 try:
-    from .trade_validator import TradeValidator, Recommendation
+    from src.trade.validator import TradeValidator, Recommendation
 except ImportError:
     TradeValidator = None
     Recommendation = None
@@ -261,15 +261,29 @@ class ETFReportGenerator:
             rsi_temperature = "NORMAL"
             rsi_temp_emoji = "✅正常"
         
-        # ========== 计算止盈止损空间 ==========
-        target_price = signal_price * 1.08  # 止盈价 +8%
-        stop_price = signal_price * 0.95    # 止损价 -5%
+        # ========== 使用实时价格计算交易参数 ==========
+        # 优先使用实时价格，无则降级到历史信号价
+        trade_price = live_price if live_price else signal_price
+        stop_loss_price = trade_price * 0.95  # 止损价 -5%
+        take_profit_price = trade_price * 1.08  # 止盈价 +8%
+        
+        # 计算股数（基于实际交易价格）
+        position = 0
+        action = "观望"
+        if top:
+            position = int(capital * 0.9 / trade_price / 100) * 100
+            action = f"买入 {top['code']} {top['name']} {position}股"
+        
+        # ========== 计算止盈止损空间（基于实时交易价格）==========
+        # 使用实际的交易价格计算止盈止损空间
         target_gap = 0.0  # 距止盈空间 (%)
         stop_gap = 0.0    # 距止损空间 (%)
         
-        if live_price and signal_price > 0:
-            target_gap = (target_price - live_price) / live_price * 100
-            stop_gap = (stop_price - live_price) / live_price * 100
+        if live_price and trade_price > 0:
+            # 止盈空间: 从当前价到止盈价还有多少百分比
+            target_gap = (take_profit_price - live_price) / live_price * 100
+            # 止损空间: 从当前价到止损价还有多少百分比
+            stop_gap = (stop_loss_price - live_price) / live_price * 100
         
         # ========== 生成策略建议 ==========
         strategy_advice = "建议观望，等待买入时机"
@@ -301,12 +315,17 @@ class ETFReportGenerator:
                 strategy_advice = f"价格适中，RSI{rsi_14:.0f}，建议择机建仓"
                 strategy_emoji = "✅"
         
-        # 计算交易建议
+        # ========== 使用实时价格计算交易参数 ==========
+        # 优先使用实时价格，无则降级到历史信号价
+        trade_price = live_price if live_price else signal_price
+        stop_loss_price = trade_price * 0.95  # 止损价 -5%
+        take_profit_price = trade_price * 1.08  # 止盈价 +8%
+        
+        # 计算股数（基于实际交易价格）
         position = 0
         action = "观望"
         if top:
-            price_to_use = live_price if live_price else signal_price
-            position = int(capital * 0.9 / price_to_use / 100) * 100
+            position = int(capital * 0.9 / trade_price / 100) * 100
             action = f"买入 {top['code']} {top['name']} {position}股"
         
         # 构建报告 - 交易建议放开头和结尾
@@ -327,10 +346,10 @@ class ETFReportGenerator:
 
 【操作】{action}
 【目标】{top['code']} {top['name']}
-【价格】{top['price']:.3f}元
+【价格】{trade_price:.3f}元
 【数量】{position}股 ({capital*0.9:,.0f}元)
-【止损】-5% ({top['price']*0.95:.3f}元)
-【止盈】+8% ({top['price']*1.08:.3f}元)
+【止损】-5% ({stop_loss_price:.3f}元)
+【止盈】+8% ({take_profit_price:.3f}元)
 
 {'='*70}
 🔍 实时校验 (实时数据对比)
@@ -345,7 +364,7 @@ class ETFReportGenerator:
 {'实时价: {:.3f} | 偏差: {:+.1f}%'.format(live_price, price_deviation) if live_price else "实时价: 暂无数据"}
 
 【止盈止损空间】
-{'距止盈: {:.3f} ({:+.1f}%) | 距止损: {:.3f} ({:+.1f}%)'.format(target_price, target_gap, stop_price, stop_gap) if live_price else "暂无实时数据"}
+{'距止盈: {:.3f} ({:+.1f}%) | 距止损: {:.3f} ({:+.1f}%)'.format(take_profit_price, target_gap, stop_loss_price, stop_gap) if live_price else "暂无实时数据"}
 
 【RSI温度计】
 RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
