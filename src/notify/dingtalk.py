@@ -78,6 +78,7 @@ class DingTalkSender:
                 return False
             
             # 2. 发送消息
+            logger.info(f"发送钉钉消息到 user_id={user_id}, session_id={session_id}")
             result = subprocess.run([
                 'qwenpaw', 'channels', 'send',
                 '--agent-id', 'default',
@@ -87,6 +88,7 @@ class DingTalkSender:
                 '--text', message,
             ], capture_output=True, text=True, timeout=30)
             
+            logger.info(f"钉钉发送结果: returncode={result.returncode}, stdout={result.stdout}, stderr={result.stderr}")
             if result.returncode == 0:
                 logger.info("钉钉消息发送成功")
                 return True

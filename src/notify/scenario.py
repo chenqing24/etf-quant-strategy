@@ -62,8 +62,13 @@ class ScenarioAdapter:
         """
         # 只在移动端场景才发送钉钉消息
         if self.scenario == self.SCENARIO_MOBILE:
-            action = '观望'  # 默认不发送
-            if '🟢 买入' in message or '🔴 卖出' in message:
+            # 有操作建议时发送，或有警告时也发送
+            should_send = (
+                '🟢 买入' in message or 
+                '🔴 卖出' in message or
+                '⚠️' in message  # 有警告时也发送
+            )
+            if should_send:
                 return self.sender.send(message, format='markdown')
             else:
                 logger.info("观望操作，跳过钉钉推送")

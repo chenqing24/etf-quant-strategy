@@ -5,6 +5,8 @@ import sys
 from datetime import datetime, timedelta
 from typing import Optional
 
+import pandas as pd
+
 # 确保能导入src模块
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -168,16 +170,55 @@ class ETFDecisionEngine:
         logger.info(f"  数据更新时间: {data_timestamp}")
         logger.info("=" * 60)
         
-        # 0. 加载ETF数据用于趋势图
+        # 0. 检查数据新鲜度，如果过期则尝试更新
+        from datetime import datetime
+        data_freshness = '✅ 正常'
+        data_warning = ''
+        
+        # 加载数据
         from src.data.loader import DataLoader
         loader = DataLoader()
         if simple:
             loader._simple_mode = True
-            # 设置Selector类级别标志（用于report_generator内部）
             from src.core.selector import Selector
             Selector._simple_mode = True
         self._etf_data = loader.load('../etf_data_50')
         logger.info(f"加载 {len(self._etf_data)} 只ETF数据")
+        
+        # 获取数据最新日期
+        latest_data_date = None
+        for code, df in self._etf_data.items():
+            if 'date' in df.columns:
+                max_date = pd.to_datetime(df['date']).max()
+                if latest_data_date is None or max_date > latest_data_date:
+                    latest_data_date = max_date
+                break
+        
+        if latest_data_date:
+            today = datetime.now().date()
+            data_date = latest_data_date.date()
+            data_age = (today - data_date).days
+            
+            if data_age == 0:
+                data_freshness = '✅ 正常'
+            elif 1 <= data_age <= 2:
+                data_freshness = '⚠️ 数据略旧'
+                data_warning = f'数据距今{data_age}天'
+            else:
+                data_freshness = '❌ 数据过期'
+                data_warning = f'数据超过{data_age}天未更新'
+                logger.warn(f"⚠️ 数据过期 ({data_age}天)，尝试更新...")
+                
+                # 尝试更新数据
+                try:
+                    self.fetcher.update_all(days=7)
+                    logger.info("  数据更新成功")
+                    # 重新加载数据
+                    self._etf_data = loader.load('../etf_data_50')
+                    data_freshness = '✅ 已更新'
+                    data_warning = ''
+                except Exception as e:
+                    logger.error(f"  数据更新失败: {e}")
         
         # 1. 生成决策报告
         logger.info("[1/3] 生成决策报告...")
@@ -317,12 +358,17 @@ class ETFDecisionEngine:
         
         # 发送通知（除非是静默模式）
         if not getattr(self, '_silent_mode', False):
+            logger.info("准备发送钉钉通知...")
             # 根据simple参数决定场景
             if getattr(self, '_simple_mode', False):
-                # 简版输出（钉钉APP）- 只构建不打印
+                # 简版输出（钉钉APP）- 构建并发送
                 adapter = ScenarioAdapter.for_mobile()
                 message = adapter.build_report(results, report_file=None)
-                print(message)  # 简版只输出Markdown
+                print(message)  # 打印到控制台
+                logger.info(f"报告内容: {message[:100]}...")
+                # 发送钉钉通知
+                success = adapter.send_report(message)
+                logger.info(f"钉钉发送结果: {success}")
             else:
                 # 使用新的ScenarioAdapter（钉钉移动端）
                 adapter = ScenarioAdapter.for_mobile()
