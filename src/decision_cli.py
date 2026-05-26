@@ -18,6 +18,8 @@ from src.data_manager import DataFacade
 from src.scenario_adapter import ScenarioAdapter, notify_decision
 from src.logger import init_logger, get_logger, OutputLevel
 
+logger = get_logger()
+
 
 class ETFDecisionEngine:
     """ETF量化决策引擎"""
@@ -39,54 +41,54 @@ class ETFDecisionEngine:
     
     def run_daily_check(self):
         """每日检查"""
-        print("\n" + "="*60)
-        print(f"📅 每日检查 - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-        print("="*60)
+        logger.info("=" * 60)
+        logger.info(f"📅 每日检查 - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        logger.info("=" * 60)
         
         # 0. 预热实时数据 (14:25环节)
         prefetch_result = self._prefetch_realtime_data()
         data_timestamp = prefetch_result['prefetch_time']
-        print(f"  数据更新时间: {data_timestamp}")
+        logger.info(f"  数据更新时间: {data_timestamp}")
         
         # 1. 更新数据
-        print("\n[1/4] 更新数据...")
+        logger.info("[1/4] 更新数据...")
         try:
             self.fetcher.update_all(days=7)
         except Exception as e:
-            print(f"  数据更新失败: {e}")
+            logger.error(f"  数据更新失败: {e}")
         
         # 2. 检查持仓状态
-        print("\n[2/4] 检查持仓...")
+        logger.info("[2/4] 检查持仓...")
         positions = self.tracker.get_holdings()
         
         if positions:
-            print(f"  当前持仓: {len(positions)}只")
+            logger.info(f"  当前持仓: {len(positions)}只")
             for p in positions:
-                print(f"    {p.code} {p.name}: 盈亏{p.pnl_pct:+.1f}%")
+                logger.info(f"    {p.code} {p.name}: 盈亏{p.pnl_pct:+.1f}%")
                 
                 # 检查止损/止盈
                 if self.tracker.check_stop_loss(p.code, -5):
-                    print(f"    ⚠️ 触发止损!")
+                    logger.warn(f"    ⚠️ 触发止损!")
                 if self.tracker.check_take_profit(p.code, 8):
-                    print(f"    ⚠️ 触发止盈!")
+                    logger.warn(f"    ⚠️ 触发止盈!")
         else:
-            print("  (空仓)")
+            logger.info("  (空仓)")
         
         # 3. 检查是否需要调仓
-        print("\n[3/4] 检查是否需要调仓...")
+        logger.info("[3/4] 检查是否需要调仓...")
         need_rebalance = self.tracker.need_rebalance(10)
         
         if need_rebalance:
-            print("  → 需要重新评估，执行完整策略...")
+            logger.info("  → 需要重新评估，执行完整策略...")
             return self.run_full_evaluation()
         else:
-            print("  → 持仓正常，无需调仓")
+            logger.info("  → 持仓正常，无需调仓")
         
         # 4. 绩效汇总
-        print("\n[4/4] 绩效汇总...")
+        logger.info("[4/4] 绩效汇总...")
         perf = self.tracker.get_performance_summary()
-        print(f"  总资产: {perf['current_capital']:,.0f}元")
-        print(f"  累计盈亏: {perf['total_pnl']:+.1f}%")
+        logger.info(f"  总资产: {perf['current_capital']:,.0f}元")
+        logger.info(f"  累计盈亏: {perf['total_pnl']:+.1f}%")
         
         return {
             'action': 'hold',
@@ -145,16 +147,26 @@ class ETFDecisionEngine:
             silent: 是否静默模式（不发送钉钉，由cron的agent响应代替）
             simple: 是否简版输出（钉钉APP专用，禁用进度条）
         """
+        # 保存原始日志级别
+        from src.logger import ETFLogger, OutputLevel
+        original_level = ETFLogger.get_output_level()
+        
+        # 简版模式：暂时禁用日志输出
+        if simple:
+            ETFLogger.set_output_level(OutputLevel.SILENT)
+        
         # 0. 预热实时数据 (14:25环节)
         prefetch_result = self._prefetch_realtime_data(simple=simple)
         data_timestamp = prefetch_result['prefetch_time']
         
-        if not simple:
-            print("\n" + "="*60)
-            print("🔄 完整策略评估")
-            print("="*60)
-            print(f"  数据更新时间: {data_timestamp}")
-            print("="*60)
+        # 恢复日志级别（预热后输出）
+        ETFLogger.set_output_level(original_level)
+        
+        logger.info("=" * 60)
+        logger.info("🔄 完整策略评估")
+        logger.info("=" * 60)
+        logger.info(f"  数据更新时间: {data_timestamp}")
+        logger.info("=" * 60)
         
         # 0. 加载ETF数据用于趋势图
         from src.data_loader import DataLoader
@@ -165,8 +177,7 @@ class ETFDecisionEngine:
             from src.selector import Selector
             Selector._simple_mode = True
         self._etf_data = loader.load('../etf_data_50')
-        if not simple:
-            print(f"加载 {len(self._etf_data)} 只ETF数据")
+        logger.info(f"加载 {len(self._etf_data)} 只ETF数据")
         
         # 1. 生成决策报告
         if not simple:
@@ -183,12 +194,10 @@ class ETFDecisionEngine:
         os.makedirs('etf_reports', exist_ok=True)
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write(report)
-        if not simple:
-            print(f"  报告已保存: {report_file}")
+        logger.info(f"  报告已保存: {report_file}")
         
         # 2. 提取关键建议
-        if not simple:
-            print("\n[2/3] 分析建议...")
+        logger.info("[2/3] 分析建议...")
         # 简化解析，提取买入建议
         action = '观望'
         new_code = ''
@@ -233,12 +242,10 @@ class ETFDecisionEngine:
                 action = '持仓'
                 new_code = ''
         
-        if not simple:
-            print(f"  今日操作: {action} {new_code} {new_name}")
+        logger.info(f"  今日操作: {action} {new_code} {new_name}")
         
         # 3. 发送通知到钉钉
-        if not simple:
-            print("\n[3/3] 发送通知...")
+        logger.info("[3/3] 发送通知...")
         
         # 获取实时数据（从热数据层）
         realtime = {}
@@ -255,7 +262,7 @@ class ETFDecisionEngine:
                         'timestamp': hot_record.timestamp,
                     }
             except Exception as e:
-                print(f"  ⚠ 获取实时数据失败: {e}")
+                logger.warn(f"  ⚠ 获取实时数据失败: {e}")
         
         # 生成趋势数据和指标
         trend_data = None
@@ -277,7 +284,7 @@ class ETFDecisionEngine:
                     'vol_ratio': latest.get('vol_ratio', 0),
                 }
             except Exception as e:
-                print(f"  ⚠ 数据处理失败: {e}")
+                logger.warn(f"  ⚠ 数据处理失败: {e}")
         
         # 获取数据时间戳
         data_timestamp = self._get_data_timestamp()
