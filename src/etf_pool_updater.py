@@ -6,6 +6,9 @@ from datetime import datetime
 from typing import Dict, List, Set
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ETFListUpdater:
@@ -153,9 +156,9 @@ class ETFListUpdater:
         实际生产中应调用天天基金或其他API获取ETF列表
         这里简化处理，返回当前池信息
         """
-        print("\n" + "="*50)
-        print("📡 正在更新ETF股票池...")
-        print("="*50)
+        logger.info("=" * 50)
+        logger.info("📡 正在更新ETF股票池...")
+        logger.info("=" * 50)
         
         # 模拟API获取
         # 实际应调用: 天天基金ETF列表接口
@@ -167,17 +170,17 @@ class ETFListUpdater:
         for code, name, cat in pool:
             categories[cat] = categories.get(cat, 0) + 1
         
-        print(f"\n当前ETF池统计:")
-        print(f"  总数量: {len(pool)}只")
+        logger.info(f"当前ETF池统计:")
+        logger.info(f"  总数量: {len(pool)}只")
         for cat, count in categories.items():
-            print(f"  {cat}: {count}只")
+            logger.info(f"  {cat}: {count}只")
         
         # 检查流动性 (简化: 检查是否有最近数据)
         import json
         with open(self.pool_file, 'r') as f:
             data = json.load(f)
         last_update = data.get('updated', '未知')
-        print(f"\n最后更新: {last_update}")
+        logger.info(f"最后更新: {last_update}")
         
         # 建议添加的新ETF (可以扩展)
         suggestions = self._get_suggestions()
@@ -204,36 +207,36 @@ class ETFListUpdater:
         
         # 检查是否已存在
         if any(e[0] == code for e in pool):
-            print(f"  {code} 已在池中")
+            logger.debug(f"  {code} 已在池中")
             return
         
         pool.append((code, name, category))
         self._save_pool(pool)
-        print(f"  ✓ 已添加 {code} {name}")
+        logger.info(f"  ✓ 已添加 {code} {name}")
     
     def remove_etf(self, code: str):
         """从池中移除ETF"""
         pool = self.load_pool()
         pool = [e for e in pool if e[0] != code]
         self._save_pool(pool)
-        print(f"  ✓ 已移除 {code}")
+        logger.info(f"  ✓ 已移除 {code}")
     
     def run_monthly_update(self):
         """执行月度更新"""
-        print("\n" + "="*50)
-        print("🗓️  月度ETF池更新")
-        print("="*50)
+        logger.info("=" * 50)
+        logger.info("🗓️  月度ETF池更新")
+        logger.info("=" * 50)
         
         stats = self.update_pool_from_api()
         
-        print(f"\n建议操作:")
+        logger.info("建议操作:")
         if self.check_update_needed():
-            print("  - 建议执行完整更新 (超过25天)")
+            logger.info("  - 建议执行完整更新 (超过25天)")
         
         for s in stats['suggestions']:
-            print(f"  - 建议添加: {s['code']} {s['name']} ({s['reason']})")
+            logger.info(f"  - 建议添加: {s['code']} {s['name']} ({s['reason']})")
         
-        print(f"\n下次更新建议: 每月1日")
+        logger.info("下次更新建议: 每月1日")
         
         return stats
     
