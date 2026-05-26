@@ -5,6 +5,7 @@ ETF交易校验器 - 买入前实时校验 + 行为追踪
 """
 import json
 import time
+import requests
 import pandas as pd
 from datetime import datetime, date
 from pathlib import Path
@@ -192,11 +193,8 @@ class TradeValidator:
     # ==================== 数据获取 ====================
     
     def _fetch_tencent(self, codes: List[str]) -> Dict[str, Dict]:
-        """通过DataFacade获取实时价格（腾讯主源）"""
-        from src.data.facade import DataFacade
-        facade = DataFacade(self.data_dir)
-        
-        # 添加前缀
+        """腾讯API获取实时价格"""
+        # 腾讯需要sh/sz前缀
         prefix_codes = []
         for code in codes:
             if code.startswith(('sh', 'sz')):
@@ -206,30 +204,152 @@ class TradeValidator:
             else:
                 prefix_codes.append(code)
         
-        result = facade.get_realtime(prefix_codes)
+        url = f"{self.TENCENT_BASE_URL}{','.join(prefix_codes)}"
         
-        # 转换格式
-        converted = {}
-        for code, data in result.items():
-            if data:
-                clean_code = code[2:] if code.startswith(('sh', 'sz')) else code
-                converted[clean_code] = {
-                    'name': data.get('name', ''),
-                    'price': data.get('price', 0),
-                    'yclose': data.get('prev_close', 0),
-                    'pct': data.get('change_pct', 0),
-                    'data_source': 'sina'  # DataFacade实际走新浪
-                }
-        return converted
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.encoding = 'gbk'
+            lines = resp.text.strip().split('\n')
+            
+            result = {}
+            for line in lines:
+                parts = line.split('~')
+                if len(parts) > 32:
+                    code_raw = parts[2]  # 如 'sh515050' 或 'sz159915'
+                    name = parts[1]
+                    price = float(parts[3])
+                    yclose = float(parts[4])
+                    today_pct = float(parts[32]) if parts[32] else 0.0
+                    
+                    # 去掉前缀
+                    clean_code = code_raw[2:] if code_raw.startswith(('sh', 'sz')) else code_raw
+                    
+                    result[clean_code] = {
+                        'name': name,
+                        'price': price,
+                        'yclose': yclose,
+                        'pct': today_pct,
+                        'code_raw': code_raw,
+                        'data_source': DataSource.TENCENT.value
+                    }
+            
+            return result
+        except Exception as e:
+            raise ConnectionError(f"腾讯API失败: {e}")
     
     def _fetch_emf(self, codes: List[str]) -> Dict[str, Dict]:
-        """东方财富 - 复用_fetch_tencent（DataFacade统一处理）"""
-        return self._fetch_tencent(codes)
+        """东方财富API获取实时价格"""
+        # 东方财富需要带市场前缀的代码
+        prefix_codes = []
+        for code in codes:
+            if code.startswith(('sh', 'sz')):
+                prefix_codes.append(code.upper())
+            elif code.isdigit():
+                # ETF通常是1或5开头
+                prefix_codes.append(f'SH{code}' if code.startswith(('5', '1', '11')) else f'SZ{code}')
+            else:
+                prefix_codes.append(code.upper())
+        
+        url = f"{self.EMF_BASE_URL}?fltyp=0&secids={','.join(prefix_codes)}&fields=f2,f3,f4,f12,f14,f15,f16"
+        
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.encoding = 'utf-8'
+            data = resp.json()
+            
+            result = {}
+            data_content = data.get('data', {})
+            
+            # 处理不同的响应格式
+            if data_content:
+                # 东方财富返回格式可能是 data.diff 或直接在data中
+                items = data_content.get('diff', []) or [data_content]
+                
+                for item in items:
+                    if not item:
+                        continue
+                    code = item.get('f12', '')
+                    # 去掉SH/SZ前缀
+                    clean_code = code[2:] if code.startswith(('SH', 'SZ')) else code
+                    
+                    price = item.get('f2', 0)
+                    pct = item.get('f3', 0)
+                    yclose = item.get('f4', 0)
+                    
+                    # 价格单位处理
+                    if price and price > 10000:  # 可能是分
+                        price = price / 100
+                    if pct and abs(pct) > 1000:  # 可能是万分比
+                        pct = pct / 100
+                    
+                    result[clean_code] = {
+                        'name': item.get('f14', ''),
+                        'price': price,
+                        'pct': pct,
+                        'yclose': yclose,
+                        'data_source': DataSource.EMF.value
+                    }
+                    # 如果没有昨收，反推
+                    if not result[clean_code]['yclose'] and result[clean_code]['price'] and result[clean_code]['pct']:
+                        result[clean_code]['yclose'] = result[clean_code]['price'] / (1 + result[clean_code]['pct'] / 100)
+            
+            return result
+        except Exception as e:
+            raise ConnectionError(f"东方财富API失败: {e}")
     
     def _fetch_sina(self, codes: List[str]) -> Dict[str, Dict]:
-        """新浪 - 复用_fetch_tencent（DataFacade统一处理）"""
-        return self._fetch_tencent(codes)
-
+        """新浪API获取实时价格"""
+        # 新浪需要sh/sz前缀
+        prefix_codes = []
+        for code in codes:
+            if code.startswith(('sh', 'sz')):
+                prefix_codes.append(code)
+            elif code.isdigit():
+                prefix_codes.append(f'sh{code}' if code.startswith(('5', '1', '11')) else f'sz{code}')
+            else:
+                prefix_codes.append(code)
+        
+        url = f"{self.SINA_BASE_URL}{','.join(prefix_codes)}"
+        headers = {'Referer': 'https://finance.sina.com.cn'}
+        
+        try:
+            resp = requests.get(url, timeout=10, headers=headers)
+            resp.encoding = 'gbk'
+            lines = resp.text.strip().split('\n')
+            
+            result = {}
+            for i, line in enumerate(lines):
+                # 解析格式: var hq_str_sh515050="..."
+                parts = line.split('"')
+                if len(parts) < 2:
+                    continue
+                
+                data = parts[1].split(',')
+                if len(data) < 32:
+                    continue
+                
+                name = data[0]
+                yclose = float(data[2])
+                open_p = float(data[1])
+                price = float(data[3])
+                high = float(data[4])
+                low = float(data[5])
+                vol = float(data[8])
+                
+                code = codes[i] if i < len(codes) else ''
+                
+                result[code] = {
+                    'name': name,
+                    'price': price,
+                    'yclose': yclose,
+                    'pct': (price - yclose) / yclose * 100 if yclose else 0,
+                    'data_source': DataSource.SINA.value
+                }
+            
+            return result
+        except Exception as e:
+            raise ConnectionError(f"新浪API失败: {e}")
+    
     def fetch_realtime_prices(self, codes: List[str]) -> Dict[str, Dict]:
         """
         获取实时价格 - 多数据源降级

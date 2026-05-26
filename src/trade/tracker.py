@@ -133,15 +133,14 @@ class TradeTracker:
         except Exception:
             pass
         
-        # 策略2: DataFacade（统一入口）
+        # 策略2: 直接调用腾讯API（轻量，不依赖 DataFacade）
         return self._fetch_tencent_realtime(code)
     
     def _fetch_tencent_realtime(self, code: str) -> Dict:
-        """通过DataFacade获取实时数据"""
-        from src.data.facade import DataFacade
-        facade = DataFacade(self.data_dir)
+        """腾讯API直接获取实时数据（RSI由指标模块计算）"""
+        import requests
         
-        # 处理code前缀
+        # ETF代码前缀处理
         if code.startswith(('sh', 'sz')):
             prefix = code
         elif code.isdigit():
@@ -149,19 +148,38 @@ class TradeTracker:
         else:
             prefix = code
         
-        result = facade.get_realtime([prefix])
-        data = result.get(prefix, {})
+        url = f"https://qt.gtimg.cn/q={prefix}"
+        try:
+            resp = requests.get(url, timeout=8)
+            resp.encoding = 'gbk'
+            parts = resp.text.split('~')
+            
+            if len(parts) > 32:
+                price = float(parts[3])
+                yclose = float(parts[4])
+                change_pct = float(parts[32]) if parts[32] else 0.0
+                
+                # 计算RSI(14) from cold data
+                rsi_14 = self._calc_rsi_14(code)
+                
+                return {
+                    'price': price,
+                    'change_pct': change_pct,
+                    'rsi_14': rsi_14,
+                    'price_deviation': 0.0,
+                    'data_source': 'tencent',
+                }
+        except Exception:
+            pass
         
-        if data:
-            return {
-                'price': data.get('price', 0),
-                'change_pct': data.get('change_pct', 0),
-                'rsi_14': self._calc_rsi_14(code),
-                'price_deviation': 0.0,
-                'data_source': 'facade_sina',
-            }
-        
-        return {'price': 0, 'change_pct': 0, 'rsi_14': 50.0, 'price_deviation': 0.0, 'data_source': 'fallback'}
+        # 降级: 返回空数据
+        return {
+            'price': 0.0,
+            'change_pct': 0.0,
+            'rsi_14': 50.0,
+            'price_deviation': 0.0,
+            'data_source': 'none',
+        }
     
     def _calc_rsi_14(self, code: str) -> float:
         """计算RSI(14) from cold CSV data"""
