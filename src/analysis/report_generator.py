@@ -261,13 +261,31 @@ class ETFReportGenerator:
             rsi_temperature = "NORMAL"
             rsi_temp_emoji = "✅正常"
         
-        # ========== 使用实时价格计算交易参数 ==========
-        # 优先使用实时价格，无则降级到历史信号价
-        trade_price = live_price if live_price else signal_price
+        # ========== 智能推荐价格算法 ==========
+        # 动态加权法：根据偏差程度计算推荐价格
+        trade_price = signal_price  # 默认使用信号价
+        price_warning = ""
+        
+        if live_price and signal_price > 0:
+            deviation = (live_price - signal_price) / signal_price * 100
+            
+            if abs(deviation) < 3:
+                # 市场稳定，跟随实际价格
+                trade_price = live_price
+            elif 3 <= abs(deviation) < 8:
+                # 轻度偏离，线性调整
+                trade_price = signal_price * (1 + deviation * 0.3 / 100)
+                price_warning = f"轻度偏离调整({deviation:+.1f}%)"
+            else:
+                # 重度偏离，以策略信号为准
+                trade_price = signal_price
+                price_warning = f"⚠️偏离过大({deviation:+.1f}%)，以策略信号价为准"
+        
+        # 计算止盈止损价（基于推荐价格）
         stop_loss_price = trade_price * 0.95  # 止损价 -5%
         take_profit_price = trade_price * 1.08  # 止盈价 +8%
         
-        # 计算股数（基于实际交易价格）
+        # 计算股数（基于推荐价格）
         position = 0
         action = "观望"
         if top:
@@ -315,13 +333,31 @@ class ETFReportGenerator:
                 strategy_advice = f"价格适中，RSI{rsi_14:.0f}，建议择机建仓"
                 strategy_emoji = "✅"
         
-        # ========== 使用实时价格计算交易参数 ==========
-        # 优先使用实时价格，无则降级到历史信号价
-        trade_price = live_price if live_price else signal_price
+        # ========== 智能推荐价格算法 ==========
+        # 动态加权法：根据偏差程度计算推荐价格
+        trade_price = signal_price  # 默认使用信号价
+        price_warning = ""
+        
+        if live_price and signal_price > 0:
+            deviation = (live_price - signal_price) / signal_price * 100
+            
+            if abs(deviation) < 3:
+                # 市场稳定，跟随实际价格
+                trade_price = live_price
+            elif 3 <= abs(deviation) < 8:
+                # 轻度偏离，线性调整
+                trade_price = signal_price * (1 + deviation * 0.3 / 100)
+                price_warning = f"轻度偏离调整({deviation:+.1f}%)"
+            else:
+                # 重度偏离，以策略信号为准
+                trade_price = signal_price
+                price_warning = f"⚠️偏离过大({deviation:+.1f}%)，以策略信号价为准"
+        
+        # 计算止盈止损价（基于推荐价格）
         stop_loss_price = trade_price * 0.95  # 止损价 -5%
         take_profit_price = trade_price * 1.08  # 止盈价 +8%
         
-        # 计算股数（基于实际交易价格）
+        # 计算股数（基于推荐价格）
         position = 0
         action = "观望"
         if top:
