@@ -4,6 +4,9 @@ import pandas as pd
 from typing import Dict, List, Tuple, Set
 
 from .config import StrategyConfig
+from .logger import get_logger
+
+logger = get_logger()
 
 
 class Selector:
@@ -47,7 +50,7 @@ class Selector:
         selected = {r['code'] for r in results[:config.top_n]}
         
         if not getattr(Selector, '_simple_mode', False):
-            print(f"选出 {len(selected)} 只ETF (训练期: {config.train_start} ~ {config.train_end})")
+            logger.info(f"选出 {len(selected)} 只ETF (训练期: {config.train_start} ~ {config.train_end})")
         return selected
     
     def score(self, df: pd.DataFrame, date: str) -> Tuple[int, List[str]]:

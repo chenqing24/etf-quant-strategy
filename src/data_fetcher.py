@@ -7,6 +7,10 @@ from typing import Dict, List
 import time
 import os
 
+from .logger import get_logger
+
+logger = get_logger()
+
 
 class TencentETFetcher:
     """腾讯ETF数据采集器"""
@@ -89,7 +93,7 @@ class TencentETFetcher:
                 data = data.get(p, {})
             
             if not data:
-                print(f"  警告: {code} 无数据")
+                logger.warn(f"  警告: {code} 无数据")
                 return pd.DataFrame()
             
             # 转换为DataFrame
@@ -111,7 +115,7 @@ class TencentETFetcher:
             return df
             
         except Exception as e:
-            print(f"  错误: {code} - {e}")
+            logger.error(f"  错误: {code} - {e}")
             return pd.DataFrame()
     
     def fetch_all(self, days: int = 30) -> Dict[str, pd.DataFrame]:
@@ -122,23 +126,23 @@ class TencentETFetcher:
         """
         results = {}
         
-        print(f"开始采集 {len(self.ETF_CODES)} 只ETF数据...")
+        logger.info(f"开始采集 {len(self.ETF_CODES)} 只ETF数据...")
         
         for i, code in enumerate(self.ETF_CODES, 1):
-            print(f"  [{i}/{len(self.ETF_CODES)}] 获取 {code}...", end=" ")
+            logger.debug(f"  [{i}/{len(self.ETF_CODES)}] 获取 {code}...", end=" ")
             df = self.fetch_etf(code, days)
             if len(df) > 0:
                 # 去掉前缀保存
                 save_code = code.replace('sh', '').replace('sz', '')
                 results[save_code] = df
-                print(f"OK ({len(df)}条)")
+                logger.debug(f"OK ({len(df)}条)")
             else:
-                print("失败")
+                logger.debug("失败")
             
             # 避免请求过快
             time.sleep(0.2)
         
-        print(f"\n成功获取 {len(results)} 只ETF")
+        logger.info(f"成功获取 {len(results)} 只ETF")
         return results
     
     def save_etf(self, code: str, df: pd.DataFrame):
@@ -184,23 +188,23 @@ class TencentETFetcher:
             
             if days_diff <= 1:
                 # 本地数据已是最新，无需请求
-                print(f"  {code}: 本地已是最新 ({local_latest})")
+                logger.debug(f"  {code}: 本地已是最新 ({local_latest})")
                 return pd.DataFrame()
             
             # 需要补充的天数 + 缓冲
             fetch_days = min(days_diff + 3, days)
-            print(f"  {code}: 本地最新{local_latest}, 补充{fetch_days}天", end=" ... ")
+            logger.debug(f"  {code}: 本地最新{local_latest}, 补充{fetch_days}天", end=" ... ")
         else:
             # 首次获取，获取足够的历史数据
             fetch_days = 365  # 首次获取1年数据
-            print(f"  {code}: 首次获取 {fetch_days}天", end=" ... ")
+            logger.debug(f"  {code}: 首次获取 {fetch_days}天", end=" ... ")
         
         df = self.fetch_etf(code, days=fetch_days)
         
         if len(df) > 0:
-            print(f"OK ({len(df)}条)")
+            logger.debug(f"OK ({len(df)}条)")
         else:
-            print("失败")
+            logger.debug("失败")
         
         return df
     
