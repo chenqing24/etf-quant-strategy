@@ -65,7 +65,9 @@ class ReportBuilder:
                 'price': 3.856,
                 'realtime': {'price': 3.860, 'change_pct': 1.5},
                 'indicators': {'rsi_14': 72},
-                'pnl': 5.2
+                'pnl': 5.2,
+                'data_freshness': '❌ 数据过期',
+                'data_freshness_warning': '数据超过4天未更新'
             }
         Returns:
             str: Markdown格式简版报告
@@ -76,6 +78,8 @@ class ReportBuilder:
         realtime = results.get('realtime', {})
         indicators = results.get('indicators', {})
         pnl = results.get('pnl', 0)
+        data_freshness = results.get('data_freshness', '')
+        data_warning = results.get('data_freshness_warning', '')
         
         name = self.get_etf_name(code)
         msg_time = datetime.now().strftime('%m-%d %H:%M')
@@ -87,6 +91,13 @@ class ReportBuilder:
             ln(f"## 📈 ETF量化决策 {msg_time}"),
             "",
         ]
+        
+        # 数据过期警告
+        if data_freshness and '过期' in data_freshness:
+            lines.append(ln(f"⚠️ {data_freshness}"))
+            if data_warning:
+                lines.append(ln(f"   {data_warning}"))
+            lines.append("")
         
         if action == '买入':
             lines.extend([

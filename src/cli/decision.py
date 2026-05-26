@@ -288,6 +288,20 @@ class ETFDecisionEngine:
         # 获取数据时间戳
         data_timestamp = self._get_data_timestamp()
         
+        # 从报告中提取数据状态
+        data_freshness = ''
+        data_warning = ''
+        for line in report.split('\n'):
+            if '数据最新日期' in line:
+                if '❌' in line:
+                    data_freshness = '❌ 数据过期'
+                elif '⚠️' in line:
+                    data_freshness = '⚠️ 数据略旧'
+                elif '✅' in line:
+                    data_freshness = '✅ 正常'
+            if '未更新' in line or '失真' in line:
+                data_warning = line.strip()
+        
         # 构建结果数据（供ScenarioAdapter使用）
         results = {
             'action': action,
@@ -297,6 +311,8 @@ class ETFDecisionEngine:
             'realtime': realtime,
             'indicators': indicators,
             'data_timestamp': data_timestamp,
+            'data_freshness': data_freshness,
+            'data_freshness_warning': data_warning,
         }
         
         # 发送通知（除非是静默模式）
