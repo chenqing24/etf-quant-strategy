@@ -87,7 +87,7 @@ def validate_data():
 
 def regression_test():
     """回归测试"""
-    from src.config import run_strategy
+    from src.utils.config import run_strategy
     
     print("\n" + "="*60)
     print("回归测试 - 核心参数验证")

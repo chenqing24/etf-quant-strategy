@@ -7,9 +7,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 import pandas as pd
 import numpy as np
-from src.backtest import run_backtest
-from src.config import StrategyConfig
-from src.indicator import Indicator
+from src.core.backtest import run_backtest
+from src.utils.config import StrategyConfig
+from src.analysis.indicator import Indicator
 
 
 def create_test_data(n_days=100, code='000001', start_price=1.0):
@@ -155,7 +155,7 @@ class TestCompareOldVsNew(unittest.TestCase):
     
     def test_old_logic_available(self):
         """测试旧版逻辑仍可用"""
-        from src.selector import Selector
+        from src.core.selector import Selector
         
         selector = Selector()
         # 旧版评分

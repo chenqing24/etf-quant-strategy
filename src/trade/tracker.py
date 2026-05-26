@@ -117,7 +117,7 @@ class TradeTracker:
         """
         # 策略1: 使用 DataFacade 热数据层
         try:
-            from src.data_manager import DataFacade
+            from src.data.manager import DataFacade
             facade = DataFacade(self.data_dir)
             merged = facade.get_merged_data(code)
             
@@ -184,7 +184,7 @@ class TradeTracker:
     def _calc_rsi_14(self, code: str) -> float:
         """计算RSI(14) from cold CSV data"""
         try:
-            from src.data_manager import ColdDataManager
+            from src.data.manager import ColdDataManager
             cold = ColdDataManager(self.data_dir)
             records = cold.get(code)
             

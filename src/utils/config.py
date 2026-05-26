@@ -116,11 +116,11 @@ def run_strategy(
     
     所有参数均可传入，无硬编码
     """
-    from .data_loader import DataLoader
-    from .indicator import Indicator
-    from .selector import Selector
-    from .market_filter import MarketFilter
-    from .backtest import run_backtest
+    from src.data.loader import DataLoader
+    from src.analysis.indicator import Indicator
+    from src.core.selector import Selector
+    from src.core.market_filter import MarketFilter
+    from src.core.backtest import run_backtest
     from pathlib import Path
     
     # 简版模式：设置DataLoader标志

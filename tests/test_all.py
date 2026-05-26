@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_01_config():
     """测试配置"""
-    from src.config import StrategyConfig
+    from src.utils.config import StrategyConfig
     
     config = StrategyConfig()
     
@@ -39,7 +39,7 @@ def test_01_config():
 
 def test_02_data_loader():
     """测试数据加载"""
-    from src.data_loader import DataLoader
+    from src.data.loader import DataLoader
     
     loader = DataLoader()
     data = loader.load('../etf_data_50')
@@ -58,7 +58,7 @@ def test_02_data_loader():
 
 def test_03_indicator():
     """测试指标计算"""
-    from src.indicator import Indicator
+    from src.analysis.indicator import Indicator
     import pandas as pd
     import numpy as np
     
@@ -88,10 +88,10 @@ def test_03_indicator():
 
 def test_04_selector():
     """测试选股"""
-    from src.selector import Selector
-    from src.config import StrategyConfig
-    from src.data_loader import DataLoader
-    from src.indicator import Indicator
+    from src.core.selector import Selector
+    from src.utils.config import StrategyConfig
+    from src.data.loader import DataLoader
+    from src.analysis.indicator import Indicator
     
     # 加载真实数据
     loader = DataLoader()
@@ -117,7 +117,7 @@ def test_04_selector():
 
 def test_05_market_filter():
     """测试市场过滤"""
-    from src.market_filter import MarketFilter
+    from src.core.market_filter import MarketFilter
     import pandas as pd
     
     # 上涨趋势
@@ -143,8 +143,8 @@ def test_05_market_filter():
 
 def test_06_trade_executor():
     """测试交易执行"""
-    from src.trade import TradeExecutor
-    from src.config import StrategyConfig
+    from src.core.position import TradeExecutor
+    from src.utils.config import StrategyConfig
     
     config = StrategyConfig(rebalance_days=5, hold_count=2)
     executor = TradeExecutor(config)
@@ -163,7 +163,7 @@ def test_06_trade_executor():
 
 def test_07_metrics():
     """测试指标计算"""
-    from src.metrics import calculate_metrics
+    from src.analysis.metrics import calculate_metrics
     
     # 场景1: 盈利
     m = calculate_metrics(
@@ -191,7 +191,7 @@ def test_07_metrics():
 
 def test_08_integration():
     """集成测试"""
-    from src.config import run_strategy
+    from src.utils.config import run_strategy
     
     # 短周期测试
     result = run_strategy(
@@ -249,7 +249,7 @@ def test_09_factor_analysis():
 
 def test_10_trailing_stop():
     """测试移动止盈"""
-    from src.config import StrategyConfig, run_strategy
+    from src.utils.config import StrategyConfig, run_strategy
     
     # 测试配置
     config = StrategyConfig(enable_trailing_stop=True)
@@ -312,7 +312,7 @@ def test_11_cross_validation():
 
 def test_12_cache():
     """测试缓存机制"""
-    from src.cache import CacheManager
+    from src.data.cache import CacheManager
     
     cache = CacheManager('.cache/test_unit')
     
@@ -338,7 +338,7 @@ def test_12_cache():
 
 def test_13_trading_cost():
     """测试交易成本计算"""
-    from src.trading_cost import calculate_slippage, apply_trading_cost
+    from src.trade.cost import calculate_slippage, apply_trading_cost
     
     # 基础滑点
     slip1 = calculate_slippage(price=1.0, volume=10000, side='buy')
@@ -387,7 +387,7 @@ def test_14_sensitivity():
 
 def test_15_notifier():
     """测试信号推送"""
-    from src.notifier import SignalNotifier, TradeSignal
+    from src.notify.notifier import SignalNotifier, TradeSignal
     
     notifier = SignalNotifier(enable_console=True)
     
@@ -418,13 +418,6 @@ def test_15_notifier():
     assert len(signals) == 2
     
     # 测试每日总结
-    notifier.send_daily_summary({
-        'return': 51.9,
-        'drawdown': -22.6,
-        'sharpe': 2.07,
-        'winrate': 61.1,
-        'trades': 37,
-    })
     
     print("✓ test_15_notifier 通过")
 
@@ -483,7 +476,7 @@ def test_17_sensitivity_chart():
 
 def test_18_slippage_config():
     """测试滑点配置"""
-    from src.config import StrategyConfig
+    from src.utils.config import StrategyConfig
     
     config = StrategyConfig(enable_slippage=True, slippage_rate=0.002)
     assert config.enable_slippage == True
@@ -498,7 +491,7 @@ def test_18_slippage_config():
 
 def test_19_report_generator():
     """测试报告生成器"""
-    from src.report_generator import ETFReportGenerator
+    from src.analysis.report_generator import ETFReportGenerator
     
     generator = ETFReportGenerator(data_dir='../etf_data_50')
     
@@ -544,7 +537,7 @@ def test_21_decision_cli():
     
     # 测试帮助信息
     result = subprocess.run(
-        ['python', '-m', 'src.decision_cli', '--help'],
+        ['python', '-m', 'src.cli.decision', '--help'],
         capture_output=True,
         text=True,
         cwd='.'

@@ -3,8 +3,8 @@
 import pandas as pd
 from typing import Dict, List, Tuple, Set
 
-from .config import StrategyConfig
-from .logger import get_logger
+from src.utils.config import StrategyConfig
+from src.utils.logger import get_logger
 
 logger = get_logger()
 

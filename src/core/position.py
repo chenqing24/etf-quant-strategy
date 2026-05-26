@@ -3,8 +3,8 @@
 import pandas as pd
 from typing import Dict, List, Tuple, Optional
 
-from .config import StrategyConfig
-from .selector import Selector
+from src.utils.config import StrategyConfig
+from src.core.selector import Selector
 from .market_filter import MarketFilter
 
 

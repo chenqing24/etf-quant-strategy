@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Dict, List
 from datetime import datetime
 
-from .factor_analysis import FactorAnalyzer
+from src.factor_analysis import FactorAnalyzer
 
 
 class FactorReport:

@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import unittest
 import pandas as pd
 import numpy as np
-from src.selector import Selector
-from src.indicator import Indicator
+from src.core.selector import Selector
+from src.analysis.indicator import Indicator
 
 
 def create_sample_etf_data(days=180):

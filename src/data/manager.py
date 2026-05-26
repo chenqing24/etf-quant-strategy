@@ -12,7 +12,7 @@
 3. MIGRATED归档 - 15:30后热数据迁移至冷数据层
 
 使用方式:
-    from src.data_manager import DataFacade
+    from src.data.manager import DataFacade
     
     facade = DataFacade('etf_data_live')
     

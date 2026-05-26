@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Dict, List, Tuple, Callable
 from itertools import product
 
-from .config import run_strategy
+from src.utils.config import run_strategy
 from pathlib import Path
 
 

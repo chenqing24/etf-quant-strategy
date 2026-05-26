@@ -5,8 +5,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import unittest
-from src.report_builder import ReportBuilder, get_builder
-from src.dingtalk_sender import DingTalkSender, get_sender
+from src.analysis.report_builder import ReportBuilder, get_builder
+from src.notify.dingtalk import DingTalkSender, get_sender
 from src.scenario_adapter import ScenarioAdapter, notify_decision
 
 

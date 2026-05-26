@@ -7,10 +7,10 @@ import json
 import os
 from pathlib import Path
 
-from .config import run_strategy, StrategyConfig
-from .selector import Selector
-from .indicator import Indicator
-from .data_loader import DataLoader
+from src.utils.config import run_strategy, StrategyConfig
+from src.core.selector import Selector
+from src.analysis.indicator import Indicator
+from src.data.loader import DataLoader
 
 # 尝试导入热冷数据管理器
 try:
@@ -93,7 +93,7 @@ class ETFReportGenerator:
         loader = DataLoader()
         if getattr(self, '_simple_mode', False):
             loader._simple_mode = True
-            from src.selector import Selector
+            from src.core.selector import Selector
             Selector._simple_mode = True
         self.data = loader.load(self.data_dir)
         self.latest_date = max(df['date'].max() for df in self.data.values())
@@ -514,7 +514,7 @@ def generate_decision_report(capital: float = 20000, simple: bool = False) -> st
     generator = ETFReportGenerator()
     if simple:
         generator._simple_mode = True
-        from src.selector import Selector
+        from src.core.selector import Selector
         Selector._simple_mode = True
     return generator.generate_report(capital)
 

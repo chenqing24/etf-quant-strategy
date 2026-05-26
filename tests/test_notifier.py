@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_send_daily_summary_uses_simplified_template():
     """测试 send_daily_summary 使用钉钉专属简化模板"""
-    from src.notifier import SignalNotifier
+    from src.notify.notifier import SignalNotifier
     import json
     
     notifier = SignalNotifier(enable_console=False, webhook_url='http://test')
@@ -56,7 +56,7 @@ def test_send_daily_summary_uses_simplified_template():
 
 def test_send_daily_summary_with_realtime_data():
     """测试 send_daily_summary 包含实时数据"""
-    from src.notifier import SignalNotifier
+    from src.notify.notifier import SignalNotifier
     import json
     
     notifier = SignalNotifier(enable_console=False, webhook_url='http://test')
@@ -98,7 +98,7 @@ def test_send_daily_summary_with_realtime_data():
 
 def test_send_full_report_to_console():
     """测试 send_full_report_to_console 输出完整报告到控制台"""
-    from src.notifier import SignalNotifier
+    from src.notify.notifier import SignalNotifier
     import io
     from contextlib import redirect_stdout
     

@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import unittest
-from src.report_builder import ReportBuilder
+from src.analysis.report_builder import ReportBuilder
 
 
 class TestReportBuilderSimple(unittest.TestCase):

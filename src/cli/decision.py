@@ -9,14 +9,14 @@ from typing import Optional
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.report_generator import generate_decision_report
-from src.data_fetcher import TencentETFetcher
-from src.trade_tracker import TradeTracker
-from src.performance_analyzer import PerformanceAnalyzer
-from src.notifier import SignalNotifier
-from src.data_manager import DataFacade
-from src.scenario_adapter import ScenarioAdapter, notify_decision
-from src.logger import init_logger, get_logger, OutputLevel
+from src.analysis.report_generator import generate_decision_report
+from src.data.fetcher import TencentETFetcher
+from src.trade.tracker import TradeTracker
+from src.analysis.performance_analyzer import PerformanceAnalyzer
+from src.notify.notifier import SignalNotifier
+from src.data.manager import DataFacade
+from src.notify.scenario import ScenarioAdapter, notify_decision
+from src.utils.logger import init_logger, get_logger, OutputLevel
 
 logger = get_logger()
 
@@ -148,7 +148,7 @@ class ETFDecisionEngine:
             simple: 是否简版输出（钉钉APP专用，禁用进度条）
         """
         # 保存原始日志级别
-        from src.logger import ETFLogger, OutputLevel
+        from src.utils.logger import ETFLogger, OutputLevel
         original_level = ETFLogger.get_output_level()
         
         # 简版模式：暂时禁用日志输出
@@ -169,12 +169,12 @@ class ETFDecisionEngine:
         logger.info("=" * 60)
         
         # 0. 加载ETF数据用于趋势图
-        from src.data_loader import DataLoader
+        from src.data.loader import DataLoader
         loader = DataLoader()
         if simple:
             loader._simple_mode = True
             # 设置Selector类级别标志（用于report_generator内部）
-            from src.selector import Selector
+            from src.core.selector import Selector
             Selector._simple_mode = True
         self._etf_data = loader.load('../etf_data_50')
         logger.info(f"加载 {len(self._etf_data)} 只ETF数据")
@@ -183,7 +183,7 @@ class ETFDecisionEngine:
         logger.info("[1/3] 生成决策报告...")
         
         # 设置简版模式（传递给report_generator内部组件）
-        from src.selector import Selector
+        from src.core.selector import Selector
         Selector._simple_mode = simple
         
         report = generate_decision_report(self.capital, simple=simple)
@@ -250,7 +250,7 @@ class ETFDecisionEngine:
         realtime = {}
         if new_code:
             try:
-                from src.data_manager import DataFacade
+                from src.data.manager import DataFacade
                 facade = DataFacade(self.data_dir)
                 hot_record = facade.hot.get(new_code)
                 if hot_record:
@@ -269,7 +269,7 @@ class ETFDecisionEngine:
         if new_code and self._etf_data and new_code in self._etf_data:
             try:
                 from src.trend_chart import get_trend_summary
-                from src.indicator import Indicator
+                from src.analysis.indicator import Indicator
                 trend_data = get_trend_summary(self._etf_data[new_code], new_code, 5)
                 
                 # 计算技术指标
@@ -325,7 +325,7 @@ class ETFDecisionEngine:
     
     def execute_trade(self, code: str, action: str, price: float, quantity: int):
         """执行交易"""
-        from src.industry_mapping import INDUSTRY_MAPPING
+        from src.utils.industry import INDUSTRY_MAPPING
         
         name = INDUSTRY_MAPPING.get(code, code)
         

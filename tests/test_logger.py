@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import unittest
-from src.logger import (
+from src.utils.logger import (
     ETFLogger, OutputLevel, get_logger, set_level, print_brief, init_logger
 )
 

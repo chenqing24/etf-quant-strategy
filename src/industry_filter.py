@@ -3,7 +3,7 @@
 from typing import Dict, Set, List
 from collections import Counter
 
-from .industry_mapping import INDUSTRY_MAPPING
+from src.utils.industry import INDUSTRY_MAPPING
 
 
 class IndustryFilter:
