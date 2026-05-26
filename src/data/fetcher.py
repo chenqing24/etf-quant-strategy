@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 """腾讯ETF数据采集"""
 import requests
 import pandas as pd
@@ -84,10 +85,12 @@ class TencentETFetcher:
         
         try:
             response = requests.get(self.BASE_URL, params=params, timeout=10)
-            data = response.json()
+            # 腾讯API返回带前缀的JSON: kline_dayqfq={...}，需要去掉前缀
+            text = response.text.replace('kline_dayqfq=', '', 1)
+            data = json.loads(text)
             
-            # 解析数据
-            key = f'data.{code}.day.qfq'
+            # 解析数据 (正确路径: data.{code}.qfqday)
+            key = f'data.{code}.qfqday'
             parts = key.split('.')
             for p in parts:
                 data = data.get(p, {})
