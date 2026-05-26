@@ -3,6 +3,9 @@
 from pathlib import Path
 from typing import Dict
 import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DataLoader:
@@ -31,7 +34,7 @@ class DataLoader:
         if not data_dir.exists():
             # 简版模式下静默处理
             if not getattr(self, '_simple_mode', False):
-                print(f"警告: 数据目录不存在: {data_dir}")
+                logger.warning(f"数据目录不存在: {data_dir}")
             return self.data
         
         for f in data_dir.glob('*.csv'):
@@ -42,7 +45,7 @@ class DataLoader:
         
         # 简版模式下静默处理
         if not getattr(self, '_simple_mode', False):
-            print(f"加载 {len(self.data)} 只ETF数据")
+            logger.info(f"加载 {len(self.data)} 只ETF数据")
         return self.data
     
     def _process_df(self, df: pd.DataFrame) -> pd.DataFrame:
