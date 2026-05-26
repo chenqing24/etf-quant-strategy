@@ -28,6 +28,7 @@
 | 文档 | 说明 | 优先级 |
 |------|------|--------|
 | [SELECTION_RULES.md](./SELECTION_RULES.md) | 7因子选股规则 | ⭐⭐⭐ |
+| [STRATEGY_IMPROVEMENT.md](./STRATEGY_IMPROVEMENT.md) | 策略优化方向（已验证结论） | ⭐⭐⭐ |
 | [POSITION_MANAGEMENT.md](./POSITION_MANAGEMENT.md) | 持仓管理规则 | ⭐⭐ |
 | [PRD.md](./PRD.md) | 产品需求文档 | ⭐⭐ |
 | [BACKTEST_SPEC.md](./BACKTEST_SPEC.md) | 回测规范（每日评分回测） | ⭐⭐ |
