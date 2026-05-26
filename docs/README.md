@@ -30,6 +30,9 @@
 | [SELECTION_RULES.md](./SELECTION_RULES.md) | 7因子选股规则 | ⭐⭐⭐ |
 | [POSITION_MANAGEMENT.md](./POSITION_MANAGEMENT.md) | 持仓管理规则 | ⭐⭐ |
 | [PRD.md](./PRD.md) | 产品需求文档 | ⭐⭐ |
+| [BACKTEST_SPEC.md](./BACKTEST_SPEC.md) | 回测规范（每日评分回测） | ⭐⭐ |
+| [DATA_ACQUISITION.md](./DATA_ACQUISITION.md) | 数据采集规范（腾讯API） | ⭐⭐ |
+| [TRADE_VALIDATION.md](./TRADE_VALIDATION.md) | 交易验证规范（信号校验） | ⭐⭐ |
 
 ### 📖 使用说明
 
@@ -66,6 +69,11 @@
 1. [SELECTION_RULES.md](./SELECTION_RULES.md) - 看选股规则
 2. [POSITION_MANAGEMENT.md](./POSITION_MANAGEMENT.md) - 看持仓规则
 3. [PRD.md](./PRD.md) - 看需求背景
+
+### 🔧 我要处理数据
+1. [DATA_ACQUISITION.md](./DATA_ACQUISITION.md) - 看数据采集规范
+2. [BACKTEST_SPEC.md](./BACKTEST_SPEC.md) - 看回测规范
+3. [TRADE_VALIDATION.md](./TRADE_VALIDATION.md) - 看交易验证
 
 ### 🏗️ 我要新增模块
 1. [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) - 看模块关系
