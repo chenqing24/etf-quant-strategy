@@ -89,19 +89,21 @@ class TencentETFetcher:
             text = response.text.replace('kline_dayqfq=', '', 1)
             data = json.loads(text)
             
-            # 解析数据 (正确路径: data.{code}.qfqday)
-            key = f'data.{code}.qfqday'
-            parts = key.split('.')
-            for p in parts:
-                data = data.get(p, {})
+            # 解析数据: data.{code}.{field}，字段名可能是 qfqday 或 day
+            etf_data = data.get('data', {}).get(code, {})
+            records_data = None
+            for field in ['qfqday', 'day']:
+                records_data = etf_data.get(field)
+                if records_data:
+                    break
             
-            if not data:
+            if not records_data:
                 logger.warn(f"  警告: {code} 无数据")
                 return pd.DataFrame()
             
             # 转换为DataFrame
             records = []
-            for item in data:
+            for item in records_data:
                 date, open_p, high, low, close, volume = item
                 records.append({
                     'date': date,

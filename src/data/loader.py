@@ -39,8 +39,8 @@ class DataLoader:
         
         for f in data_dir.glob('*.csv'):
             df = self._process_df(pd.read_csv(f))
-            # 过滤数据不足500天(约2年)的ETF，确保指标计算准确
-            if len(df) >= 500:
+            # 过滤数据不足300天(约1年)的ETF，确保指标计算准确
+            if len(df) >= 300:
                 self.data[f.stem] = df
         
         # 简版模式下静默处理
