@@ -33,6 +33,9 @@
 | [BACKTEST_SPEC.md](./BACKTEST_SPEC.md) | 回测规范（每日评分回测） | ⭐⭐ |
 | [DATA_ACQUISITION.md](./DATA_ACQUISITION.md) | 数据采集规范（腾讯API） | ⭐⭐ |
 | [TRADE_VALIDATION.md](./TRADE_VALIDATION.md) | 交易验证规范（信号校验） | ⭐⭐ |
+| [INDICATOR_SPEC.md](./INDICATOR_SPEC.md) | 技术指标规范（MA/RSI） | ⭐⭐ |
+| [TRADING_COST.md](./TRADING_COST.md) | 交易成本规范 | ⭐⭐ |
+| [INDUSTRY_CONFIG.md](./INDUSTRY_CONFIG.md) | 行业配置规范 | ⭐⭐ |
 
 ### 📖 使用说明
 
