@@ -10,6 +10,11 @@ venv/
 dist/
 build/
 
+# Pycache (nested)
+*/__pycache__/
+*.pyc
+*.pyo
+
 # IDE
 .idea/
 .vscode/
@@ -21,6 +26,29 @@ etf_data_50/
 etf_data_2years/
 etf_data_top20/
 
+# Cache
+.cache/
+etf_reports/cache/
+
+# QwenPaw
+tool_results/
+browser/
+
+# Memory & Dialog
+memory/
+dialog/
+
+# Backup & Temp
+backup/
+*.tmp
+*.bak
+
+# Environment
+.env
+
 # OS
 .DS_Store
-Thumbs.db.env
+Thumbs.db
+
+# Logs
+*.log
