@@ -16,6 +16,7 @@ from src.performance_analyzer import PerformanceAnalyzer
 from src.notifier import SignalNotifier
 from src.data_manager import DataFacade
 from src.scenario_adapter import ScenarioAdapter, notify_decision
+from src.logger import init_logger, get_logger, OutputLevel
 
 
 class ETFDecisionEngine:
@@ -389,6 +390,8 @@ def main():
     parser.add_argument('--silent', action='store_true', help='静默模式（不发送钉钉，由cron响应代替）')
     parser.add_argument('--simple', action='store_true', help='简版输出（钉钉APP专用）')
     parser.add_argument('--full', action='store_true', help='完整报告（PC端专用）')
+    parser.add_argument('--output', choices=['silent', 'brief', 'normal', 'verbose'],
+                       default='normal', help='输出级别')
     
     # ── US-005: 查询参数 ──────────────────────────────────────────
     parser.add_argument('--date', type=str,
@@ -398,6 +401,10 @@ def main():
     # ─────────────────────────────────────────────────────────────
     
     args = parser.parse_args()
+    
+    # 初始化日志器
+    output_level = OutputLevel[args.output.upper()]
+    init_logger(output_level)
     
     # 初始化引擎
     engine = ETFDecisionEngine(
