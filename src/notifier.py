@@ -7,6 +7,9 @@
 from datetime import datetime
 from typing import Dict, List
 from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,11 +44,11 @@ class SignalNotifier:
         
         # 控制台输出
         if self.enable_console:
-            print(f"\n{'='*50}")
-            print(f"📢 交易信号通知")
-            print(f"{'='*50}")
-            print(message)
-            print(f"{'='*50}\n")
+            logger.info("=" * 50)
+            logger.info("📢 交易信号通知")
+            logger.info("=" * 50)
+            logger.info(message)
+            logger.info("=" * 50)
     
     def _format_message(self, signal: TradeSignal) -> str:
         """格式化消息"""
@@ -85,14 +88,14 @@ class SignalNotifier:
                 full_report = f.read()
             
             if self.enable_console:
-                print(f"\n{'='*60}")
-                print("📊 每日策略总结 (完整报告)")
-                print(f"{'='*60}")
-                print(full_report)
-                print(f"{'='*60}\n")
+                logger.info("=" * 60)
+                logger.info("📊 每日策略总结 (完整报告)")
+                logger.info("=" * 60)
+                logger.info(full_report)
+                logger.info("=" * 60)
                 
         except Exception as e:
-            print(f"⚠️ 读取报告文件失败: {e}")
+            logger.warning(f"⚠️ 读取报告文件失败: {e}")
     
     def get_signals(self) -> List[TradeSignal]:
         """获取所有信号"""
@@ -129,7 +132,7 @@ def test_notifier():
     )
     notifier.send_signal(signal2)
     
-    print("✓ 通知器测试通过")
+    logger.info("✓ 通知器测试通过")
     return True
 
 
