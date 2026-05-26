@@ -190,6 +190,30 @@ class ETFReportGenerator:
         """生成完整报告"""
         # 获取数据
         latest = self.load_data()
+        
+        # ========== 数据过期检测 ==========
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        try:
+            data_date = datetime.strptime(latest, '%Y-%m-%d').date()
+        except:
+            data_date = None
+        
+        data_freshness = "未知"
+        data_freshness_warning = ""
+        data_age_days = 0
+        
+        if data_date:
+            data_age_days = (today - data_date).days
+            if data_age_days == 0:
+                data_freshness = "✅ 正常"
+            elif 1 <= data_age_days <= 2:
+                data_freshness = "⚠️ 数据略旧"
+                data_freshness_warning = f"数据距今{data_age_days}天，部分指标可能不准确"
+            else:
+                data_freshness = "❌ 数据过期"
+                data_freshness_warning = f"数据超过{data_age_days}天未更新，偏差计算可能失真！"
+        
         market_status = self.analyze_market()  # 分析市场
         self.validate_strategy()  # 验证策略
         
@@ -372,10 +396,11 @@ class ETFReportGenerator:
 
 【基本信息】
 报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-数据最新日期: {latest}
+数据最新日期: {latest} {data_freshness}
 投资本金: {capital:,}元
 策略模式: 单持仓 + 5%止损 + 8%止盈 + 移动止盈
 
+{f"{data_freshness_warning}" if data_freshness_warning else ""}
 {'='*70}
 🚨 今日交易建议 (必读)
 {'='*70}
