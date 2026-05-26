@@ -123,6 +123,9 @@ def run_strategy(
     from .backtest import run_backtest
     from pathlib import Path
     
+    # 简版模式：设置DataLoader标志
+    _simple_mode = getattr(Selector, '_simple_mode', False)
+    
     # 配置 - 使用默认配置对象
     default_config = StrategyConfig()
     config = StrategyConfig(
@@ -151,6 +154,8 @@ def run_strategy(
     
     # 加载数据
     loader = DataLoader()
+    if _simple_mode:
+        loader._simple_mode = True
     
     # 支持绝对路径和相对路径
     dd = Path(data_dir)

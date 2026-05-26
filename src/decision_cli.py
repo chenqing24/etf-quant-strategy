@@ -92,17 +92,18 @@ class ETFDecisionEngine:
             'message': '持仓正常，无需操作'
         }
     
-    def _prefetch_realtime_data(self) -> dict:
+    def _prefetch_realtime_data(self, simple: bool = False) -> dict:
         """预热实时数据 (14:25环节)
         
+        Args:
+            simple: 是否简版模式（禁用进度条）
         Returns:
             预热结果
         """
         from scripts.prefetch_data import ETFDataPrefetcher
         
-        print("\n[预热] 拉取实时数据...")
         prefetcher = ETFDataPrefetcher(self.data_dir)
-        results = prefetcher.prefetch_all()
+        results = prefetcher.prefetch_all(simple=simple)
         
         # 返回预热时间和成功数量
         return {
@@ -136,41 +137,57 @@ class ETFDecisionEngine:
         
         return "未知"
     
-    def run_full_evaluation(self, silent: bool = False):
+    def run_full_evaluation(self, silent: bool = False, simple: bool = False):
         """完整策略评估
         
         Args:
             silent: 是否静默模式（不发送钉钉，由cron的agent响应代替）
+            simple: 是否简版输出（钉钉APP专用，禁用进度条）
         """
-        print("\n" + "="*60)
-        print("🔄 完整策略评估")
-        print("="*60)
-        
         # 0. 预热实时数据 (14:25环节)
-        prefetch_result = self._prefetch_realtime_data()
+        prefetch_result = self._prefetch_realtime_data(simple=simple)
         data_timestamp = prefetch_result['prefetch_time']
         
-        print(f"  数据更新时间: {data_timestamp}")
-        print("="*60)
+        if not simple:
+            print("\n" + "="*60)
+            print("🔄 完整策略评估")
+            print("="*60)
+            print(f"  数据更新时间: {data_timestamp}")
+            print("="*60)
         
         # 0. 加载ETF数据用于趋势图
         from src.data_loader import DataLoader
-        self._etf_data = DataLoader().load('../etf_data_50')
-        print(f"加载 {len(self._etf_data)} 只ETF数据")
+        loader = DataLoader()
+        if simple:
+            loader._simple_mode = True
+            # 设置Selector类级别标志（用于report_generator内部）
+            from src.selector import Selector
+            Selector._simple_mode = True
+        self._etf_data = loader.load('../etf_data_50')
+        if not simple:
+            print(f"加载 {len(self._etf_data)} 只ETF数据")
         
         # 1. 生成决策报告
-        print("\n[1/3] 生成决策报告...")
-        report = generate_decision_report(self.capital)
+        if not simple:
+            print("\n[1/3] 生成决策报告...")
+        
+        # 设置简版模式（传递给report_generator内部组件）
+        from src.selector import Selector
+        Selector._simple_mode = simple
+        
+        report = generate_decision_report(self.capital, simple=simple)
         
         # 保存报告
         report_file = f"etf_reports/report_{datetime.now().strftime('%Y%m%d')}.txt"
         os.makedirs('etf_reports', exist_ok=True)
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write(report)
-        print(f"  报告已保存: {report_file}")
+        if not simple:
+            print(f"  报告已保存: {report_file}")
         
         # 2. 提取关键建议
-        print("\n[2/3] 分析建议...")
+        if not simple:
+            print("\n[2/3] 分析建议...")
         # 简化解析，提取买入建议
         action = '观望'
         new_code = ''
@@ -215,10 +232,12 @@ class ETFDecisionEngine:
                 action = '持仓'
                 new_code = ''
         
-        print(f"  今日操作: {action} {new_code} {new_name}")
+        if not simple:
+            print(f"  今日操作: {action} {new_code} {new_name}")
         
         # 3. 发送通知到钉钉
-        print("\n[3/3] 发送通知...")
+        if not simple:
+            print("\n[3/3] 发送通知...")
         
         # 获取实时数据（从热数据层）
         realtime = {}
@@ -275,9 +294,16 @@ class ETFDecisionEngine:
         
         # 发送通知（除非是静默模式）
         if not getattr(self, '_silent_mode', False):
-            # 使用新的ScenarioAdapter（钉钉移动端）
-            adapter = ScenarioAdapter.for_mobile()
-            adapter.build_and_send(results, report_file=None)
+            # 根据simple参数决定场景
+            if getattr(self, '_simple_mode', False):
+                # 简版输出（钉钉APP）- 只构建不打印
+                adapter = ScenarioAdapter.for_mobile()
+                message = adapter.build_report(results, report_file=None)
+                print(message)  # 简版只输出Markdown
+            else:
+                # 使用新的ScenarioAdapter（钉钉移动端）
+                adapter = ScenarioAdapter.for_mobile()
+                adapter.build_and_send(results, report_file=None)
         
         # PC端控制台输出完整报告
         if report_file:
@@ -361,6 +387,8 @@ def main():
     parser.add_argument('--quantity', type=int, help='数量')
     parser.add_argument('--webhook', type=str, help='钉钉Webhook URL')
     parser.add_argument('--silent', action='store_true', help='静默模式（不发送钉钉，由cron响应代替）')
+    parser.add_argument('--simple', action='store_true', help='简版输出（钉钉APP专用）')
+    parser.add_argument('--full', action='store_true', help='完整报告（PC端专用）')
     
     # ── US-005: 查询参数 ──────────────────────────────────────────
     parser.add_argument('--date', type=str,
@@ -381,11 +409,15 @@ def main():
     if args.silent:
         engine._silent_mode = True
     
+    # 设置简版模式（钉钉APP专用）
+    if args.simple:
+        engine._simple_mode = True
+    
     # 执行
     if args.mode == 'daily':
         engine.run_daily_check()
     elif args.mode == 'eval':
-        engine.run_full_evaluation(silent=args.silent)
+        engine.run_full_evaluation(silent=args.silent, simple=args.simple)
     elif args.mode == 'trade':
         if args.code and args.action and args.price and args.quantity:
             engine.execute_trade(args.code, args.action, args.price, args.quantity)

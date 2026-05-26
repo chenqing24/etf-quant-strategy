@@ -44,9 +44,12 @@ class DingTalkSender:
     def _send_via_qwenpaw(self, message: str, format: str = 'markdown') -> bool:
         """通过QwenPaw渠道发送
         
+        注意：QwenPaw渠道只支持text格式，不支持markdown
+        钉钉会渲染emoji，但不支持完整的markdown语法
+        
         Args:
             message: 消息内容
-            format: 消息格式
+            format: 消息格式（仅支持text）
         Returns:
             bool: 发送是否成功
         """

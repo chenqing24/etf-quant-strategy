@@ -9,6 +9,9 @@ from .config import StrategyConfig
 class Selector:
     """ETF选股器"""
     
+    # 类级别标志：简版模式（禁用输出）
+    _simple_mode = False
+    
     def select_etfs(self, data: Dict[str, pd.DataFrame], 
                     config: StrategyConfig) -> Set[str]:
         """根据训练期收益选出TopN的ETF
@@ -43,7 +46,8 @@ class Selector:
         results.sort(key=lambda x: -x['return'])
         selected = {r['code'] for r in results[:config.top_n]}
         
-        print(f"选出 {len(selected)} 只ETF (训练期: {config.train_start} ~ {config.train_end})")
+        if not getattr(Selector, '_simple_mode', False):
+            print(f"选出 {len(selected)} 只ETF (训练期: {config.train_start} ~ {config.train_end})")
         return selected
     
     def score(self, df: pd.DataFrame, date: str) -> Tuple[int, List[str]]:

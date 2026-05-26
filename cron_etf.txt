@@ -1,0 +1,2 @@
+﻿# ETF量化策略 - 每个工作日下午2:30自动执行
+30 14 * * 1-5 cd /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy && /Users/qingchen/git/qwenpaw/venv/bin/python -m src.decision_cli -m eval >> /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy/logs/cron_etf.log 2>&1

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """交易追踪与记录"""
+import csv
 import json
 import os
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
@@ -21,6 +23,14 @@ class TradeRecord:
     expected_return: float = 0    # 预期收益
     actual_pnl: float = 0         # 实际盈亏
     note: str = ""                # 备注
+
+    # ── US-005 增强字段 ──────────────────────────────────────────
+    realtime_price: float = 0.0   # 实时价格（买入时快照）
+    price_deviation: float = 0.0  # 偏差率 (%)
+    rsi_14: float = 0.0           # RSI(14) 值
+    day_change_pct: float = 0.0  # 当日涨跌幅 (%)
+    score: int = 0               # 策略评分
+    # ─────────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -91,13 +101,151 @@ class TradeTracker:
         with open(self.positions_file, 'w') as f:
             json.dump({
                 'positions': [asdict(p) for p in positions],
-                'updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }, f, indent=2)
+            }, f, indent=2, ensure_ascii=False)
+    
+    # ── US-005: 实时数据获取 ────────────────────────────────────
+    
+    def _fetch_realtime_data(self, code: str) -> Dict:
+        """
+        获取ETF实时数据（价格、涨跌幅、RSI）
+        
+        优先使用热数据管理器(DataFacade)，降级使用腾讯API直调。
+        
+        Returns:
+            {'price': float, 'change_pct': float, 'rsi_14': float,
+             'price_deviation': float, 'data_source': str}
+        """
+        # 策略1: 使用 DataFacade 热数据层
+        try:
+            from src.data_manager import DataFacade
+            facade = DataFacade(self.data_dir)
+            merged = facade.get_merged_data(code)
+            
+            if merged.get('price') and merged['price'] > 0:
+                change_pct = merged.get('change_pct', 0.0)
+                return {
+                    'price': merged['price'],
+                    'change_pct': change_pct,
+                    'rsi_14': merged.get('rsi_14', 50.0),
+                    'price_deviation': 0.0,   # 热数据无信号价，无法计算偏差
+                    'data_source': 'hot_data',
+                }
+        except Exception:
+            pass
+        
+        # 策略2: 直接调用腾讯API（轻量，不依赖 DataFacade）
+        return self._fetch_tencent_realtime(code)
+    
+    def _fetch_tencent_realtime(self, code: str) -> Dict:
+        """腾讯API直接获取实时数据（RSI由指标模块计算）"""
+        import requests
+        
+        # ETF代码前缀处理
+        if code.startswith(('sh', 'sz')):
+            prefix = code
+        elif code.isdigit():
+            prefix = f'sh{code}' if code.startswith(('5', '1', '11')) else f'sz{code}'
+        else:
+            prefix = code
+        
+        url = f"https://qt.gtimg.cn/q={prefix}"
+        try:
+            resp = requests.get(url, timeout=8)
+            resp.encoding = 'gbk'
+            parts = resp.text.split('~')
+            
+            if len(parts) > 32:
+                price = float(parts[3])
+                yclose = float(parts[4])
+                change_pct = float(parts[32]) if parts[32] else 0.0
+                
+                # 计算RSI(14) from cold data
+                rsi_14 = self._calc_rsi_14(code)
+                
+                return {
+                    'price': price,
+                    'change_pct': change_pct,
+                    'rsi_14': rsi_14,
+                    'price_deviation': 0.0,
+                    'data_source': 'tencent',
+                }
+        except Exception:
+            pass
+        
+        # 降级: 返回空数据
+        return {
+            'price': 0.0,
+            'change_pct': 0.0,
+            'rsi_14': 50.0,
+            'price_deviation': 0.0,
+            'data_source': 'none',
+        }
+    
+    def _calc_rsi_14(self, code: str) -> float:
+        """计算RSI(14) from cold CSV data"""
+        try:
+            from src.data_manager import ColdDataManager
+            cold = ColdDataManager(self.data_dir)
+            records = cold.get(code)
+            
+            if not records or len(records) < 15:
+                return 50.0
+            
+            # 取最近14个收盘价计算RSI
+            closes = [float(r['close']) for r in records[-15:]]
+            
+            gains, losses = [], []
+            for i in range(1, len(closes)):
+                delta = closes[i] - closes[i-1]
+                gains.append(max(delta, 0))
+                losses.append(max(-delta, 0))
+            
+            avg_gain = sum(gains[-14:]) / 14 if gains else 0
+            avg_loss = sum(losses[-14:]) / 14 if losses else 0
+            
+            if avg_loss == 0:
+                return 100.0
+            rs = avg_gain / avg_loss
+            return round(100 - 100 / (1 + rs), 2)
+        except Exception:
+            return 50.0
+    
+    # ─────────────────────────────────────────────────────────────
     
     def record_buy(self, code: str, name: str, price: float, 
-                   quantity: int, reason: str = "") -> TradeRecord:
-        """记录买入"""
+                   quantity: int, reason: str = "",
+                   signal_price: float = 0.0,
+                   score: int = 0) -> TradeRecord:
+        """
+        记录买入（US-005: 自动填充实时数据）
+        
+        Args:
+            code:           ETF代码
+            name:           ETF名称
+            price:          成交价格
+            quantity:       数量
+            reason:         交易原因
+            signal_price:   信号发出时的价格（用于计算偏差率）
+            score:          策略评分（可选）
+        """
+        # ── 自动获取实时快照 ──
+        rt = self._fetch_realtime_data(code)
+        realtime_price = rt.get('price', price)
+        day_change_pct = rt.get('change_pct', 0.0)
+        rsi_14 = rt.get('rsi_14', 50.0)
+        data_source = rt.get('data_source', 'unknown')
+        
+        # 偏差率: (实时价 - 信号价) / 信号价 * 100
+        if signal_price > 0 and realtime_price > 0:
+            price_deviation = (realtime_price - signal_price) / signal_price * 100
+        else:
+            price_deviation = 0.0
+        
+        # 评分默认填充
+        final_score = score
+        
         amount = price * quantity
+        
         trade = TradeRecord(
             date=datetime.now().strftime('%Y-%m-%d'),
             code=code,
@@ -107,6 +255,12 @@ class TradeTracker:
             quantity=quantity,
             amount=amount,
             reason=reason,
+            # US-005 增强字段
+            realtime_price=realtime_price,
+            price_deviation=price_deviation,
+            rsi_14=rsi_14,
+            day_change_pct=day_change_pct,
+            score=final_score,
         )
         
         self.save_trade(trade)
@@ -127,8 +281,18 @@ class TradeTracker:
         
         return trade
     
-    def record_sell(self, code: str, price: float, actual_pnl: float = 0):
-        """记录卖出"""
+    def record_sell(self, code: str, price: float, actual_pnl: float = 0,
+                     signal_price: float = 0.0, score: int = 0) -> Optional[TradeRecord]:
+        """
+        记录卖出（US-005: 填充实时快照字段，sell端留0）
+        
+        Args:
+            code:           ETF代码
+            price:          成交价格
+            actual_pnl:     实际盈亏
+            signal_price:   信号价（sell时未使用，留0）
+            score:          评分（sell时未使用，留0）
+        """
         positions = self.load_positions()
         pos = next((p for p in positions if p.code == code), None)
         
@@ -143,6 +307,12 @@ class TradeTracker:
                 amount=price * pos.quantity,
                 reason='卖出',
                 actual_pnl=actual_pnl,
+                # US-005: sell时无法提供有效实时快照，填0
+                realtime_price=price,
+                price_deviation=0.0,
+                rsi_14=0.0,
+                day_change_pct=0.0,
+                score=0,
             )
             self.save_trade(trade)
             
@@ -152,6 +322,76 @@ class TradeTracker:
             
             return trade
         return None
+    
+    # ── US-005: 查询接口 ─────────────────────────────────────────
+    
+    def query_trades(self,
+                     date: Optional[str] = None,
+                     code: Optional[str] = None,
+                     action: Optional[str] = None) -> List[TradeRecord]:
+        """
+        查询交易记录
+        
+        Args:
+            date:   交易日期，格式 YYYY-MM-DD（支持模糊，如 "2026-05"）
+            code:   ETF代码（支持模糊匹配）
+            action: 行为类型 'buy' / 'sell'
+            
+        Returns:
+            符合条件的 TradeRecord 列表
+        """
+        trades = self.load_trades()
+        results = trades
+        
+        if date:
+            # 支持完整日期或年月
+            if len(date) == 10:
+                results = [t for t in results if t.date == date]
+            elif len(date) == 7:
+                results = [t for t in results if t.date.startswith(date)]
+            elif len(date) == 4:
+                results = [t for t in results if t.date.startswith(date)]
+        
+        if code:
+            code_upper = code.upper()
+            results = [t for t in results if code_upper in t.code.upper()]
+        
+        if action:
+            results = [t for t in results if t.action == action]
+        
+        return results
+    
+    def export_csv(self, filepath: str) -> int:
+        """
+        导出交易记录为CSV
+        
+        Args:
+            filepath:  输出文件路径
+            
+        Returns:
+            导出的记录数
+        """
+        trades = self.load_trades()
+        
+        # 定义CSV字段（含US-005新字段）
+        fieldnames = [
+            'date', 'code', 'name', 'action',
+            'price', 'quantity', 'amount', 'reason',
+            'expected_return', 'actual_pnl', 'note',
+            # US-005 增强字段
+            'realtime_price', 'price_deviation',
+            'rsi_14', 'day_change_pct', 'score',
+        ]
+        
+        with open(filepath, 'w', encoding='utf-8-sig', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for t in trades:
+                writer.writerow(asdict(t))
+        
+        return len(trades)
+    
+    # ─────────────────────────────────────────────────────────────
     
     def update_position_price(self, code: str, current_price: float):
         """更新持仓价格"""
@@ -188,90 +428,42 @@ class TradeTracker:
             return True
         return False
     
-    def get_performance_summary(self) -> Dict:
-        """获取绩效汇总"""
-        with open(self.performance_file, 'r') as f:
-            return json.load(f)
-    
-    def update_performance(self, pnl: float):
-        """更新绩效"""
-        with open(self.performance_file, 'r') as f:
-            perf = json.load(f)
-        
-        perf['total_pnl'] += pnl
-        perf['current_capital'] = perf['initial_capital'] * (1 + perf['total_pnl'] / 100)
-        perf['total_trades'] += 1
-        
-        # 计算胜率
-        trades = self.load_trades()
-        sell_trades = [t for t in trades if t.action == 'sell' and t.actual_pnl != 0]
-        if sell_trades:
-            wins = sum(1 for t in sell_trades if t.actual_pnl > 0)
-            perf['win_rate'] = wins / len(sell_trades) * 100
-        
-        with open(self.performance_file, 'w') as f:
-            json.dump(perf, f, indent=2)
-        
-        return perf
-    
-    def need_rebalance(self, rebalance_days: int = 10) -> bool:
-        """判断是否需要调仓"""
+    def need_rebalance(self, max_hold_days: int = 10) -> bool:
+        """检查是否需要调仓"""
         positions = self.load_positions()
         
-        if not positions:
-            return True  # 空仓需要买入
-        
-        # 检查是否持仓超期
         for p in positions:
-            hold_days = (datetime.now() - datetime.strptime(p.entry_date, '%Y-%m-%d')).days
-            if hold_days >= rebalance_days:
+            if p.hold_days >= max_hold_days:
                 return True
-        
         return False
     
-    def print_status(self):
-        """打印当前状态"""
-        positions = self.load_positions()
-        perf = self.get_performance_summary()
+    def get_performance_summary(self) -> Dict:
+        """获取绩效汇总"""
+        if os.path.exists(self.performance_file):
+            with open(self.performance_file, 'r') as f:
+                data = json.load(f)
+                return data.get('performance', {})
+        return {
+            'initial_capital': 20000,
+            'current_capital': 20000,
+            'total_pnl': 0,
+            'total_trades': 0,
+            'win_rate': 0,
+        }
+    
+    def update_performance(self, capital: float, pnl: float, 
+                           total_trades: int, win_rate: float):
+        """更新绩效"""
+        with open(self.performance_file, 'r') as f:
+            data = json.load(f)
         
-        print("\n" + "="*50)
-        print("📊 当前持仓状态")
-        print("="*50)
+        data['performance'].update({
+            'current_capital': capital,
+            'total_pnl': pnl,
+            'total_trades': total_trades,
+            'win_rate': win_rate,
+            'updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
         
-        if positions:
-            for p in positions:
-                print(f"  {p.code} {p.name}")
-                print(f"    买入: {p.entry_price} × {p.quantity}股")
-                print(f"    当前: {p.current_price} (盈亏: {p.pnl_pct:+.1f}%)")
-                print(f"    持有: {p.hold_days}天")
-        else:
-            print("  (空仓)")
-        
-        print(f"\n总资产: {perf['current_capital']:,.0f}元")
-        print(f"累计盈亏: {perf['total_pnl']:+.1f}%")
-        print(f"交易次数: {perf['total_trades']}")
-        print(f"胜率: {perf['win_rate']:.1f}%")
-        print("="*50)
-
-
-def test_tracker():
-    """测试"""
-    tracker = TradeTracker('.')
-    
-    # 模拟记录买入
-    tracker.record_buy('516050', '科创成长', 1.384, 13000, '首推')
-    
-    # 模拟更新价格
-    tracker.update_position_price('516050', 1.42)
-    
-    # 打印状态
-    tracker.print_status()
-    
-    print("✓ 交易追踪测试通过")
-
-
-if __name__ == '__main__':
-    test_tracker()
-
-
-__all__ = ['TradeTracker', 'TradeRecord', 'Position', 'test_tracker']
+        with open(self.performance_file, 'w') as f:
+            json.dump(data, f, indent=2)

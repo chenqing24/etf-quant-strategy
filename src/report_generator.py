@@ -1,14 +1,29 @@
 #!/usr/bin/env python3
-"""ETF投资决策报告生成器 - 固定模板版本"""
+"""ETF投资决策报告生成器 - 固定模板版本 (含实时校验)"""
 import pandas as pd
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional, Any
 import json
+import os
+from pathlib import Path
 
 from .config import run_strategy, StrategyConfig
 from .selector import Selector
 from .indicator import Indicator
 from .data_loader import DataLoader
+
+# 尝试导入热冷数据管理器
+try:
+    from .data_manager import DataFacade
+except ImportError:
+    DataFacade = None
+
+# 尝试导入交易校验器
+try:
+    from .trade_validator import TradeValidator, Recommendation
+except ImportError:
+    TradeValidator = None
+    Recommendation = None
 
 
 # ETF代码中文名称映射
@@ -47,20 +62,47 @@ ETF_NAMES = {
 
 
 class ETFReportGenerator:
-    """ETF投资决策报告生成器"""
+    """ETF投资决策报告生成器 (含实时校验)"""
     
-    def __init__(self, data_dir: str = '../etf_data_50'):
+    def __init__(self, data_dir: str = '../etf_data_50', live_data_dir: str = 'etf_data_live'):
         self.data_dir = data_dir
+        self.live_data_dir = live_data_dir
         self.data = None
         self.latest_date = None
         self.current_etfs = []
         self.validation_results = []
+        
+        # 简版模式标志（传递给子组件）
+        self._simple_mode = False
+        
+        # 实时数据管理器
+        self.data_facade = DataFacade(live_data_dir) if DataFacade else None
+        
+        # 交易校验器
+        self.trade_validator = TradeValidator() if TradeValidator else None
+        
+        # 计算缓存 (避免重复运算)
+        self._calc_cache: Dict[str, Any] = {}
+        
+        # 缓存目录
+        self.cache_dir = Path('etf_reports/cache')
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def load_data(self) -> str:
         """加载数据，返回最新日期"""
         loader = DataLoader()
+        if getattr(self, '_simple_mode', False):
+            loader._simple_mode = True
+            from src.selector import Selector
+            Selector._simple_mode = True
         self.data = loader.load(self.data_dir)
         self.latest_date = max(df['date'].max() for df in self.data.values())
+        
+        # 预计算所有ETF的技术指标 (供报告使用RSI等)
+        indicator = Indicator()
+        for code in self.data:
+            self.data[code] = indicator.calculate(self.data[code])
+        
         return self.latest_date
     
     def analyze_market(self) -> Dict:
@@ -161,12 +203,110 @@ class ETFReportGenerator:
         avg_drawdown = sum(r['drawdown'] for r in self.validation_results) / len(self.validation_results)
         avg_sharpe = sum(r['sharpe'] for r in self.validation_results) / len(self.validation_results)
         
-        # 计算交易建议
+        # ========== 实时校验：获取实时价格 ==========
         top = self.current_etfs[0] if self.current_etfs else None
+        live_price = None
+        live_price_source = ""
+        live_timestamp = ""
+        price_deviation = 0.0
+        signal_price = top['price'] if top else 0.0
+        
+        if top and self.data_facade:
+            # 优先从热数据获取实时价格
+            hot_record = self.data_facade.hot.get(top['code'])
+            if hot_record:
+                live_price = hot_record.price
+                live_timestamp = hot_record.timestamp
+                live_price_source = "热数据"
+            else:
+                # 尝试从trade_validator获取实时价格
+                if self.trade_validator:
+                    realtime_data = self.trade_validator.fetch_realtime_prices([top['code']])
+                    if top['code'] in realtime_data:
+                        live_price = realtime_data[top['code']]['price']
+                        live_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+                        live_price_source = "实时API"
+        
+        # 计算价格偏差
+        if live_price and signal_price > 0:
+            price_deviation = (live_price - signal_price) / signal_price * 100
+        
+        # ========== RSI温度计算 ==========
+        rsi_5 = 50.0
+        rsi_14 = 50.0
+        rsi_temperature = "NORMAL"
+        rsi_temp_emoji = ""
+        
+        if top and top['code'] in self.data:
+            df = self.data[top['code']]
+            if 'rsi_14' in df.columns and len(df) > 0:
+                latest_row = df.iloc[-1]
+                rsi_14 = latest_row.get('rsi_14', 50.0)
+                rsi_5 = latest_row.get('rsi_5', 50.0)
+        
+        # RSI温度判断
+        if rsi_14 >= 70:
+            rsi_temperature = "OVERHEATED"
+            rsi_temp_emoji = "🔥过热"
+        elif rsi_14 >= 60:
+            rsi_temperature = "HIGH"
+            rsi_temp_emoji = "⚠️偏高"
+        elif rsi_14 <= 40:
+            rsi_temperature = "COOL"
+            rsi_temp_emoji = "❄️过冷"
+        elif rsi_14 <= 50:
+            rsi_temperature = "LOW"
+            rsi_temp_emoji = "📊偏低"
+        else:
+            rsi_temperature = "NORMAL"
+            rsi_temp_emoji = "✅正常"
+        
+        # ========== 计算止盈止损空间 ==========
+        target_price = signal_price * 1.08  # 止盈价 +8%
+        stop_price = signal_price * 0.95    # 止损价 -5%
+        target_gap = 0.0  # 距止盈空间 (%)
+        stop_gap = 0.0    # 距止损空间 (%)
+        
+        if live_price and signal_price > 0:
+            target_gap = (target_price - live_price) / live_price * 100
+            stop_gap = (stop_price - live_price) / live_price * 100
+        
+        # ========== 生成策略建议 ==========
+        strategy_advice = "建议观望，等待买入时机"
+        strategy_emoji = "⚠️"
+        
+        if live_price and signal_price > 0:
+            if rsi_14 >= 70:
+                # RSI过热，不建议追高
+                if price_deviation > 3:
+                    strategy_advice = f"现价{live_price:.3f}已高出信号价{price_deviation:+.1f}%，买入空间有限，建议等待回调"
+                    strategy_emoji = "⚠️"
+                else:
+                    strategy_advice = f"RSI高达{rsi_14:.0f}，短期过热，建议等待回调至{signal_price*1.02:.3f}以下再买入"
+                    strategy_emoji = "⚠️"
+            elif rsi_14 <= 40:
+                # RSI过冷，是买入机会
+                strategy_advice = f"RSI仅{rsi_14:.0f}，处于超卖区域，提供较好买入机会"
+                strategy_emoji = "💡"
+            elif price_deviation < -2:
+                # 价格低于信号价，是买入机会
+                strategy_advice = f"现价{live_price:.3f}低于信号价，提供买入机会，建议建仓"
+                strategy_emoji = "✅"
+            elif price_deviation > 5:
+                # 价格高出信号价5%以上，空间有限
+                strategy_advice = f"现价{live_price:.3f}已高出信号价{price_deviation:+.1f}%，建议等待回调至{signal_price*1.02:.3f}以下"
+                strategy_emoji = "⚠️"
+            else:
+                # 正常状态
+                strategy_advice = f"价格适中，RSI{rsi_14:.0f}，建议择机建仓"
+                strategy_emoji = "✅"
+        
+        # 计算交易建议
         position = 0
         action = "观望"
         if top:
-            position = int(capital * 0.9 / top['price'] / 100) * 100
+            price_to_use = live_price if live_price else signal_price
+            position = int(capital * 0.9 / price_to_use / 100) * 100
             action = f"买入 {top['code']} {top['name']} {position}股"
         
         # 构建报告 - 交易建议放开头和结尾
@@ -191,6 +331,31 @@ class ETFReportGenerator:
 【数量】{position}股 ({capital*0.9:,.0f}元)
 【止损】-5% ({top['price']*0.95:.3f}元)
 【止盈】+8% ({top['price']*1.08:.3f}元)
+
+{'='*70}
+🔍 实时校验 (实时数据对比)
+{'='*70}
+
+【实时数据】
+数据时间: {live_timestamp if live_timestamp else datetime.now().strftime('%Y-%m-%d %H:%M')}
+数据来源: {live_price_source if live_price_source else "无实时数据"}
+报告推荐价: {signal_price:.3f}元
+
+【价格对比】
+{'实时价: {:.3f} | 偏差: {:+.1f}%'.format(live_price, price_deviation) if live_price else "实时价: 暂无数据"}
+
+【止盈止损空间】
+{'距止盈: {:.3f} ({:+.1f}%) | 距止损: {:.3f} ({:+.1f}%)'.format(target_price, target_gap, stop_price, stop_gap) if live_price else "暂无实时数据"}
+
+【RSI温度计】
+RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
+状态: {rsi_temperature} {rsi_temp_emoji}
+
+{'='*70}
+📋 策略建议
+{'='*70}
+
+{strategy_emoji} {strategy_advice}
 
 {'='*70}
 一、市场环境分析
@@ -339,9 +504,18 @@ class ETFReportGenerator:
         return path
 
 
-def generate_decision_report(capital: float = 20000) -> str:
-    """快速生成决策报告"""
+def generate_decision_report(capital: float = 20000, simple: bool = False) -> str:
+    """快速生成决策报告
+    
+    Args:
+        capital: 本金
+        simple: 简版模式（禁用调试输出）
+    """
     generator = ETFReportGenerator()
+    if simple:
+        generator._simple_mode = True
+        from src.selector import Selector
+        Selector._simple_mode = True
     return generator.generate_report(capital)
 
 
