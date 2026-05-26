@@ -129,7 +129,7 @@ class TencentETFetcher:
         logger.info(f"开始采集 {len(self.ETF_CODES)} 只ETF数据...")
         
         for i, code in enumerate(self.ETF_CODES, 1):
-            logger.debug(f"  [{i}/{len(self.ETF_CODES)}] 获取 {code}...", end=" ")
+            logger.debug(f"  [{i}/{len(self.ETF_CODES)}] 获取 {code} ... ")
             df = self.fetch_etf(code, days)
             if len(df) > 0:
                 # 去掉前缀保存
@@ -193,11 +193,11 @@ class TencentETFetcher:
             
             # 需要补充的天数 + 缓冲
             fetch_days = min(days_diff + 3, days)
-            logger.debug(f"  {code}: 本地最新{local_latest}, 补充{fetch_days}天", end=" ... ")
+            logger.debug(f"  {code}: 本地最新{local_latest}, 补充{fetch_days}天 ... ")
         else:
             # 首次获取，获取足够的历史数据
             fetch_days = 365  # 首次获取1年数据
-            logger.debug(f"  {code}: 首次获取 {fetch_days}天", end=" ... ")
+            logger.debug(f"  {code}: 首次获取 {fetch_days}天 ... ")
         
         df = self.fetch_etf(code, days=fetch_days)
         
@@ -214,7 +214,21 @@ class TencentETFetcher:
         Returns:
             {code: DataFrame}
         """
-        return self.update_all_incremental()
+        results = {}
+        for code in self.get_etf_codes():
+            df = self.fetch_etf_incremental(code, days=days)
+            if len(df) > 0:
+                self.save_etf(code, df)
+                results[code] = df
+        return results
+    
+    def update_all_incremental(self, days: int = 7):
+        """增量更新所有ETF (别名，兼容旧代码)
+        
+        Returns:
+            {code: DataFrame}
+        """
+        return self.update_all(days)
     
     def get_latest_date(self) -> str:
         """获取本地数据最新日期"""
