@@ -174,11 +174,31 @@ class Selector:
             reasons.append(f"放量{int(row['vol_ratio']*100-100)}%")
         
         # 6. RSI健康 (+IC权重: 1) 或 超买扣分
+        # 注意：RSI超卖(<30)时需要MA20向上确认，避免"接飞刀"
         if not pd.isna(row.get('rsi_14')):
             rsi = row['rsi_14']
             if rsi < 70:
-                weighted_score += self.IC_WEIGHTS['rsi']
-                reasons.append('RSI')
+                # RSI超卖需要MA20向上确认
+                if rsi < 30:
+                    # 检查MA20是否向上
+                    ma20_up = False
+                    if len(df[df['date'] <= date]) >= 5:
+                        recent = df[df['date'] <= date].tail(5)
+                        if (len(recent) >= 5 and 
+                            not pd.isna(recent['ma20'].iloc[-1]) and 
+                            not pd.isna(recent['ma20'].iloc[0]) and
+                            recent['ma20'].iloc[-1] > recent['ma20'].iloc[0]):
+                            ma20_up = True
+                    
+                    if ma20_up:
+                        weighted_score += self.IC_WEIGHTS['rsi']
+                        reasons.append('RSI')
+                    else:
+                        # RSI超卖但MA20未向上，不加分（防止接飞刀）
+                        reasons.append('RSI')
+                else:
+                    weighted_score += self.IC_WEIGHTS['rsi']
+                    reasons.append('RSI')
             elif rsi < 80:
                 # 超买警告，不扣分但也不加分
                 reasons.append('RSI⚠️')
