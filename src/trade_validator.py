@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict, field
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DataSource(Enum):
@@ -395,7 +398,7 @@ class TradeValidator:
             except ConnectionError:
                 continue
             except Exception as e:
-                print(f"警告: {source.value} API异常: {e}")
+                logger.warning(f"警告: {source.value} API异常: {e}")
                 continue
         
         # 全部失败，返回缓存 (即使过期)
