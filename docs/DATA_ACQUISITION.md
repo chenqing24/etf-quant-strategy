@@ -33,16 +33,12 @@ https://web.ifzq.gtimg.cn/appstock/app/fqkline/get
 ### 2.3 响应格式
 
 ```json
-{
-  "data": {
-    "sh510300": {
-      "day": [["2026-05-26", "4.950", "4.970", "4.940", "4.960", "12345678"]]
-    }
-  }
-}
+kline_dayqfq={"code":0,"data":{"sh510300":{"qfqday":[["2026-05-26","4.950","4.970","4.940","4.960","12345678"]]}}}
 ```
 
-**返回字段**：
+**注意**：腾讯API返回带变量前缀的JSON，需要去掉`kline_dayqfq=`后再解析。
+
+**返回字段**（可能在`qfqday`或`day`字段下）：
 | 索引 | 字段 | 说明 |
 |:----:|------|------|
 | 0 | date | 日期 |
@@ -148,22 +144,22 @@ df = cache.get_or_compute(
 
 | 检查项 | 阈值 |
 |--------|------|
-| 数据条数 | ≥500天（约2年） |
+| 数据条数 | ≥300天（约1年） |
 | 缺失值比例 | <5% |
 | 异常价格 | 涨幅/跌幅 <20% |
 
 ### 6.2 过滤规则
 
 ```python
-# 过滤数据不足的ETF
-if len(df) >= 500:
+# 过滤数据不足的ETF（腾讯API只返回约365天数据）
+if len(df) >= 300:
     self.data[f.stem] = df
 ```
 
 ## 7. 使用示例
 
 ```python
-from src.data_fetcher import TencentETFetcher
+from src.data.fetcher import TencentETFetcher
 
 # 初始化
 fetcher = TencentETFetcher('etf_data_live')
@@ -172,10 +168,7 @@ fetcher = TencentETFetcher('etf_data_live')
 df = fetcher.fetch_etf('sh510300', days=30)
 
 # 更新所有ETF
-results = fetcher.fetch_all(days=7)
-
-# 增量更新
-df = fetcher.update_etf('sh510300')
+results = fetcher.update_all(days=7)
 ```
 
 ## 8. 修订历史
@@ -183,6 +176,7 @@ df = fetcher.update_etf('sh510300')
 | 日期 | 版本 | 修改内容 |
 |------|------|----------|
 | 2026-05-26 | 1.0 | 初始版本 |
+| 2026-05-26 | 1.1 | 修复API响应格式（带前缀JSON、字段名兼容性）、数据阈值500→300 |
 
 ---
 
