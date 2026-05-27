@@ -1,0 +1,346 @@
+[
+  {
+    "id": 1,
+    "name": "Exp1: 初始配置",
+    "description": "8因子初始IC验证，基准实验",
+    "created_at": "2026-05-27 17:31:52",
+    "factors": [
+      "RSI_5",
+      "DMA",
+      "DIF",
+      "K",
+      "OBV_diff",
+      "BB_percent",
+      "SAR_trend",
+      "ADX"
+    ],
+    "ic_results": {
+      "RSI_5": 0.00944841371203353,
+      "DMA": -0.01479477813593026,
+      "DIF": -0.020850421151400136,
+      "K": -0.018112357493985876,
+      "OBV_diff": -0.02809560911493797,
+      "BB_percent": 0.022778029422643793,
+      "SAR_trend": 0.02186138280775148,
+      "ADX": 0.12193069302580833
+    },
+    "factor_direction": {
+      "RSI_5": "neutral",
+      "DMA": "neutral",
+      "DIF": "short",
+      "K": "neutral",
+      "OBV_diff": "short",
+      "BB_percent": "long",
+      "SAR_trend": "long",
+      "ADX": "long"
+    },
+    "weights": {
+      "DIF": 0.09674645056550443,
+      "OBV_diff": 0.13036429521537765,
+      "BB_percent": 0.10569059883806864,
+      "SAR_trend": 0.10143733672073434,
+      "ADX": 0.5657613186603149
+    },
+    "backtest_result": {
+      "period": "test",
+      "total_return": 1.293316026570447,
+      "annual_return": 0.8091485091237369,
+      "sharpe_ratio": 3.0852413275436055,
+      "max_drawdown": 0.18955452613328871,
+      "win_rate": 0.6058394160583942,
+      "profit_loss_ratio": 1.0584734437146843,
+      "trade_count": 137
+    },
+    "tags": [
+      "initial",
+      "baseline"
+    ],
+    "round": 0
+  },
+  {
+    "id": 2,
+    "name": "Exp1: 初始配置",
+    "description": "8因子IC验证，基准配置",
+    "created_at": "2026-05-27 17:35:07",
+    "factors": [
+      "RSI_5",
+      "DMA",
+      "DIF",
+      "K",
+      "OBV_diff",
+      "BB_percent",
+      "SAR_trend",
+      "ADX"
+    ],
+    "ic_results": {
+      "RSI_5": 0.0094,
+      "DMA": -0.0148,
+      "DIF": -0.0209,
+      "K": -0.0181,
+      "OBV_diff": -0.0281,
+      "BB_percent": 0.0228,
+      "SAR_trend": 0.0219,
+      "ADX": 0.1219
+    },
+    "factor_direction": {
+      "RSI_5": "neutral",
+      "DMA": "neutral",
+      "DIF": "short",
+      "K": "neutral",
+      "OBV_diff": "short",
+      "BB_percent": "long",
+      "SAR_trend": "long",
+      "ADX": "long"
+    },
+    "weights": {
+      "DIF": 0.09693877551020406,
+      "OBV_diff": 0.1303339517625232,
+      "BB_percent": 0.10575139146567718,
+      "SAR_trend": 0.10157699443413729,
+      "ADX": 0.5653988868274582
+    },
+    "backtest_result": {
+      "period": "test",
+      "total_return": 1.293316026570447,
+      "annual_return": 0.8091485091237369,
+      "sharpe_ratio": 3.0852413275436055,
+      "max_drawdown": 0.18955452613328871,
+      "win_rate": 0.6058394160583942,
+      "profit_loss_ratio": 1.0584734437146843,
+      "trade_count": 137
+    },
+    "tags": [
+      "baseline",
+      "initial"
+    ],
+    "round": 1
+  },
+  {
+    "id": 3,
+    "name": "Exp2: ADX优先",
+    "description": "ADX权重40%，验证强趋势因子",
+    "created_at": "2026-05-27 17:35:14",
+    "factors": [
+      "ADX",
+      "BB_percent",
+      "SAR_trend",
+      "RSI_5",
+      "K",
+      "DIF",
+      "OBV_diff",
+      "DMA"
+    ],
+    "ic_results": {
+      "RSI_5": 0.0094,
+      "DMA": -0.0148,
+      "DIF": -0.0209,
+      "K": -0.0181,
+      "OBV_diff": -0.0281,
+      "BB_percent": 0.0228,
+      "SAR_trend": 0.0219,
+      "ADX": 0.1219
+    },
+    "factor_direction": {
+      "ADX": "long",
+      "BB_percent": "long",
+      "SAR_trend": "long",
+      "DIF": "short",
+      "OBV_diff": "short",
+      "RSI_5": "neutral",
+      "K": "neutral",
+      "DMA": "neutral"
+    },
+    "weights": {
+      "ADX": 0.4,
+      "BB_percent": 0.25,
+      "SAR_trend": 0.25,
+      "OBV_diff": 0.05,
+      "DIF": 0.05
+    },
+    "backtest_result": {
+      "period": "test",
+      "total_return": 1.2724121431176032,
+      "annual_return": 0.7973540881715755,
+      "sharpe_ratio": 3.5768843892847992,
+      "max_drawdown": 0.18858378381119012,
+      "win_rate": 0.5984848484848485,
+      "profit_loss_ratio": 1.2048241517949072,
+      "trade_count": 132
+    },
+    "tags": [
+      "adx",
+      "trend"
+    ],
+    "round": 1
+  },
+  {
+    "id": 4,
+    "name": "Exp3: 保守配置",
+    "description": "止损8%止盈15%，阈值0.7，更严格条件",
+    "created_at": "2026-05-27 17:35:22",
+    "factors": [
+      "RSI_5",
+      "DMA",
+      "DIF",
+      "K",
+      "OBV_diff",
+      "BB_percent",
+      "SAR_trend",
+      "ADX"
+    ],
+    "ic_results": {
+      "RSI_5": 0.0094,
+      "DMA": -0.0148,
+      "DIF": -0.0209,
+      "K": -0.0181,
+      "OBV_diff": -0.0281,
+      "BB_percent": 0.0228,
+      "SAR_trend": 0.0219,
+      "ADX": 0.1219
+    },
+    "factor_direction": {
+      "ADX": "long",
+      "BB_percent": "long",
+      "SAR_trend": "long",
+      "DIF": "short",
+      "OBV_diff": "short",
+      "RSI_5": "neutral",
+      "K": "neutral",
+      "DMA": "neutral"
+    },
+    "weights": {
+      "ADX": 0.3,
+      "BB_percent": 0.2,
+      "SAR_trend": 0.2,
+      "OBV_diff": 0.15,
+      "DIF": 0.15
+    },
+    "backtest_result": {
+      "period": "test",
+      "total_return": 1.3192215371580147,
+      "annual_return": 0.823722430117686,
+      "sharpe_ratio": 5.329305343164086,
+      "max_drawdown": 0.23458443566340667,
+      "win_rate": 0.6415094339622641,
+      "profit_loss_ratio": 1.3303771687849169,
+      "trade_count": 53
+    },
+    "tags": [
+      "conservative",
+      "strict"
+    ],
+    "round": 1
+  },
+  {
+    "id": 5,
+    "name": "Exp4: 激进配置",
+    "description": "只用3因子，止损2%止盈5%",
+    "created_at": "2026-05-27 17:35:30",
+    "factors": [
+      "RSI_5",
+      "DMA",
+      "DIF",
+      "K",
+      "OBV_diff",
+      "BB_percent",
+      "SAR_trend",
+      "ADX"
+    ],
+    "ic_results": {
+      "RSI_5": 0.0094,
+      "DMA": -0.0148,
+      "DIF": -0.0209,
+      "K": -0.0181,
+      "OBV_diff": -0.0281,
+      "BB_percent": 0.0228,
+      "SAR_trend": 0.0219,
+      "ADX": 0.1219
+    },
+    "factor_direction": {
+      "ADX": "long",
+      "BB_percent": "long",
+      "SAR_trend": "long",
+      "DIF": "short",
+      "OBV_diff": "short",
+      "RSI_5": "neutral",
+      "K": "neutral",
+      "DMA": "neutral"
+    },
+    "weights": {
+      "ADX": 0.5,
+      "BB_percent": 0.3,
+      "SAR_trend": 0.2
+    },
+    "backtest_result": {
+      "period": "test",
+      "total_return": 2.816832135489523,
+      "annual_return": 1.6031679328519974,
+      "sharpe_ratio": 3.911785496864134,
+      "max_drawdown": 0.18728991198609402,
+      "win_rate": 0.5991379310344828,
+      "profit_loss_ratio": 1.1906660682180559,
+      "trade_count": 232
+    },
+    "tags": [
+      "aggressive",
+      "3factors"
+    ],
+    "round": 1
+  },
+  {
+    "id": 6,
+    "name": "Exp5: 动量因子",
+    "description": "使用ADX/SAR/K/DIF动量组合",
+    "created_at": "2026-05-27 17:35:37",
+    "factors": [
+      "RSI_5",
+      "DMA",
+      "DIF",
+      "K",
+      "OBV_diff",
+      "BB_percent",
+      "SAR_trend",
+      "ADX"
+    ],
+    "ic_results": {
+      "RSI_5": 0.0094,
+      "DMA": -0.0148,
+      "DIF": -0.0209,
+      "K": -0.0181,
+      "OBV_diff": -0.0281,
+      "BB_percent": 0.0228,
+      "SAR_trend": 0.0219,
+      "ADX": 0.1219
+    },
+    "factor_direction": {
+      "ADX": "long",
+      "BB_percent": "long",
+      "SAR_trend": "long",
+      "DIF": "short",
+      "OBV_diff": "short",
+      "RSI_5": "neutral",
+      "K": "neutral",
+      "DMA": "neutral"
+    },
+    "weights": {
+      "ADX": 0.35,
+      "SAR_trend": 0.25,
+      "K": 0.2,
+      "DIF": 0.2
+    },
+    "backtest_result": {
+      "period": "test",
+      "total_return": 1.800017703656744,
+      "annual_return": 1.0864143217625961,
+      "sharpe_ratio": 3.9622856869380545,
+      "max_drawdown": 0.33748865705110703,
+      "win_rate": 0.6153846153846154,
+      "profit_loss_ratio": 1.1854856600646977,
+      "trade_count": 130
+    },
+    "tags": [
+      "momentum"
+    ],
+    "round": 1
+  }
+]
