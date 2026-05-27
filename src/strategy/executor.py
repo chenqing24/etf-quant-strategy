@@ -36,6 +36,7 @@ class PositionExecutor:
         self.positions: Dict[str, Position] = {}
         self.trades: List[Dict] = []
         self.equity = 1.0  # 初始权益
+        self.equity_before_trade = 1.0  # 开仓前权益
     
     def can_open(self) -> bool:
         """是否可以开仓"""
@@ -74,6 +75,9 @@ class PositionExecutor:
         
         if shares <= 0:
             return False
+        
+        # 保存开仓前的权益用于计算
+        self.equity_before_trade = self.equity
         
         # 记录持仓
         self.positions[code] = Position(
@@ -177,8 +181,9 @@ class PositionExecutor:
             'exit_reason': reason
         })
         
-        # 更新权益
-        self.equity *= (1 + pnl_pct)
+        # 更新权益 (按持仓比例计算对整体的影响)
+        position_ratio = (pos.shares * pos.entry_price) / self.equity_before_trade
+        self.equity *= (1 + pnl_pct * position_ratio)
         
         # 删除持仓
         del self.positions[pos.code]

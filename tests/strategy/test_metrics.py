@@ -88,7 +88,7 @@ class TestMetricsCalculator:
         
         # 盈亏比 = 平均盈利 / |平均亏损|
         assert result.profit_loss_ratio == pytest.approx(2.0, rel=0.01)  # 0.1/0.05=2
-        assert result.avg_profit == pytest.approx(0.1, rel=0.01)
+        assert result.avg_win == pytest.approx(0.1, rel=0.01)
         assert result.avg_loss == pytest.approx(-0.05, rel=0.01)
     
     def test_annual_return(self, calculator):

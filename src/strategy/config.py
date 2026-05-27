@@ -114,10 +114,10 @@ class BacktestConfig:
 @dataclass
 class DataConfig:
     """数据配置"""
-    train_start: str = "2022-01-01"
-    train_end: str = "2024-12-31"
-    test_start: str = "2025-01-01"
-    test_end: str = "2026-05-27"
+    train_start: str = "2020-01-01"
+    train_end: str = "2023-06-30"
+    test_start: str = "2023-07-01"
+    test_end: str = "2024-12-31"
     
     def to_dict(self) -> Dict:
         """序列化为字典"""
