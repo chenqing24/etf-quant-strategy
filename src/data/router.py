@@ -14,6 +14,7 @@ from src.constants import (
     SINA_REALTIME_URL, SINA_KLINE_URL, SINA_REFERER,
     TENCENT_BASE_URL
 )
+from src.data.code_mapper import ETFCodeMapper
 
 # 默认HTTP头
 DEFAULT_HEADERS = {
@@ -311,7 +312,63 @@ class DataSourceRouter:
 
     def _fetch_baostock(self, codes: List[str], **kwargs) -> Dict[str, List]:
         """
-        获取BaoStock日线数据（股票用）
-        暂不实现，需要 baostock 库
+        获取BaoStock日线数据
+        
+        Args:
+            codes: ETF代码列表
+            **kwargs: 可选参数 start, end, days
+            
+        Returns:
+            {code: [{date, open, high, low, close, volume}, ...]}
         """
-        return {code: [] for code in codes}
+        import baostock as bs
+        
+        results = {code: [] for code in codes}
+        start_date = kwargs.get('start', '2020-01-01')
+        end_date = kwargs.get('end', '2026-12-31')
+        
+        # 登录（只登录一次）
+        try:
+            bs.login()
+        except Exception:
+            return results
+        
+        for code in codes:
+            # 使用 ETFCodeMapper 转换代码
+            bs_code = ETFCodeMapper.to_source(code, ETFCodeMapper.SOURCE_BAOSTOCK)
+            
+            try:
+                rs = bs.query_history_k_data_plus(
+                    code=bs_code,
+                    fields='date,open,high,low,close,volume',
+                    start_date=start_date,
+                    end_date=end_date,
+                    frequency='d',
+                    adjustflag='3'  # 前复权
+                )
+                
+                if rs.error_code == '0':
+                    data_list = []
+                    while rs.next():
+                        row = rs.get_row_data()
+                        if len(row) >= 6:
+                            data_list.append({
+                                'date': row[0],
+                                'open': float(row[1]),
+                                'close': float(row[4]),
+                                'high': float(row[2]),
+                                'low': float(row[3]),
+                                'volume': int(float(row[5]))
+                            })
+                    results[code] = data_list
+                    
+            except Exception:
+                pass
+        
+        # 登出
+        try:
+            bs.logout()
+        except Exception:
+            pass
+        
+        return results
