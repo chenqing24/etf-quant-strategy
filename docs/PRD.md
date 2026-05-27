@@ -310,6 +310,8 @@ python tests/test_regression.py
 
 ### 10.1 回测引擎三层解耦
 
+**状态**: 已确认 ✅
+
 **问题**：现有两套回测引擎重复建设，难以维护
 - 原引擎 `src/core/backtest.py`：强耦合 Selector/TradeExecutor/MarketFilter
 - 新引擎 `src/backtest/engine.py`：独立设计，缺少市场过滤/调仓周期
@@ -372,6 +374,185 @@ python tests/test_regression.py
 **优先级**: P1
 
 **预计工时**: 2天
+
+---
+
+### 10.2 配置驱动的策略执行框架
+
+**状态**: 已确认 ✅
+
+**问题**：策略挖掘与执行引擎紧耦合
+- 每换一个策略就要改代码
+- 结果不可比（执行逻辑可能不同）
+
+**目标**：策略配置与执行引擎完全分离
+
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  挖掘系统         │     │   配置输出        │     │   统一引擎        │
+│  (Experimenter)  │ ──▶ │   (JSON/DB)      │ ──▶ │   (Executor)     │
+│                  │     │                  │     │                  │
+│  - IC分析        │     │  factors         │     │  - 逐日循环      │
+│  - 权重计算      │     │  weights         │     │  - 持仓管理      │
+│  - 参数调优      │     │  config          │     │  - 风控止损      │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+                                                          │
+                                                          ▼
+                                                 ┌──────────────────┐
+                                                 │   统一结果        │
+                                                 │   BacktestResult  │
+                                                 └──────────────────┘
+```
+
+**配置结构**：
+
+```json
+{
+  "experiment": {
+    "id": 1,
+    "name": "Exp6: 优化止盈止损",
+    "version": "v0.1.0"
+  },
+  "factors": {
+    "list": ["ADX", "BB_percent", "SAR_trend"],
+    "weights": {
+      "ADX": 0.5,
+      "BB_percent": 0.3,
+      "SAR_trend": 0.2
+    },
+    "direction": {
+      "ADX": "long",
+      "BB_percent": "long",
+      "SAR_trend": "long"
+    }
+  },
+  "backtest": {
+    "stop_loss": -0.03,
+    "stop_profit": 0.08,
+    "min_score": 0.55,
+    "hold_days": 5,
+    "min_factors": 2
+  },
+  "data": {
+    "train_start": "2022-01-01",
+    "train_end": "2024-12-31",
+    "test_start": "2025-01-01",
+    "test_end": "2026-05-27"
+  }
+}
+```
+
+**模块说明**：
+
+| 模块 | 文件 | 职责 | 输入 | 输出 |
+|------|------|------|------|------|
+| 策略配置 | `strategy_config.py` | 配置序列化/反序列化 | Python对象 | JSON/DB |
+| 配置存储 | `experiment_store.py` | 配置持久化 | Config对象 | experiments.json |
+| 统一引擎 | `universal_executor.py` | 配置驱动执行 | JSON/Config | BacktestResult |
+
+**核心类设计**：
+
+```python
+@dataclass
+class FactorStrategy:
+    """因子策略配置"""
+    name: str
+    factors: List[str]
+    weights: Dict[str, float]           # 因子权重
+    direction: Dict[str, str]            # 因子方向 (long/short/neutral)
+    score_threshold: float = 0.6         # 分数阈值
+    min_factors: int = 2                 # 最少有效因子数
+
+
+@dataclass
+class BacktestConfig:
+    """回测配置"""
+    stop_loss: float = -0.05             # 止损
+    stop_profit: float = 0.10            # 止盈
+    hold_days: int = 5                   # 最大持仓天数
+    max_positions: int = 2               # 最大持仓数
+    commission: float = 0.0003            # 手续费
+    slippage: float = 0.001             # 滑点
+
+
+@dataclass
+class ExperimentConfig:
+    """实验完整配置"""
+    experiment: FactorStrategy
+    backtest: BacktestConfig
+    data: Dict[str, str]               # 时间范围
+
+
+class UniversalExecutor:
+    """统一执行引擎"""
+    
+    def load_config(self, config: ExperimentConfig) -> None:
+        """加载配置"""
+        
+    def run(self) -> BacktestResult:
+        """执行回测"""
+        
+    def run_with_store(self, exp_id: int) -> BacktestResult:
+        """从存储加载配置并执行"""
+```
+
+**验收标准**：
+
+| AC-ID | 标准 |
+|-------|------|
+| AC10-5 | 任意实验配置可通过 JSON 执行 |
+| AC10-6 | 结果与配置参数完全对应 |
+| AC10-7 | 可从 experiments.json 加载并重跑 |
+| AC10-8 | 不同配置的结果可直接对比 |
+
+**优先级**: P1
+
+**预计工时**: 1天
+
+---
+
+### 10.3 开发任务清单
+
+| 任务 | 文件 | 依赖 | 优先级 | 工时 |
+|------|------|------|:------:|------|
+| T10-1 | `scorer.py` 评分器 | 无 | P0 | 2h |
+| T10-2 | `executor.py` 执行器 | 无 | P0 | 2h |
+| T10-3 | `metrics.py` 指标计算 | 无 | P0 | 1h |
+| T10-4 | `strategy_config.py` 配置类 | T10-1,2,3 | P0 | 1h |
+| T10-5 | `universal_executor.py` 统一引擎 | T10-4 | P0 | 2h |
+| T10-6 | `experiment_store.py` 配置存储 | T10-4 | P1 | 1h |
+| T10-7 | 单元测试 | T10-1~6 | P1 | 2h |
+| T10-8 | 回归测试（复现Exp1-5） | T10-5,7 | P1 | 2h |
+
+**总工时**: 2天
+
+---
+
+### 10.4 数据流设计
+
+```
+1. 挖掘输出配置
+   ExperimentLogger → experiments.json
+
+2. 引擎加载配置
+   experiments.json → ExperimentConfig → FactorStrategy + BacktestConfig
+
+3. 统一执行
+   FactorScorer → scores → UniversalExecutor → BacktestResult
+
+4. 结果存储
+   BacktestResult → experiments.json (更新backtest_result字段)
+```
+
+---
+
+### 10.5 向后兼容
+
+| 现有文件 | 处理方式 |
+|---------|----------|
+| `src/core/backtest.py` | 保留，底层调用新引擎 |
+| `src/backtest/engine.py` | 废弃，迁移到 universal_executor |
+| `src/analysis/experiment_logger.py` | 改造，增加配置存储功能 |
 
 ---
 
