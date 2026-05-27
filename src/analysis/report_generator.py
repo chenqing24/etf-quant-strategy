@@ -235,21 +235,22 @@ class ETFReportGenerator:
         price_deviation = 0.0
         signal_price = top['price'] if top else 0.0
         
-        if top and self.data_facade:
-            # 优先从热数据获取实时价格
-            hot_record = self.data_facade.hot.get(top['code'])
-            if hot_record:
-                live_price = hot_record.price
-                live_timestamp = hot_record.timestamp
-                live_price_source = "热数据"
+        if top and self.trade_validator:
+            # 按优先级获取实时价格：腾讯 → 东方财富 → 新浪
+            realtime_data = self.trade_validator.fetch_realtime_prices([top['code']])
+            if top['code'] in realtime_data:
+                realtime_info = realtime_data[top['code']]
+                live_price = realtime_info.get('price')
+                live_price_source = realtime_info.get('data_source', '实时API')
+                live_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
             else:
-                # 尝试从trade_validator获取实时价格
-                if self.trade_validator:
-                    realtime_data = self.trade_validator.fetch_realtime_prices([top['code']])
-                    if top['code'] in realtime_data:
-                        live_price = realtime_data[top['code']]['price']
-                        live_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
-                        live_price_source = "实时API"
+                # 所有API失败，返回昨收盘价作为参考
+                if top['code'] in self.data:
+                    df = self.data[top['code']]
+                    if len(df) > 0:
+                        live_price = df.iloc[-1]['close']
+                        live_price_source = "昨收盘(API不可用)"
+                        live_timestamp = self.latest_date
         
         # 计算价格偏差
         if live_price and signal_price > 0:
