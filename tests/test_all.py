@@ -38,13 +38,13 @@ def test_01_config():
     print("✓ test_01_config 通过")
 
 
-@pytest.mark.skip(reason="需要etf_data_50目录")
+@pytest.mark.skip(reason="需要较多样本数据，耗时较长")
 def test_02_data_loader():
     """测试数据加载"""
     from src.data.loader import DataLoader
     
     loader = DataLoader()
-    data = loader.load('../etf_data_50')
+    data = loader.load('etf_data_live')
     
     assert len(data) > 0, "应加载到数据"
     assert '510300' in data, "应包含沪深300"
@@ -88,7 +88,7 @@ def test_03_indicator():
     print("✓ test_03_indicator 通过")
 
 
-@pytest.mark.skip(reason="需要etf_data_50目录")
+@pytest.mark.skip(reason="需要较多样本数据，耗时较长")
 def test_04_selector():
     """测试选股"""
     from src.core.selector import Selector
@@ -98,7 +98,7 @@ def test_04_selector():
     
     # 加载真实数据
     loader = DataLoader()
-    data = loader.load('../etf_data_50')
+    data = loader.load('etf_data_live')
     
     # 选ETF
     config = StrategyConfig()
@@ -193,7 +193,7 @@ def test_07_metrics():
     print("✓ test_07_metrics 通过")
 
 
-@pytest.mark.skip(reason="需要etf_data_50目录")
+@pytest.mark.skip(reason="需要较多样本数据，耗时较长")
 def test_08_integration():
     """集成测试"""
     from src.utils.config import run_strategy
@@ -203,7 +203,7 @@ def test_08_integration():
         test_start='2025-05-06',
         test_end='2025-06-30',
         rebalance_days=10,
-        data_dir='../etf_data_50'
+        data_dir='etf_data_live'
     )
     
     # 验证返回值
@@ -252,7 +252,7 @@ def test_09_factor_analysis():
     print("✓ test_09_factor_analysis 通过")
 
 
-@pytest.mark.skip(reason="需要etf_data_50目录")
+@pytest.mark.skip(reason="需要较多样本数据，耗时较长")
 def test_10_trailing_stop():
     """测试移动止盈"""
     from src.utils.config import StrategyConfig, run_strategy
@@ -275,7 +275,7 @@ def test_10_trailing_stop():
         enable_trailing_stop=True,
         trailing_threshold=0.10,
         trailing_stop=0.08,
-        data_dir='../etf_data_50'
+        data_dir='etf_data_live'
     )
     
     # 验证返回
@@ -286,12 +286,12 @@ def test_10_trailing_stop():
     print("✓ test_10_trailing_stop 通过")
 
 
-@pytest.mark.skip(reason="需要etf_data_50目录")
+@pytest.mark.skip(reason="需要较多样本数据，耗时较长")
 def test_11_cross_validation():
     """测试交叉验证"""
     from src.cross_validation import CrossValidator, ValidationWindow
     
-    validator = CrossValidator(data_dir='../etf_data_50')
+    validator = CrossValidator(data_dir='etf_data_live')
     
     # 短窗口测试
     windows = [
@@ -370,7 +370,7 @@ def test_14_sensitivity():
     """测试参数敏感性分析"""
     from src.sensitivity_analysis import SensitivityAnalyzer
     
-    analyzer = SensitivityAnalyzer(data_dir='../etf_data_50')
+    analyzer = SensitivityAnalyzer(data_dir='etf_data_live')
     
     # 简单参数网格
     param_grid = {'rebalance_days': [5, 10]}
@@ -496,12 +496,12 @@ def test_18_slippage_config():
     print("✓ test_18_slippage_config 通过")
 
 
-@pytest.mark.skip(reason="需要etf_data_50目录")
+@pytest.mark.skip(reason="需要较多样本数据，耗时较长")
 def test_19_report_generator():
     """测试报告生成器"""
     from src.analysis.report_generator import ETFReportGenerator
     
-    generator = ETFReportGenerator(data_dir='../etf_data_50')
+    generator = ETFReportGenerator(data_dir='etf_data_live')
     
     # 加载数据
     latest = generator.load_data()

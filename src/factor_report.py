@@ -156,7 +156,7 @@ def quick_report():
     """快速报告测试"""
     from .config import load_etf_data
     
-    data = load_etf_data('etf_data_50')
+    data = load_etf_data('etf_data_live')
     
     report = FactorReport()
     df = report.generate_report(data)

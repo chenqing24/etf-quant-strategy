@@ -21,7 +21,7 @@ class ValidationWindow:
 class CrossValidator:
     """交叉验证器"""
     
-    def __init__(self, data_dir: str = 'etf_data_50'):
+    def __init__(self, data_dir: str = 'etf_data_live'):
         self.data_dir = data_dir
         self.results: List[Dict] = []
     

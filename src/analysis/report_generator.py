@@ -64,7 +64,7 @@ ETF_NAMES = {
 class ETFReportGenerator:
     """ETF投资决策报告生成器 (含实时校验)"""
     
-    def __init__(self, data_dir: str = '../etf_data_50', live_data_dir: str = 'etf_data_live'):
+    def __init__(self, data_dir: str = 'etf_data_live', live_data_dir: str = 'etf_data_live'):
         self.data_dir = data_dir
         self.live_data_dir = live_data_dir
         self.data = None

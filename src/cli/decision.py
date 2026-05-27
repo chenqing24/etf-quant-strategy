@@ -182,7 +182,7 @@ class ETFDecisionEngine:
             loader._simple_mode = True
             from src.core.selector import Selector
             Selector._simple_mode = True
-        self._etf_data = loader.load('../etf_data_50')
+        self._etf_data = loader.load('etf_data_live')
         logger.info(f"加载 {len(self._etf_data)} 只ETF数据")
         
         # 获取数据最新日期
@@ -214,7 +214,7 @@ class ETFDecisionEngine:
                     self.fetcher.update_all(days=7)
                     logger.info("  数据更新成功")
                     # 重新加载数据
-                    self._etf_data = loader.load('../etf_data_50')
+                    self._etf_data = loader.load('etf_data_live')
                     data_freshness = '✅ 已更新'
                     data_warning = ''
                 except Exception as e:
