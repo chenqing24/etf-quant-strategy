@@ -87,6 +87,7 @@ CREATE TABLE metadata (
 | ETF小时线 | 新浪直连API scale=30 | ~1800条/1.5年 | — |
 | 股票日线 | BaoStock | ~300天 | Tushare |
 | 股票分钟 | AKShare stock_zh_a_minute | 不稳定 | — |
+| 浏览器搜索 | 备选实时 | 备源 | 东方财富EMF（最后） |
 
 ### 小时线定位约束
 - **仅作信号增强**，不能单独触发交易决策
@@ -123,6 +124,12 @@ CREATE TABLE metadata (
     ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
     │ 腾讯API │ │ 新浪API │ │Tushare  │ │BaoStock │
     └─────────┘ └─────────┘ └─────────┘ └─────────┘
+                                                  │
+                                          ┌──────┴──────┐
+                                          │ AKShare     │
+                                          │ 浏览器搜索   │
+                                          │ 东方财富EMF │ ← 最后备源
+                                          └─────────────┘
 ```
 
 ## 6. DataSourceRouter
@@ -131,14 +138,16 @@ CREATE TABLE metadata (
 class DataSourceRouter:
     """采集路由器 - 唯一外部数据入口"""
     
-    # 数据源配置
+    # 数据源配置（优先级从高到低）
     SOURCES = {
-        'realtime': 'sina',
-        'daily': 'tencent',
-        'daily_backup': 'tushare',
-        'hourly': 'sina',
-        'stock_min': 'akshare',
-        'stock_daily': 'baostock',
+        'realtime': 'sina',           # 1. 新浪（优先）
+        'realtime_backup': 'browser', # 2. 浏览器搜索
+        'realtime_last': 'emf',       # 3. 东方财富EMF（最后）
+        'daily': 'tencent',           # 1. 腾讯API（优先）
+        'daily_backup': 'tushare',    # 2. Tushare
+        'hourly': 'sina',             # 1. 新浪（优先）
+        'stock_min': 'akshare',       # 1. AKShare
+        'stock_daily': 'baostock',    # 1. BaoStock
     }
     
     def __init__(self):
@@ -199,6 +208,7 @@ class DataFacade:
 | 统一缓存 | 所有数据先查缓存（5分钟TTL） |
 | 统一等待 | 所有请求经过 RateLimiter(2-5秒) |
 | 多源降级 | 主源失败时自动切换备源，上层无感知 |
+| 东方财富末位 | EMF仅作为最后的备源，避免频繁调用 |
 
 ## 8. 生命周期阶段
 
@@ -266,7 +276,7 @@ DataFacade('etf_data_live').migrate()
 | decision.py | DataFacade + TencentETFetcher | DataFacade ✅ |
 | report_generator.py | DataFacade | DataFacade ✅ |
 | tracker.py | DataFacade + 腾讯API直调 | 仅DataFacade ⚠️ |
-| validator.py | 腾讯/东财/新浪API直调 | 仅DataFacade ❌ |
+| validator.py | 腾讯/东财(末位)/新浪API直调 | 仅DataFacade ❌ |
 
 ## 11. 文件清单
 
@@ -288,7 +298,8 @@ DataFacade('etf_data_live').migrate()
 - [ ] DataFacade.migrate() 能触发热→SQLite迁移
 - [ ] 生命周期包含：盘中更新 → 收盘确认 → 归档到SQLite
 - [ ] 现有决策系统评分/报告功能正常
+- [ ] 东方财富EMF仅作为最后备源，不优先调用
 
 ---
 
-*文档版本: v2.0 | 创建日期: 2026-05-25 | 更新: 2026-05-26*
+*文档版本: v2.1 | 创建日期: 2026-05-25 | 更新: 2026-05-27 - 调整数据源优先级，东方财富移至末位*
