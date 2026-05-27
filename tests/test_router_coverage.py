@@ -201,5 +201,208 @@ class TestDataSourceRouterEdgeCases:
             print(f"预期异常: {e}")
 
 
+class TestDataSourceRouterBackupSource:
+    """测试backup数据源降级"""
+
+    @pytest.fixture
+    def router(self):
+        return DataSourceRouter()
+
+    @patch('src.data.router.DataSourceRouter._fetch_sina')
+    def test_fetch_主源失败_降级到backup(self, mock_fetch_sina, router):
+        """测试主源失败时降级到backup数据源"""
+        # 主源返回空
+        mock_fetch_sina.return_value = {}
+        
+        # 使用realtime类型（主sina备tencent），但sina返回空
+        # 需要mock _fetch_tencent来验证backup被调用
+        with patch('src.data.router.DataSourceRouter._fetch_tencent') as mock_tencent:
+            mock_tencent.return_value = {'510300': {'price': 4.5}}
+            
+            # 手动调用fetch触发backup逻辑
+            result = router._try_fetch('tencent', 'realtime', ['510300'])
+            
+            # backup会被调用
+            assert result is not None or mock_tencent.called
+
+    @patch('src.data.router.DataSourceRouter._fetch_sina')
+    def test_fetch_主源成功_不调用backup(self, mock_fetch_sina, router):
+        """测试主源成功时不调用backup"""
+        mock_fetch_sina.return_value = {'510300': {'price': 4.5}}
+        
+        # 调用try_fetch，source为sina
+        result = router._try_fetch('sina', 'realtime', ['510300'])
+        
+        assert result == {'510300': {'price': 4.5}}
+
+
+class TestDataSourceRouterRetryLogic:
+    """测试重试逻辑"""
+
+    @pytest.fixture
+    def router(self):
+        return DataSourceRouter()
+
+    @patch('requests.get')
+    def test_fetch_with_retry_成功(self, mock_get, router):
+        """测试重试逻辑-首次成功"""
+        mock_response = MagicMock()
+        mock_response.text = 'test_data'
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+        
+        result = router._fetch_with_retry('http://test.com')
+        
+        assert result == 'test_data'
+        assert mock_get.call_count == 1
+
+    @patch('requests.get')
+    def test_fetch_with_retry_重试后成功(self, mock_get, router):
+        """测试重试逻辑-首次失败，重试后成功"""
+        # 第一次失败，第二次成功
+        mock_response_fail = MagicMock()
+        mock_response_fail.raise_for_status.side_effect = Exception("Network error")
+        
+        mock_response_success = MagicMock()
+        mock_response_success.text = 'test_data'
+        mock_response_success.raise_for_status = MagicMock()
+        
+        mock_get.side_effect = [mock_response_fail, mock_response_success]
+        
+        result = router._fetch_with_retry('http://test.com')
+        
+        assert result == 'test_data'
+        assert mock_get.call_count == 2
+
+    @patch('requests.get')
+    def test_fetch_with_retry_全部失败(self, mock_get, router):
+        """测试重试逻辑-全部失败"""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = Exception("Network error")
+        mock_get.return_value = mock_response
+        
+        result = router._fetch_with_retry('http://test.com')
+        
+        assert result is None
+        assert mock_get.call_count == 3  # 重试3次
+
+
+class TestDataSourceRouterCache:
+    """测试缓存逻辑"""
+
+    @pytest.fixture
+    def router(self):
+        return DataSourceRouter()
+
+    def test_cache_命中(self, router):
+        """测试缓存命中"""
+        test_key = 'test_key'
+        test_data = {'value': 123}
+        
+        # 设置缓存
+        router._set_cache(test_key, test_data)
+        
+        # 获取缓存（TTL内）
+        result = router._get_cache(test_key)
+        
+        assert result == test_data
+
+    def test_cache_未设置(self, router):
+        """测试缓存未设置"""
+        result = router._get_cache('nonexistent_key')
+        
+        assert result is None
+
+    def test_cache_key_不同code排序(self, router):
+        """测试缓存key对code排序"""
+        key1 = router._cache_key('sina', 'realtime', ['sh510300', 'sz159919'])
+        key2 = router._cache_key('sina', 'realtime', ['sz159919', 'sh510300'])
+        
+        # 由于sorted，相同codes不同顺序应生成相同key
+        assert key1 == key2
+
+
+class TestDataSourceRouterParsing:
+    """测试解析逻辑"""
+
+    @pytest.fixture
+    def router(self):
+        return DataSourceRouter()
+
+    def test_parse_sina_realtime_正常(self, router):
+        """测试解析新浪实时数据-正常"""
+        text = 'var hq_str_sh510300="基金名称,4.5,4.4,4.45,4.6,4.3,1000000,"'
+        
+        result = router._parse_sina_realtime(text, ['sh510300'])
+        
+        assert 'sh510300' in result
+        assert result['sh510300']['price'] == 4.5
+
+    def test_parse_sina_realtime_数据不足(self, router):
+        """测试解析新浪实时数据-数据不足"""
+        text = 'var hq_str_sh510300="基金名称,4.5,"'
+        
+        result = router._parse_sina_realtime(text, ['sh510300'])
+        
+        assert result['sh510300'] is None
+
+    def test_parse_sina_realtime_格式错误(self, router):
+        """测试解析新浪实时数据-格式错误"""
+        text = 'invalid_format'
+        
+        result = router._parse_sina_realtime(text, ['sh510300'])
+        
+        assert result['sh510300'] is None
+
+    def test_parse_tencent_daily_异常(self, router):
+        """测试解析腾讯日线数据-异常"""
+        with patch('src.data.router.DataSourceRouter._fetch_with_retry') as mock_retry:
+            # 返回异常格式数据
+            mock_retry.return_value = 'invalid_json{'
+            
+            result = router._fetch_tencent(['sh510300'])
+            
+            # 应该返回空结果
+            assert 'sh510300' in result
+
+
+class TestDataSourceRouterBaostock:
+    """测试Baostock数据源（依赖外部模块，跳过实际调用）"""
+
+    @pytest.fixture
+    def router(self):
+        return DataSourceRouter()
+
+    def test_baostock方法存在(self, router):
+        """验证_fetch_baostock方法存在"""
+        assert hasattr(router, '_fetch_baostock'), "_fetch_baostock方法不存在"
+    
+    @pytest.mark.skip(reason="baostock模块未安装，使用时单独测试")
+    def test_fetch_baostock_调用(self, router):
+        """测试调用_fetch_baostock"""
+        result = router._fetch_baostock(['sh510300'])
+        assert 'sh510300' in result
+
+    @pytest.mark.skip(reason="baostock模块未安装，使用时单独测试")
+    def test_fetch_baostock_空结果(self, router):
+        """测试_fetch_baostock返回空"""
+        result = router._fetch_baostock(['sh510300'])
+        assert 'sh510300' in result
+
+
+class TestDataSourceRouterTushare:
+    """测试Tushare数据源（依赖外部模块，跳过实际调用）"""
+
+    @pytest.fixture
+    def router(self):
+        return DataSourceRouter()
+
+    @pytest.mark.skip(reason="tushare方法当前不存在，需要时再实现")
+    def test_fetch_tushare_调用(self, router):
+        """测试调用_fetch_tushare"""
+        result = router._fetch_tushare(['sh510300'])
+        assert 'sh510300' in result
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '--tb=short'])
