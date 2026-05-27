@@ -109,9 +109,14 @@ class ReportBuilder:
             if realtime and realtime.get('price'):
                 rt_price = realtime.get('price', 0)
                 rt_change = realtime.get('change_pct', 0)
+                rt_source = realtime.get('source', '未知')
                 deviation = ((rt_price - price) / price * 100) if price > 0 else 0
                 
-                lines.append(ln(f"实时价: **{rt_price:.3f}** ({rt_change:+.2f}%)"))
+                # 显示数据来源
+                if '昨收盘' in rt_source:
+                    lines.append(ln(f"昨收: **{rt_price:.3f}** (API不可用)"))
+                else:
+                    lines.append(ln(f"实时价: **{rt_price:.3f}** ({rt_change:+.2f}%)"))
                 
                 # 偏离警告
                 if abs(deviation) > 5:

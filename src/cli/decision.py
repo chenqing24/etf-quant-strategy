@@ -287,20 +287,33 @@ class ETFDecisionEngine:
         # 3. 发送通知到钉钉
         logger.info("[3/3] 发送通知...")
         
-        # 获取实时数据（从热数据层）
+        # 获取实时数据（按优先级：腾讯 → 东方财富 → 新浪）
         realtime = {}
         if new_code:
             try:
-                from src.data.manager import DataFacade
-                facade = DataFacade(self.data_dir)
-                hot_record = facade.hot.get(new_code)
-                if hot_record:
+                from src.trade.validator import fetch_realtime_prices
+                prices = fetch_realtime_prices([new_code])
+                if new_code in prices:
+                    rt_info = prices[new_code]
                     realtime = {
-                        'price': hot_record.price,
-                        'change_pct': hot_record.change_pct,
-                        'volume': hot_record.volume,
-                        'timestamp': hot_record.timestamp,
+                        'price': rt_info.get('price'),
+                        'change_pct': rt_info.get('pct'),
+                        'volume': rt_info.get('volume'),
+                        'source': rt_info.get('data_source', '实时API'),
                     }
+                    logger.info(f"  实时价格: {realtime.get('price')} (来源: {realtime.get('source')})")
+                else:
+                    # API全部失败，使用昨收盘价
+                    if self._etf_data and new_code in self._etf_data:
+                        df = self._etf_data[new_code]
+                        if len(df) > 0:
+                            last_row = df.iloc[-1]
+                            realtime = {
+                                'price': last_row.get('close'),
+                                'change_pct': 0,
+                                'source': '昨收盘(API不可用)',
+                            }
+                            logger.info(f"  昨收盘价: {realtime.get('price')} (来源: {realtime.get('source')})")
             except Exception as e:
                 logger.warn(f"  ⚠ 获取实时数据失败: {e}")
         
