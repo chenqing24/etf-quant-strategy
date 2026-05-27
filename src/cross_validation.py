@@ -145,7 +145,7 @@ class CrossValidator:
 
 def test_cross_validation():
     """测试交叉验证"""
-    validator = CrossValidator(data_dir='../etf_data_50')
+    validator = CrossValidator(data_dir='etf_data_live')
     
     # 使用短窗口快速测试
     windows = [

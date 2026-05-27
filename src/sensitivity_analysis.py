@@ -157,7 +157,7 @@ def quick_sensitivity_test():
     """快速敏感性测试"""
     import time
     
-    analyzer = SensitivityAnalyzer(data_dir='../etf_data_50')
+    analyzer = SensitivityAnalyzer(data_dir='etf_data_live')
     
     # 简单参数网格
     param_grid = {
@@ -166,7 +166,7 @@ def quick_sensitivity_test():
     }
     
     fixed_params = {
-        'data_dir': '../etf_data_50',
+        'data_dir': 'etf_data_live',
     }
     
     t0 = time.time()

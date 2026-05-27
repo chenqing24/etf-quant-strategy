@@ -3,6 +3,9 @@
 from dataclasses import dataclass, field
 from typing import Tuple, Set, Optional
 
+# ===== 数据目录常量 =====
+DATA_DIR = 'etf_data_live'  # 标准数据目录，所有模块应使用此常量
+
 @dataclass
 class StrategyConfig:
     """ETF量化策略配置 - 所有参数可配置，无硬编码"""
