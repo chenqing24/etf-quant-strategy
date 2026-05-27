@@ -12,15 +12,23 @@ def test_data_freshness_detection():
     """TC-17: 数据新鲜度检测"""
     today = datetime.now().date()
     
+    # 动态计算日期（基于当前日期）
+    # 如果今天 05-27，则：
+    # - 05-27: age=0, ✅正常
+    # - 05-26: age=1, ⚠️略旧
+    # - 05-25: age=2, ⚠️略旧
+    # - 05-23及之前: ❌过期
+    
     test_cases = [
-        ('2026-05-26', '✅ 正常', '数据为今天'),
-        ('2026-05-25', '⚠️ 数据略旧', '数据距今1天'),
-        ('2026-05-24', '⚠️ 数据略旧', '数据距今2天'),
-        ('2026-05-22', '❌ 数据过期', '数据超过4天未更新'),
+        # (日期偏移, 预期状态, 说明)
+        (0, '✅ 正常', '数据为今天'),
+        (1, '⚠️ 数据略旧', '数据距今1天'),
+        (2, '⚠️ 数据略旧', '数据距今2天'),
+        (4, '❌ 数据过期', '数据超过4天未更新'),
     ]
     
-    for data_date_str, exp_freshness, exp_warning in test_cases:
-        data_date = datetime.strptime(data_date_str, '%Y-%m-%d').date()
+    for offset, exp_freshness, exp_warning in test_cases:
+        data_date = today - timedelta(days=offset)
         data_age = (today - data_date).days
         
         if data_age == 0:
@@ -33,8 +41,8 @@ def test_data_freshness_detection():
             freshness = '❌ 数据过期'
             warning = f'数据超过{data_age}天未更新'
         
-        assert freshness == exp_freshness, f'数据日期{data_date_str}: 预期{freshness}, 实际{exp_freshness}'
-        print(f'  TC-17 ({data_date_str}): {freshness} ✅')
+        assert freshness == exp_freshness, f'数据日期偏移{offset}天: 预期{freshness}, 实际{exp_freshness}'
+        print(f'  TC-17 (偏移{offset}天): {freshness} ✅')
     
     print('✅ TC-17: 数据新鲜度检测 - 通过')
 
@@ -42,7 +50,7 @@ def test_data_freshness_detection():
 def test_auto_repair_logic():
     """TC-18: 数据过期自动修复逻辑"""
     today = datetime.now().date()
-    data_date = datetime.strptime('2026-05-22', '%Y-%m-%d').date()
+    data_date = today - timedelta(days=4)  # 动态计算过期日期
     data_age = (today - data_date).days
     
     # 模拟逻辑
