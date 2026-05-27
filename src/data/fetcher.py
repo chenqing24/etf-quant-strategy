@@ -84,7 +84,7 @@ class TencentETFetcher:
         }
         
         try:
-            response = requests.get(self.BASE_URL, params=params, timeout=HTTP_TIMEOUT_SHORT)
+            response = requests.get(self.BASE_URL, params=params, timeout=self.HTTP_TIMEOUT_SHORT)
             # 腾讯API返回带前缀的JSON: kline_dayqfq={...}，需要去掉前缀
             text = response.text.replace('kline_dayqfq=', '', 1)
             data = json.loads(text)
