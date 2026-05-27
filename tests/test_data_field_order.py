@@ -196,5 +196,124 @@ class TestDataValidation:
         assert total_rows >= 60000, f"数据行数不足60000: {total_rows}"
 
 
+class TestDataLoaderEdgeCases:
+    """DataLoader边界情况测试"""
+
+    @pytest.fixture
+    def loader(self):
+        return DataLoader()
+
+    def test_load_不存在的数据目录(self, loader, caplog):
+        """测试加载不存在的数据目录"""
+        # 使用一个肯定不存在的目录
+        result = loader.load('nonexistent_data_dir_12345')
+        
+        # 应该返回空字典
+        assert result == {}, "不存在目录应返回空字典"
+        assert isinstance(caplog.text, str), "应有日志输出"
+
+    def test_load_from_sqlite_异常(self, loader):
+        """测试_load_from_sqlite异常处理"""
+        # 传入一个不存在的路径
+        from pathlib import Path
+        
+        result = loader._load_from_sqlite(Path('/fake/path/db.sqlite'))
+        
+        # 应该返回空字典
+        assert result == {}, "异常时应返回空字典"
+
+    def test_process_df_列重命名(self, loader):
+        """测试列名处理"""
+        import pandas as pd
+        
+        # 测试vol->volume
+        df = pd.DataFrame({
+            'date': ['2026-01-01'],
+            'open': [4.5],
+            'high': [4.6],
+            'low': [4.3],
+            'close': [4.5],
+            'vol': [1000000]  # 使用vol而非volume
+        })
+        
+        result = loader._process_df(df)
+        
+        assert 'volume' in result.columns, "vol应被重命名为volume"
+        assert 'vol' not in result.columns, "vol列应被移除"
+
+    def test_get_存在的数据(self, loader):
+        """测试get方法-数据存在"""
+        loader.data = {'sh510300': pd.DataFrame({'a': [1, 2]})}
+        
+        result = loader.get('sh510300')
+        
+        assert result is not None, "数据存在时应返回"
+        assert len(result) == 2
+
+    def test_get_不存在的数据(self, loader):
+        """测试get方法-数据不存在"""
+        loader.data = {}
+        
+        result = loader.get('nonexistent_code')
+        
+        assert result is None, "数据不存在时应返回None"
+
+    def test_get_etfs_批量获取(self, loader):
+        """测试get_etfs批量获取"""
+        loader.data = {
+            'sh510300': pd.DataFrame({'a': [1]}),
+            'sz159919': pd.DataFrame({'b': [2]}),
+            'sh588000': pd.DataFrame({'c': [3]})
+        }
+        
+        result = loader.get_etfs(['sh510300', 'sz159919'])
+        
+        assert len(result) == 2, "应返回2只ETF"
+        assert 'sh510300' in result
+        assert 'sz159919' in result
+        assert 'sh588000' not in result
+
+    def test_get_etfs_部分不存在(self, loader):
+        """测试get_etfs部分代码不存在"""
+        loader.data = {'sh510300': pd.DataFrame({'a': [1]})}
+        
+        result = loader.get_etfs(['sh510300', 'nonexistent'])
+        
+        assert len(result) == 1, "只应返回存在的"
+        assert 'sh510300' in result
+
+    def test_get_date_range_有数据(self, loader):
+        """测试get_date_range-有数据"""
+        loader.data = {
+            'sh510300': pd.DataFrame({
+                'date': ['2026-01-01', '2026-01-02', '2026-01-03'],
+                'a': [1, 2, 3]
+            })
+        }
+        
+        start, end = loader.get_date_range('sh510300')
+        
+        assert start == '2026-01-01', "起始日期错误"
+        assert end == '2026-01-03', "结束日期错误"
+
+    def test_get_date_range_无数据(self, loader):
+        """测试get_date_range-无数据"""
+        loader.data = {}
+        
+        start, end = loader.get_date_range('nonexistent')
+        
+        assert start is None
+        assert end is None
+
+    def test_get_date_range_空DataFrame(self, loader):
+        """测试get_date_range-空DataFrame"""
+        loader.data = {'sh510300': pd.DataFrame()}
+        
+        start, end = loader.get_date_range('sh510300')
+        
+        assert start is None
+        assert end is None
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '--tb=short'])
