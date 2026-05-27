@@ -100,11 +100,11 @@ class UniversalExecutor:
         results = []
         
         for code, df in price_data.items():
-            # 训练期筛选
+            # 检查训练期数据是否足够完整 (>200天)
             d = df[(df['date'] >= self.config.data.train_start) & 
                    (df['date'] <= self.config.data.train_end)]
             
-            if len(d) < 100:
+            if len(d) < 200:
                 continue
             
             # 计算训练期收益率
