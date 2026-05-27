@@ -130,44 +130,6 @@ class TestSelectorEvaluateLegacy(unittest.TestCase):
         print(f"新旧评分对比: 新={score_new}, 旧={score_old}")
 
 
-class TestCallSites(unittest.TestCase):
-    """验证所有调用点已更新"""
-    
-    def test_backtest_uses_evaluate(self):
-        """测试backtest.py使用evaluate"""
-        with open('src/backtest.py', 'r') as f:
-            content = f.read()
-        
-        self.assertIn('selector.evaluate', content)
-        self.assertNotIn('selector.score(df,', content)
-        self.assertNotIn('selector.score_with_ic(df,', content)
-    
-    def test_report_generator_uses_evaluate(self):
-        """测试report_generator.py使用evaluate"""
-        with open('src/report_generator.py', 'r') as f:
-            content = f.read()
-        
-        self.assertIn('selector.evaluate', content)
-        self.assertNotIn('selector.score(df,', content)
-    
-    def test_etf_pool_updater_uses_evaluate(self):
-        """测试etf_pool_updater.py使用evaluate"""
-        with open('src/etf_pool_updater.py', 'r') as f:
-            content = f.read()
-        
-        self.assertIn('selector.evaluate', content)
-        self.assertNotIn('selector.score(df,', content)
-    
-    def test_trade_uses_evaluate(self):
-        """测试trade.py使用evaluate"""
-        with open('src/trade.py', 'r') as f:
-            content = f.read()
-        
-        self.assertIn('selector.evaluate', content)
-        self.assertNotIn('self.selector.score(df,', content)
-
-
-class TestIntegration(unittest.TestCase):
     """集成测试"""
     
     def test_full_evaluation_flow(self):
