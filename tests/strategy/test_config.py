@@ -151,10 +151,10 @@ class TestDataConfig:
         """测试默认值"""
         config = DataConfig()
         
-        assert config.train_start == "2024-11-01"
+        assert config.train_start == "2023-07-01"
         assert config.train_end == "2025-06-30"
         assert config.test_start == "2025-07-01"
-        assert config.test_end == "2025-12-31"
+        assert config.test_end == "2026-05-27"
     
     def test_custom_values(self):
         """测试自定义值"""
