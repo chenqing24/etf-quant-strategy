@@ -10,10 +10,15 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 import requests
 
+from src.constants import (
+    SINA_REALTIME_URL, SINA_KLINE_URL, SINA_REFERER,
+    TENCENT_BASE_URL
+)
+
 # 默认HTTP头
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; ETFQuant/1.0)",
-    "Referer": "https://finance.sina.com.cn/"
+    "Referer": SINA_REFERER
 }
 
 
@@ -176,7 +181,7 @@ class DataSourceRouter:
         if cached is not None:
             return cached
 
-        url = f"https://hq.sinajs.cn/list={','.join(codes)}"
+        url = f"{SINA_REALTIME_URL}={','.join(codes)}"
         text = self._fetch_with_retry(url)
         if not text:
             return {code: None for code in codes}
@@ -230,7 +235,7 @@ class DataSourceRouter:
                 results[code] = cached
                 continue
 
-            url = f"https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData?symbol={code}&scale=30&ma=no&datalen={count}"
+            url = f"{SINA_KLINE_URL}?symbol={code}&scale=30&ma=no&datalen={count}"
             text = self._fetch_with_retry(url)
             if text:
                 import json
@@ -263,7 +268,7 @@ class DataSourceRouter:
             # 腾讯API需要带sh/sz前缀
             prefix = 'sh' if code.startswith(('51', '15')) else 'sz'
             full_code = f"{prefix}{code}"
-            url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=kline_dayqfq&param={full_code},day,,,{days},qfq"
+            url = f"{TENCENT_BASE_URL}?_var=kline_dayqfq&param={full_code},day,,,{days},qfq"
             text = self._fetch_with_retry(url)
             if text:
                 data = self._parse_tencent_daily(text)

@@ -17,7 +17,7 @@ class TencentETFetcher:
     """腾讯ETF数据采集器"""
     
     # 腾讯API地址
-    BASE_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+    from src.constants import TENCENT_BASE_URL as BASE_URL, HTTP_TIMEOUT_SHORT
     
     # ETF代码列表 (需要带sh/sz前缀)
     # 优先使用动态池，否则使用默认列表
@@ -84,7 +84,7 @@ class TencentETFetcher:
         }
         
         try:
-            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response = requests.get(self.BASE_URL, params=params, timeout=HTTP_TIMEOUT_SHORT)
             # 腾讯API返回带前缀的JSON: kline_dayqfq={...}，需要去掉前缀
             text = response.text.replace('kline_dayqfq=', '', 1)
             data = json.loads(text)

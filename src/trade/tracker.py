@@ -51,7 +51,8 @@ class TradeTracker:
     
     def __init__(self, data_dir: str = '.'):
         self.data_dir = data_dir
-        self.trades_file = os.path.join(data_dir, 'etf_trades.json')
+        from src.constants import TRADES_FILE, TENCENT_QT_URL
+        self.trades_file = os.path.join(data_dir, TRADES_FILE)
         self.positions_file = os.path.join(data_dir, 'etf_positions.json')
         self.performance_file = os.path.join(data_dir, 'etf_performance.json')
         
@@ -148,7 +149,7 @@ class TradeTracker:
         else:
             prefix = code
         
-        url = f"https://qt.gtimg.cn/q={prefix}"
+        url = f"{TENCENT_QT_URL}{prefix}"
         try:
             resp = requests.get(url, timeout=8)
             resp.encoding = 'gbk'
