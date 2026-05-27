@@ -370,46 +370,73 @@ etf_strategy/
 
 ---
 
-## 6. 实现计划
+## 6. 开发记录
 
-### Phase 1: 数据库初始化
-- [ ] 创建表结构（6张表）
-- [ ] 定义Pydantic模型
-- [ ] 数据库迁移脚本
+### Phase 1: 数据库初始化 ✅
 
-### Phase 2: 数据导入
-- [ ] BaoStock数据导入
-- [ ] 现有JSON数据迁移
-- [ ] 验证数据完整性
+| 任务 | 文件 | 状态 | 测试 |
+|------|------|:----:|------|
+| 创建数据库类 | `src/data/database.py` | ✅ | 16 passed |
+| 创建表结构 | Database._init_database() | ✅ | - |
+| 插入/更新方法 | insert_or_update() | ✅ | - |
+| 查询方法 | query(), query_df() | ✅ | - |
 
-### Phase 3: Parquet缓存
-- [ ] 封装读写类
-- [ ] 自动压缩
-- [ ] 缓存清理
+### Phase 2: 数据迁移验证 ✅
 
-### Phase 4: 指标计算
-- [ ] pandas-ta封装
-- [ ] 批量计算脚本
-- [ ] 并行计算优化
+| 验证项 | 方法 | 结果 |
+|--------|------|------|
+| 常数价格IC=0 | 数学推导 | ✅ |
+| 线性趋势IC | 公式验证 | ✅ |
+| 随机序列IC≈0 | 统计验证 | ✅ |
+| 完美正相关IC=1 | 公式验证 | ✅ |
+| 完美负相关IC=-1 | 公式验证 | ✅ |
 
-### Phase 5: IC计算
-- [ ] IC计算器
-- [ ] 批量计算脚本
-- [ ] 结果存储
+### Phase 3: IC计算器 ✅
+
+| 函数 | 说明 | 测试 |
+|------|------|------|
+| calculate_ic | IC计算 | 16 passed |
+| calculate_ir | IR计算 | ✅ |
+| calculate_rolling_ic | 滚动IC | ✅ |
+| calculate_factor_ic | 单因子IC统计 | ✅ |
+| calculate_all_factors_ic | 全因子IC | ✅ |
+
+### Git提交记录
+
+```
+6b23f02 feat: 数据库模块和数据存储设计
+├── src/data/database.py (数据库类)
+├── src/analysis/ic_calculator.py (IC计算器)
+├── tests/test_storage.py (16测试)
+├── tests/test_ic_calculation.py (16测试)
+└── docs/STORAGE_DESIGN.md
+
+ae6d8ba feat: 8因子核心指标计算模块
+├── src/indicators/ (6个指标)
+├── tests/indicators/ (25测试)
+└── docs/8FACTOR_MINING_PLAN.md
+```
+
+## 7. 验收标准
+
+- [x] 数据库6张表创建成功 ✅
+- [x] 插入/更新/查询功能正常 ✅
+- [x] IC计算公式验证通过 ✅
+- [x] 所有测试通过 ✅ (286 passed)
+- [x] 文档完整更新 ✅
 
 ---
 
-## 7. 关键决策
+## 8. 下一步
 
-| # | 问题 | 决策 | 说明 |
-|---|------|------|------|
-| 1 | 数据来源 | BaoStock为主 | 免费、稳定、覆盖全面 |
-| 2 | 复权方式 | 前复权 | 方便计算收益率 |
-| 3 | 存储格式 | Parquet | 列式压缩、查询快 |
-| 4 | 索引策略 | code+date组合索引 | 常用查询条件 |
+- [ ] 数据导入：从现有JSON迁移到SQLite
+- [ ] Parquet缓存：因子数据缓存
+- [ ] 指标计算：pandas-ta封装
+- [ ] 批量IC计算：66只ETF全量计算
 
 ---
 
-*文档版本: 2.0*
+*文档版本: 2.1*
 *创建时间: 2026-05-27*
 *更新: 2026-05-27 v2 增加基本面数据、扩展字段*
+*更新: 2026-05-27 v2.1 开发记录*
