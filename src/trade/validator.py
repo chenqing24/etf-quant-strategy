@@ -195,12 +195,19 @@ class TradeValidator:
     def _fetch_tencent(self, codes: List[str]) -> Dict[str, Dict]:
         """腾讯API获取实时价格"""
         # 腾讯需要sh/sz前缀
+        # 注意：159xxx是深交所ETF，不是上交所
         prefix_codes = []
         for code in codes:
             if code.startswith(('sh', 'sz')):
                 prefix_codes.append(code)
             elif code.isdigit():
-                prefix_codes.append(f'sh{code}' if code.startswith(('5', '1', '11')) else f'sz{code}')
+                # 159xxx是深交所ETF
+                if code.startswith('159'):
+                    prefix_codes.append(f'sz{code}')
+                elif code.startswith(('5', '11')):
+                    prefix_codes.append(f'sh{code}')
+                else:
+                    prefix_codes.append(f'sz{code}')  # 其他默认深交所
             else:
                 prefix_codes.append(code)
         
@@ -245,12 +252,17 @@ class TradeValidator:
             if code.startswith(('sh', 'sz')):
                 prefix_codes.append(code.upper())
             elif code.isdigit():
-                # ETF通常是1或5开头
-                prefix_codes.append(f'SH{code}' if code.startswith(('5', '1', '11')) else f'SZ{code}')
+                # 159xxx是深交所ETF
+                if code.startswith('159'):
+                    prefix_codes.append(f'SZ{code}')
+                elif code.startswith(('5', '11')):
+                    prefix_codes.append(f'SH{code}')
+                else:
+                    prefix_codes.append(f'SZ{code}')  # 其他默认深交所
             else:
                 prefix_codes.append(code.upper())
         
-        url = f"{self.EMF_BASE_URL}?fltyp=0&secids={','.join(prefix_codes)}&fields=f2,f3,f4,f12,f14,f15,f16"
+        url = f"{EMF_BASE_URL}?fltyp=0&secids={','.join(prefix_codes)}&fields=f2,f3,f4,f12,f14,f15,f16"
         
         try:
             resp = requests.get(url, timeout=HTTP_TIMEOUT_SHORT)

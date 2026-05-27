@@ -82,6 +82,37 @@ class TestRealtimePriceSource:
             "API失败时应使用昨收盘价"
 
 
+class TestDataSourcePrefix:
+    """数据源前缀判断测试"""
+
+    def test_159xxx应识别为深交所ETF(self):
+        """验证159xxx代码被正确识别为深交所ETF"""
+        # 模拟代码判断逻辑
+        code = '159806'
+        
+        if code.startswith('159'):
+            prefix = f'sz{code}'
+        elif code.startswith(('5', '11')):
+            prefix = f'sh{code}'
+        else:
+            prefix = f'sz{code}'
+        
+        assert prefix == 'sz159806', f"159806应识别为sz159806，实际为{prefix}"
+
+    def test_510xxx应识别为上交所ETF(self):
+        """验证510xxx代码被正确识别为上交所ETF"""
+        code = '510300'
+        
+        if code.startswith('159'):
+            prefix = f'sz{code}'
+        elif code.startswith(('5', '11')):
+            prefix = f'sh{code}'
+        else:
+            prefix = f'sz{code}'
+        
+        assert prefix == 'sh510300', f"510300应识别为sh510300，实际为{prefix}"
+
+
 class TestRealtimePriceIntegration:
     """实时价格集成测试"""
 

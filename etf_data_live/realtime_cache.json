@@ -1,10 +1,11 @@
 {
-  "510300": {
-    "name": "沪深300ETF华泰柏瑞",
-    "price": 4.912,
-    "yclose": 4.937,
-    "pct": 0,
-    "data_source": "sina"
+  "159806": {
+    "name": "新能源车ETF国泰",
+    "price": 0.882,
+    "yclose": 0.887,
+    "pct": -0.56,
+    "code_raw": "159806",
+    "data_source": "tencent"
   },
-  "_cache_time": 1779806699.219318
+  "_cache_time": 1779855891.187007
 }
