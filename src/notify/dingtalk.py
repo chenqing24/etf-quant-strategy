@@ -5,6 +5,7 @@
 """
 import json
 import subprocess
+from src.constants import SUBPROCESS_TIMEOUT, SUBPROCESS_TIMEOUT_LONG, HTTP_TIMEOUT_SHORT
 from typing import Optional
 import logging
 
@@ -57,7 +58,7 @@ class DingTalkSender:
             # 1. 获取钉钉会话列表
             result = subprocess.run(
                 ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
-                capture_output=True, text=True, timeout=15
+                capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT
             )
             
             if result.returncode != 0:
@@ -86,7 +87,7 @@ class DingTalkSender:
                 '--target-user', user_id,
                 '--target-session', session_id,
                 '--text', message,
-            ], capture_output=True, text=True, timeout=30)
+            ], capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT)
             
             logger.info(f"钉钉发送结果: returncode={result.returncode}, stdout={result.stdout}, stderr={result.stderr}")
             if result.returncode == 0:
@@ -142,7 +143,7 @@ class DingTalkSender:
                 self.webhook_url,
                 json=payload,
                 headers={'Content-Type': 'application/json'},
-                timeout=10
+                timeout=SUBPROCESS_TIMEOUT
             )
             
             if response.status_code == 200:
@@ -165,7 +166,7 @@ class DingTalkSender:
         try:
             result = subprocess.run(
                 ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
-                capture_output=True, text=True, timeout=10
+                capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT
             )
             if result.returncode == 0:
                 sessions = json.loads(result.stdout)

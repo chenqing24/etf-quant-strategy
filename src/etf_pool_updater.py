@@ -349,7 +349,7 @@ ETF总数: {len(pool)}只
             threads.append(t)
         
         for t in threads:
-            t.join(timeout=30)
+            t.join(timeout=THREAD_JOIN_TIMEOUT)
         
         print("  ✓ 已推送钉钉 (含评分)")
     
@@ -394,13 +394,14 @@ ETF总数: {len(pool)}只
     
     def _send_dingtalk(self, msg: str, session: dict = None):
         """发送钉钉消息"""
-        import subprocess, json
+        import subprocess
+from src.constants import THREAD_JOIN_TIMEOUT, SUBPROCESS_TIMEOUT, SUBPROCESS_TIMEOUT_LONG, json
         
         if session is None:
             try:
                 result = subprocess.run(
                     ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
-                    capture_output=True, text=True, timeout=15
+                    capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT
                 )
                 sessions = json.loads(result.stdout)
                 if sessions:
@@ -416,7 +417,7 @@ ETF总数: {len(pool)}只
                 '--target-user', session.get('user_id', ''),
                 '--target-session', session.get('session_id', ''),
                 '--text', msg
-            ], timeout=20)
+            ], timeout=SUBPROCESS_TIMEOUT_LONG)
     
     def send_to_dingtalk(self):
         """发送简化的钉钉通知"""
@@ -432,12 +433,13 @@ ETF总数: {len(pool)}只
         scored_etfs = self._get_etf_scores(pool)
         
         # 先获取session（复用）
-        import subprocess, json
+        import subprocess
+from src.constants import THREAD_JOIN_TIMEOUT, SUBPROCESS_TIMEOUT, SUBPROCESS_TIMEOUT_LONG, json
         session = None
         try:
             result = subprocess.run(
                 ['qwenpaw', 'chats', 'list', '--channel', 'dingtalk'],
-                capture_output=True, text=True, timeout=15
+                capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT
             )
             sessions = json.loads(result.stdout)
             if sessions:

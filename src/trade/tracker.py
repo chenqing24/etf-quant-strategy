@@ -7,6 +7,9 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
+import requests
+
+from src.constants import TRADES_FILE, TENCENT_QT_URL, HTTP_TIMEOUT_SHORT
 
 
 @dataclass
@@ -139,8 +142,6 @@ class TradeTracker:
     
     def _fetch_tencent_realtime(self, code: str) -> Dict:
         """腾讯API直接获取实时数据（RSI由指标模块计算）"""
-        import requests
-        
         # ETF代码前缀处理
         if code.startswith(('sh', 'sz')):
             prefix = code
@@ -151,7 +152,7 @@ class TradeTracker:
         
         url = f"{TENCENT_QT_URL}{prefix}"
         try:
-            resp = requests.get(url, timeout=8)
+            resp = requests.get(url, timeout=HTTP_TIMEOUT_SHORT)
             resp.encoding = 'gbk'
             parts = resp.text.split('~')
             

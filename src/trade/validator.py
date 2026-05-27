@@ -6,6 +6,7 @@ ETF交易校验器 - 买入前实时校验 + 行为追踪
 import json
 import time
 import requests
+from src.constants import HTTP_TIMEOUT_SHORT, SINA_REFERER, EMF_BASE_URL
 import pandas as pd
 from datetime import datetime, date
 from pathlib import Path
@@ -128,9 +129,8 @@ class TradeValidator:
     """
     
     # 数据源配置
-    TENCENT_BASE_URL = "https://qt.gtimg.cn/q="
-    EMF_BASE_URL = "https://push2.eastmoney.com/api/qt/ulist.np/get"
-    SINA_BASE_URL = "https://hq.sinajs.cn/list="
+    from src.constants import TENCENT_QT_URL as TENCENT_BASE_URL
+    from src.constants import SINA_REALTIME_URL as SINA_BASE_URL
     
     # 校验阈值
     PRICE_DEVIATION_WARN = 1.0     # 价格偏差警告阈值 (%)
@@ -207,7 +207,7 @@ class TradeValidator:
         url = f"{self.TENCENT_BASE_URL}{','.join(prefix_codes)}"
         
         try:
-            resp = requests.get(url, timeout=10)
+            resp = requests.get(url, timeout=HTTP_TIMEOUT_SHORT)
             resp.encoding = 'gbk'
             lines = resp.text.strip().split('\n')
             
@@ -253,7 +253,7 @@ class TradeValidator:
         url = f"{self.EMF_BASE_URL}?fltyp=0&secids={','.join(prefix_codes)}&fields=f2,f3,f4,f12,f14,f15,f16"
         
         try:
-            resp = requests.get(url, timeout=10)
+            resp = requests.get(url, timeout=HTTP_TIMEOUT_SHORT)
             resp.encoding = 'utf-8'
             data = resp.json()
             
@@ -310,10 +310,10 @@ class TradeValidator:
                 prefix_codes.append(code)
         
         url = f"{self.SINA_BASE_URL}{','.join(prefix_codes)}"
-        headers = {'Referer': 'https://finance.sina.com.cn'}
+        headers = {'Referer': SINA_REFERER}
         
         try:
-            resp = requests.get(url, timeout=10, headers=headers)
+            resp = requests.get(url, timeout=HTTP_TIMEOUT_SHORT, headers=headers)
             resp.encoding = 'gbk'
             lines = resp.text.strip().split('\n')
             

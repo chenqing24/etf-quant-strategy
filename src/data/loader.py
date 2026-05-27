@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """数据层 - 从SQLite加载ETF历史数据"""
 from pathlib import Path
+from src.constants import DB_NAME
 from typing import Dict
 import pandas as pd
 import sqlite3
@@ -29,7 +30,7 @@ class DataLoader:
         self.data = {}
         
         # 从SQLite加载
-        sqlite_path = Path.cwd() / data_dir / 'etf.db'
+        sqlite_path = Path.cwd() / data_dir / DB_NAME
         if sqlite_path.exists():
             self.data = self._load_from_sqlite(sqlite_path)
             if not getattr(self, '_simple_mode', False):

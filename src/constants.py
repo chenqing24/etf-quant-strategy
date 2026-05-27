@@ -22,6 +22,9 @@ SINA_REALTIME_URL = 'https://hq.sinajs.cn/list='
 SINA_KLINE_URL = 'https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData'
 SINA_REFERER = 'https://finance.sina.com.cn/'
 
+# 东方财富API
+EMF_BASE_URL = 'https://push2.eastmoney.com/api/qt/ulist.np/get'
+
 # ==================== 超时配置 ====================
 # HTTP请求超时（秒）
 HTTP_TIMEOUT_SHORT = 10   # 短请求（实时价格）
