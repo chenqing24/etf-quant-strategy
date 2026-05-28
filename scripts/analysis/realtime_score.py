@@ -260,12 +260,12 @@ def main():
     # 最佳推荐
     if results:
         top = results[0]
-        target = round(top['price'] * 1.08, 3)
-        stop = round(top['price'] * 0.95, 3)
+        target = round(top['price'] * 1.10, 3)
+        stop = round(top['price'] * 0.94, 3)
         
         print(f"\n{'='*75}")
         print(f"🏆 今日最佳推荐: {top['code']} {top['name']}")
-        print(f"   现价: {top['price']}元 | 目标: {target}元 (+8%) | 止损: {stop}元 (-5%)")
+        print(f"   现价: {top['price']}元 | 目标: {target}元 (+10%) | 止损: {stop}元 (-6%)")
         print(f"   今日涨幅: {top['pct']:+.2f}% | 7因子总分: {top['score']}")
         print(f"   触发信号: {' + '.join(top['reasons'])}")
         print(f"   RSI: {top['details'].get('rsi', 'N/A'):.1f}")
@@ -275,8 +275,8 @@ def main():
         if len(results) >= 3:
             print(f"\n📋 今日TOP3推荐:")
             for i, r in enumerate(results[:3], 1):
-                target = round(r['price'] * 1.08, 3)
-                stop = round(r['price'] * 0.95, 3)
+                target = round(r['price'] * 1.10, 3)
+                stop = round(r['price'] * 0.94, 3)
                 print(f"   {i}. {r['code']} {r['name'][:6]}: {r['price']}元 → 目标{target}/止损{stop} | 评分{r['score']}分")
         
         # 保存结果
