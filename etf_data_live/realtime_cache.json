@@ -1,11 +1,11 @@
 {
   "159806": {
     "name": "新能源车ETF国泰",
-    "price": 0.88,
-    "yclose": 0.887,
-    "pct": -0.79,
+    "price": 0.866,
+    "yclose": 0.878,
+    "pct": -1.37,
     "code_raw": "159806",
     "data_source": "tencent"
   },
-  "_cache_time": 1779863417.205671
+  "_cache_time": 1779941076.261894
 }
