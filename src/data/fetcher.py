@@ -240,9 +240,9 @@ class TencentETFetcher:
             days_diff = (today - local_date).days
             
             if days_diff == 0:
-                # 本地数据已是最新，无需请求
-                logger.debug(f"  {code}: 本地已是最新 ({local_latest})")
-                return pd.DataFrame()
+                # 本地已是最新，但仍获取数据用于更新SQLite
+                logger.debug(f"  {code}: 本地已是最新 ({local_latest})，仍同步SQLite")
+                fetch_days = min(7, days)  # 获取约7天数据用于更新SQLite
             
             # 需要补充的天数 + 缓冲
             fetch_days = min(days_diff + 3, days)
