@@ -61,6 +61,88 @@ r['train'].trade_list    # 交易记录列表
 
 ---
 
+### 1.3 配置加载器 (P0-1新增)
+
+```python
+from src.strategy import ConfigLoader, StrategyConfig
+
+# 获取单例
+loader = ConfigLoader.get_instance()
+
+# 加载配置
+config = loader.load("config/strategies/exp50.yaml")
+
+# 加载默认配置
+config = loader.load_default()
+
+# 列出所有可用策略
+strategies = ConfigLoader.list_strategies()
+# ['exp50', 'exp36', 'default']
+
+# 清除缓存
+ConfigLoader.clear_cache()
+
+# 类型安全的配置对象
+config.name           # 策略名称
+config.factors.enabled  # ['ADX', 'BB_percent']
+config.factors.weights  # {'ADX': 0.4, ...}
+config.risk.stop_loss   # -0.05
+config.risk.stop_profit # 0.10
+```
+
+**错误码**:
+- `ConfigNotFoundError(code=E1001)`: 配置文件不存在
+- `ConfigFormatError(code=E1002)`: 配置文件格式错误
+- `ConfigVersionError(code=E1003)`: 配置版本不兼容
+
+**位置**: `src/strategy/config_loader.py`
+
+---
+
+### 1.4 风控管理器 (P0-2新增)
+
+```python
+from src.risk import RiskManager, Portfolio, Position
+
+# 创建风控管理器
+risk = RiskManager(
+    stop_loss=-0.05,    # 止损 -5%
+    stop_profit=0.10,   # 止盈 +10%
+    max_position=1,     # 最多1个持仓
+    max_loss=-0.15,     # 最大亏损 -15%
+    hold_days=5          # 最多持仓5天
+)
+
+# 或者从配置创建
+from src.risk import RiskConfig
+config = RiskConfig(stop_loss=-0.05, ...)
+risk = RiskManager.from_config(config)
+
+# 检查是否可以入场
+portfolio = Portfolio(positions=[], cash=10000, total_value=10000)
+result = risk.check_entry(portfolio)
+# result.allowed = True/False
+# result.code = "E2001-01"(仓位满)/"E2001-02"(亏损超限)
+
+# 检查是否需要退出
+position = Position(code='510300', quantity=1000, avg_price=3.00, 
+                     current_price=2.85, entry_date='2026-05-25')
+signal = risk.check_exit(position, current_price=2.85)
+# signal.reason = "stop_loss"/"stop_profit"/"hold_days"
+# signal.pnl = -0.05  # 触发时的盈亏
+```
+
+**错误码**:
+- `E2001-01`: 仓位已满，无法入场
+- `E2001-02`: 总亏损超限，无法入场
+- `E2002-01`: 止损触发
+- `E2002-02`: 止盈触发
+- `E2002-03`: 持仓天数到期
+
+**位置**: `src/risk/manager.py`
+
+---
+
 ## 二、数据采集脚本
 
 ### 2.1 每日数据检查
