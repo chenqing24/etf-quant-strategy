@@ -15,7 +15,7 @@ class ReportBuilder:
     
     @staticmethod
     def _load_etf_names() -> Dict[str, str]:
-        """加载ETF名称映射"""
+        """加载ETF名称映射（已通过腾讯API验证）"""
         return {
             '510300': '沪深300',
             '510500': '中证500',
@@ -45,7 +45,7 @@ class ReportBuilder:
             '159867': '农业ETF',
             '518880': '黄金ETF',
             '159934': '黄金ETF',
-            '159577': '游戏ETF',
+            '159577': '美国50ETF汇添富',  # 2026-05-28 腾讯API验证
         }
     
     def get_etf_name(self, code: str) -> str:
