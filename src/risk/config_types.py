@@ -20,7 +20,7 @@ class RiskConfig:
     - 仓位限制
     - 持仓时间限制
     """
-    stop_loss: float = -0.05      # 止损比例 (-5%)
+    stop_loss: float = -0.06      # 止损比例 (-6%)
     stop_profit: float = 0.10    # 止盈比例 (+10%)
     max_position: int = 1       # 最大持仓数
     max_loss: float = -0.15     # 最大总亏损 (-15%)
