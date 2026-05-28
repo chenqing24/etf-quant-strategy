@@ -1,7 +1,7 @@
-# ETF量化系统 - 数据字典 v2.0
+# ETF量化系统 - 数据字典 v2.1
 
 > 统一字段定义，解决代码中硬编码字段名的问题
-> 更新：新增 SQLite etf.db 表结构，热数据层保留JSON
+> 更新：新增 ETF名称存储字段，腾讯API单一数据源
 
 ## 1. 概述
 
@@ -96,6 +96,38 @@ CREATE TABLE trades (
 CREATE INDEX idx_trades_code ON trades(code);
 CREATE INDEX idx_trades_timestamp ON trades(timestamp);
 ```
+
+### 2.6 stock_info（ETF基本信息）
+
+> v2.1 新增：etf_type、name_updated_at 字段用于ETF名称管理
+
+```sql
+CREATE TABLE stock_info (
+    code                TEXT PRIMARY KEY,  -- ETF代码
+    name                TEXT,               -- ETF名称（腾讯API获取）
+    exchange            TEXT,               -- 交易所（SH/SZ）
+    full_code           TEXT,               -- 完整代码（sh.510300）
+    etf_type           TEXT,               -- ETF类型（新增）
+    name_updated_at    TEXT,               -- 名称更新时间（新增）
+    data_source         TEXT,               -- 数据来源
+    created_at         TEXT,               -- 创建时间
+    updated_at         TEXT                -- 更新时间
+);
+```
+
+**字段说明**：
+| 字段 | 来源 | 更新频率 | 说明 |
+|------|------|----------|------|
+| name | 腾讯API | 首次添加时获取，按需更新 | 真实名称，如"沪深300ETF华泰柏瑞" |
+| name_updated_at | 自动 | 名称变更时更新 | YYYY-MM-DD HH:MM:SS 格式 |
+| etf_type | 自动 | 创建时设置 | 固定值 'ETF' |
+
+### 2.7 版本历史
+
+| 版本 | 日期 | 变更内容 |
+|------|------|----------|
+| v2.1 | 2026-05-29 | 添加 stock_info.etf_type、name_updated_at 字段 |
+| v2.0 | 2026-05-27 | 统一字段定义 |
 
 ---
 

@@ -4,7 +4,7 @@ import json
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 import time
 import os
 
@@ -309,8 +309,60 @@ def quick_fetch():
     return df
 
 
+# === ETF名称获取方法 ===
+
+def _get_prefix(code: str) -> str:
+    """获取交易所前缀
+    
+    Args:
+        code: ETF代码，如 '510300' 或 '159577'
+        
+    Returns:
+        'sh' 或 'sz'
+    """
+    # 上海交易所: 510xxx, 511xxx, 512xxx, 513xxx, 515xxx, 516xxx, 518xxx, 588xxx
+    if code.startswith(('510', '511', '512', '513', '515', '516', '518', '588')):
+        return 'sh'
+    return 'sz'
+
+
+def _fetch_name_from_api(code: str) -> Optional[str]:
+    """从腾讯API获取ETF名称
+    
+    腾讯API返回格式：
+    v_sz159577="51~美国50ETF汇添富~159577~1.583~..."
+                       ↑ [1] 名称字段
+    
+    Args:
+        code: ETF代码，如 '159577' (不带前缀)
+        
+    Returns:
+        ETF名称，如 "美国50ETF汇添富"，失败返回 None
+    """
+    prefix = _get_prefix(code)
+    url = f"https://qt.gtimg.cn/q={prefix}{code}"
+    
+    try:
+        response = requests.get(url, timeout=10)
+        text = response.content.decode('gbk', errors='replace')
+        
+        # 解析: v_sz159577="51~美国50ETF汇添富~..."
+        match = text.split('="')
+        if len(match) < 2:
+            return None
+        
+        parts = match[1].strip('";').split('~')
+        if len(parts) > 1:
+            name = parts[1].strip()
+            return name if name else None
+        return None
+    except Exception as e:
+        logger.warning(f"获取ETF名称失败 {code}: {e}")
+        return None
+
+
 if __name__ == '__main__':
     quick_fetch()
 
 
-__all__ = ['TencentETFetcher', 'quick_fetch']
+__all__ = ['TencentETFetcher', 'quick_fetch', '_fetch_name_from_api', '_get_prefix']

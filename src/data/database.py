@@ -9,6 +9,9 @@ from pathlib import Path
 import pandas as pd
 from datetime import datetime
 
+from src.utils.logger import get_logger
+logger = get_logger()
+
 
 class Database:
     """SQLite数据库操作类"""
@@ -23,6 +26,7 @@ class Database:
         self.db_path = db_path
         self._ensure_data_dir()
         self._init_database()
+        self.migrate_schema()  # 执行增量扩展
     
     def _ensure_data_dir(self):
         """确保数据目录存在"""
@@ -256,6 +260,98 @@ class Database:
     def close(self):
         """关闭连接"""
         pass  # SQLite自动管理
+    
+    # === ETF名称相关方法 ===
+    
+    def migrate_schema(self):
+        """增量扩展表结构（非破坏性）
+        
+        添加 etf_type 和 name_updated_at 字段
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        migrations = [
+            "ALTER TABLE stock_info ADD COLUMN etf_type TEXT",
+            "ALTER TABLE stock_info ADD COLUMN name_updated_at TEXT",
+        ]
+        
+        for sql in migrations:
+            try:
+                cursor.execute(sql)
+                conn.commit()
+                logger.info(f"✅ 迁移成功: {sql}")
+            except sqlite3.OperationalError as e:
+                if "duplicate column" in str(e).lower():
+                    logger.debug(f"字段已存在，跳过: {sql}")
+                else:
+                    logger.warning(f"迁移警告: {e}")
+        
+        conn.close()
+    
+    def update_etf_name(self, code: str, name: str) -> bool:
+        """更新ETF名称
+        
+        Args:
+            code: ETF代码
+            name: ETF名称
+            
+        Returns:
+            是否成功
+        """
+        conn = self._get_connection()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO stock_info (code, name, name_updated_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(code) DO UPDATE SET
+                    name = excluded.name,
+                    name_updated_at = excluded.name_updated_at,
+                    updated_at = excluded.updated_at
+            """, (code, name, now, now))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger.error(f"更新ETF名称失败: {code} -> {name}: {e}")
+            conn.close()
+            return False
+    
+    def get_etf_name(self, code: str) -> Optional[str]:
+        """获取ETF名称
+        
+        Args:
+            code: ETF代码
+            
+        Returns:
+            ETF名称，不存在返回 None
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT name FROM stock_info WHERE code = ?", (code,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        return row[0] if row else None
+    
+    def get_all_etf_names(self) -> Dict[str, str]:
+        """获取所有ETF名称
+        
+        Returns:
+            {code: name} 字典
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT code, name FROM stock_info WHERE name IS NOT NULL AND name NOT LIKE 'ETF_%'")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return {row[0]: row[1] for row in rows}
 
 
 # 全局数据库实例
