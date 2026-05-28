@@ -218,28 +218,32 @@ python scripts/compare_data.py
 ### 4.1 数据层
 
 ```python
-from src.data.manager import DataFacade
+from src.data.manager import DataFacade, HotDataManager, ColdDataManager
 
 # 初始化
 facade = DataFacade('etf_data_live')
 
-# 获取实时数据
-hot_data = facade.get_hot('510300')
+# 热数据管理（实时数据）
+hot = HotDataManager('etf_data_live')
+hot_data = hot.get('510300')        # 获取单只ETF实时数据
+all_hot = hot.get_all()             # 获取所有实时数据
 
-# 获取日线数据
-daily_data = facade.get_daily('510300', days=30)
-
-# 获取小时线数据
-hourly_data = facade.get_hourly('510300', limit=100)
+# 冷数据管理（日线历史数据，从SQLite）
+cold = ColdDataManager('etf_data_live')
+daily_data = cold.get('510300', days=30)  # 获取日线数据
 
 # 合并热数据+冷数据
-merged = facade.get_merged('510300', days=30)
+merged = facade.get_merged_data('510300')  # 合并数据
 
-# 迁移热数据到冷数据
+# 迁移热数据到冷数据（收盘后执行）
 facade.migrate()
+
+# 获取生命周期信息
+info = facade.get_lifecycle_info()  # 返回 {'stage': 'TRADING', ...}
 ```
 
 **位置**: `src/data/manager.py`
+**类**: `DataFacade`, `HotDataManager`, `ColdDataManager`
 
 ---
 
