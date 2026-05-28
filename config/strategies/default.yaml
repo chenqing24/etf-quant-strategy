@@ -1,5 +1,6 @@
 version: "1.0"
-name: default
+name: fishbody_cfg4
+description: 鱼身因子最优配置 (V3实验Top1)
 factors:
   enabled:
     - ADX
@@ -17,11 +18,11 @@ factors:
     SAR_trend: long
     OBV_diff: long
 risk:
-  stop_loss: -0.05
+  stop_loss: -0.06
   stop_profit: 0.10
   max_position: 1
   max_loss: -0.15
-  hold_days: 5
+  hold_days: 20
 execution:
   min_score: 0.6
   top_n: 30

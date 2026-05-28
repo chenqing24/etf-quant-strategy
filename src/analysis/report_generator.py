@@ -151,12 +151,12 @@ class ETFReportGenerator:
                 ('2024-01-01', '2026-05-22', '2022-01-01', '2024-12-31'),
             ]
         
-        # 优化后的参数
+        # 优化后的参数 (鱼身实验Top1配置)
         params = {
             'hold_count': 1,
             'weights': (1.0,),
-            'stop_loss': -0.05,
-            'stop_gain': 0.08,
+            'stop_loss': -0.06,
+            'stop_gain': 0.10,
             'trailing_threshold': 0.06,
             'trailing_stop': 0.04,
             'enable_trailing_stop': True,
@@ -307,8 +307,8 @@ class ETFReportGenerator:
                 price_warning = f"⚠️偏离过大({deviation:+.1f}%)，以策略信号价为准"
         
         # 计算止盈止损价（基于推荐价格）
-        stop_loss_price = trade_price * 0.95  # 止损价 -5%
-        take_profit_price = trade_price * 1.08  # 止盈价 +8%
+        stop_loss_price = trade_price * 0.94  # 止损价 -6%
+        take_profit_price = trade_price * 1.10  # 止盈价 +10%
         
         # 计算股数（基于推荐价格）
         position = 0
@@ -379,8 +379,8 @@ class ETFReportGenerator:
                 price_warning = f"⚠️偏离过大({deviation:+.1f}%)，以策略信号价为准"
         
         # 计算止盈止损价（基于推荐价格）
-        stop_loss_price = trade_price * 0.95  # 止损价 -5%
-        take_profit_price = trade_price * 1.08  # 止盈价 +8%
+        stop_loss_price = trade_price * 0.94  # 止损价 -6%
+        take_profit_price = trade_price * 1.10  # 止盈价 +10%
         
         # 计算股数（基于推荐价格）
         position = 0
@@ -399,7 +399,7 @@ class ETFReportGenerator:
 报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 数据最新日期: {latest} {data_freshness}
 投资本金: {capital:,}元
-策略模式: 单持仓 + 5%止损 + 8%止盈 + 移动止盈
+策略模式: 单持仓 + 6%止损 + 10%止盈 + 移动止盈
 
 {f"{data_freshness_warning}" if data_freshness_warning else ""}
 {'='*70}
@@ -410,8 +410,8 @@ class ETFReportGenerator:
 【目标】{top['code']} {top['name']}
 【价格】{trade_price:.3f}元
 【数量】{position}股 ({capital*0.9:,.0f}元)
-【止损】-5% ({stop_loss_price:.3f}元)
-【止盈】+8% ({take_profit_price:.3f}元)
+【止损】-6% ({stop_loss_price:.3f}元)
+【止盈】+10% ({take_profit_price:.3f}元)
 
 {'='*70}
 🔍 实时校验 (实时数据对比)
@@ -562,8 +562,8 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 【目标】{top['code']} {top['name']}
 【价格】{top['price']:.3f}元
 【数量】{position}股 ({capital*0.9:,.0f}元)
-【止损】-5% ({top['price']*0.95:.3f}元)
-【止盈】+8% ({top['price']*1.08:.3f}元)
+【止损】-6% ({top['price']*0.94:.3f}元)
+【止盈】+10% ({top['price']*1.10:.3f}元)
 
 【操作建议】
 {'✓ 建议积极参与，严格执行止损' if market['bullish'] else '建议轻仓观望'}
