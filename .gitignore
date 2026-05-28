@@ -29,6 +29,10 @@ __pycache__/
 .env.local
 .env.*.local
 
-# Experiments data
-data/experiments/*.json
-missions/
+# Large files
+*.tar.gz
+*.zip
+*.pdf
+
+# Backup
+*_backup*

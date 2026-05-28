@@ -1,0 +1,47 @@
+{
+  "records": [
+    {
+      "id": "BH0001",
+      "timestamp": "2026-05-25T14:28:15.807614",
+      "date": "2026-05-25",
+      "code": "515050",
+      "name": "通信ETF华夏",
+      "action": "ask_buy",
+      "current_price": 1.198,
+      "signal_price": 1.15,
+      "price_deviation": 4.173913043478264,
+      "rsi": 50.0,
+      "target_gap": 15.0,
+      "stop_gap": -9.999999999999993,
+      "recommendation": "SKIP",
+      "holding": false,
+      "cost": 0,
+      "pnl": 0,
+      "score": 7,
+      "market_status": "UNKNOWN",
+      "notes": ""
+    },
+    {
+      "id": "BH0002",
+      "timestamp": "2026-05-25T14:29:50.862671",
+      "date": "2026-05-25",
+      "code": "515050",
+      "name": "通信ETF华夏",
+      "action": "ask_buy",
+      "current_price": 1.199,
+      "signal_price": 1.18,
+      "price_deviation": 1.6101694915254348,
+      "rsi": 50.0,
+      "target_gap": 14.999999999999986,
+      "stop_gap": -9.999999999999991,
+      "recommendation": "CAUTION",
+      "holding": false,
+      "cost": 0,
+      "pnl": 0,
+      "score": 7,
+      "market_status": "UNKNOWN",
+      "notes": ""
+    }
+  ],
+  "last_updated": "2026-05-25T14:29:50.863214"
+}
