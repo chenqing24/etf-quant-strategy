@@ -1,5 +1,51 @@
 # 变更记录
 
+## [2.2.0] - 2026-05-29
+
+### 新增
+
+- **`src/config/etf_pools.py`**（新建）
+  - ETF池配置：核心池48只 + 扩展池28只
+  - 采集间隔配置：核心池1~2秒，扩展池1.5~3秒
+
+- **`src/data/etf_name_collector.py`**（新建）
+  - `ETFNameCollector` 类：多渠道（腾讯+新浪）采集
+  - 失败重试：指数退避（60秒、5分钟、30分钟）
+  - 持久化重试队列：存入数据库
+  - 监控告警：成功率、失败数量、平均耗时
+
+- **`src/data/etf_lifecycle.py`**（新建）
+  - `ETFLifecycleManager` 类：ETF生命周期管理
+  - 同步池配置到数据库
+  - 检测新ETF/退市ETF
+  - 名称变更检测
+
+- **`src/data/api_validator.py`**（新建）
+  - `APIFormatValidator` 类：API格式验证器
+  - 检测格式变化，连续3次异常告警
+
+- **`src/data/cron_etf_names.py`**（新建）
+  - 定时任务入口：fetch_core、fetch_extended、fetch_all、recover、status
+
+- **`src/data/database.py`**（扩展）
+  - `init_etf_name_tables()`: 初始化4张新表
+  - `save_etf_name_full()`: 保存完整名称信息
+  - `get_etf_name_full()`: 获取完整名称信息
+  - `add_retry_task()`: 添加重试任务
+  - `get_retry_tasks()`: 获取待处理重试任务
+  - `complete_retry_task()`: 标记完成
+  - `fail_retry_task()`: 标记失败
+  - `save_metrics()`: 保存监控指标
+  - `get_metrics_summary()`: 获取监控摘要
+
+### 文档
+
+- 新建 `docs/SAFE_ACQUISITION.md`：采集安全规范
+- 新建 `docs/MARKET_ETF_LIST.md`：市场主流ETF清单
+- 更新 `docs/DATA_DICTIONARY.md`：添加4张新表结构
+
+---
+
 ## [2.1.0] - 2026-05-29
 
 ### 新增

@@ -352,6 +352,265 @@ class Database:
         conn.close()
         
         return {row[0]: row[1] for row in rows}
+    
+    # ===== ETF名称管理相关方法 =====
+    
+    def init_etf_name_tables(self):
+        """初始化ETF名称管理相关表"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        # 1. ETF池配置表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS etf_pools (
+                code TEXT PRIMARY KEY,
+                pool_type TEXT NOT NULL,           -- core/extended
+                scale_rank INTEGER DEFAULT 0,       -- 规模排名
+                daily_volume REAL DEFAULT 0,        -- 日均成交量
+                last_fetch_at TEXT,                 -- 最后采集时间
+                fetch_count INTEGER DEFAULT 0,      -- 采集次数
+                status TEXT DEFAULT 'active',       -- active/inactive/failed
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """)
+        
+        # 2. ETF名称表（扩展原有stock_info的name字段）
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS etf_names (
+                code TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                name_sina TEXT,
+                verified BOOLEAN DEFAULT 0,       -- 是否通过验证
+                verify_count INTEGER DEFAULT 0,    -- 验证次数
+                last_verify_at TEXT,               -- 最后验证时间
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """)
+        
+        # 3. 重试队列表（持久化）
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS etf_name_retry_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL,
+                attempt_count INTEGER DEFAULT 0,   -- 重试次数
+                last_error TEXT,                   -- 最后错误
+                status TEXT DEFAULT 'pending',     -- pending/in_progress/failed/done
+                priority INTEGER DEFAULT 0,        -- 优先级
+                created_at TEXT,
+                next_retry_at TEXT,
+                finished_at TEXT
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_retry_status ON etf_name_retry_queue(status, next_retry_at)")
+        
+        # 4. 采集监控指标表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS etf_name_metrics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL,
+                success BOOLEAN,                  -- 是否成功
+                verified BOOLEAN,                 -- 是否验证通过
+                duration_ms INTEGER,              -- 耗时（毫秒）
+                sources_tried TEXT,               -- 尝试的渠道（逗号分隔）
+                created_at TEXT
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_code ON etf_name_metrics(code)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_time ON etf_name_metrics(created_at)")
+        
+        conn.commit()
+        conn.close()
+        logger.info("✅ ETF名称管理表初始化完成")
+    
+    def save_etf_name_full(self, code: str, name: str, name_sina: str = None, verified: bool = False):
+        """保存ETF名称（完整信息）
+        
+        Args:
+            code: ETF代码
+            name: ETF名称（腾讯）
+            name_sina: 新浪名称
+            verified: 是否验证通过
+        """
+        conn = self._get_connection()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO etf_names (code, name, name_sina, verified, verify_count, last_verify_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(code) DO UPDATE SET
+                name = excluded.name,
+                name_sina = COALESCE(excluded.name_sina, name_sina),
+                verified = excluded.verified,
+                verify_count = verify_count + 1,
+                last_verify_at = excluded.last_verify_at,
+                updated_at = excluded.updated_at
+        """, (code, name, name_sina, 1 if verified else 0, 1 if verified else 0, now, now))
+        
+        conn.commit()
+        conn.close()
+    
+    def get_etf_name_full(self, code: str) -> Optional[dict]:
+        """获取ETF名称（完整信息）
+        
+        Returns:
+            {'name': str, 'name_sina': str, 'verified': bool, ...} 或 None
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT code, name, name_sina, verified, verify_count, last_verify_at, updated_at
+            FROM etf_names WHERE code = ?
+        """, (code,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'code': row[0],
+                'name': row[1],
+                'name_sina': row[2],
+                'verified': bool(row[3]),
+                'verify_count': row[4],
+                'last_verify_at': row[5],
+                'updated_at': row[6],
+            }
+        return None
+    
+    def add_retry_task(self, code: str, error: str = None, priority: int = 0):
+        """添加重试任务
+        
+        Args:
+            code: ETF代码
+            error: 错误信息
+            priority: 优先级
+        """
+        conn = self._get_connection()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO etf_name_retry_queue 
+            (code, attempt_count, last_error, status, priority, created_at, next_retry_at)
+            VALUES (?, ?, ?, 'pending', ?, ?, ?)
+            ON CONFLICT(code) DO UPDATE SET
+                attempt_count = attempt_count + 1,
+                last_error = excluded.last_error,
+                status = 'pending',
+                next_retry_at = excluded.next_retry_at
+        """, (code, 1, error, priority, now, now))
+        
+        conn.commit()
+        conn.close()
+    
+    def get_retry_tasks(self, limit: int = 10) -> List[dict]:
+        """获取待处理的重试任务"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT id, code, attempt_count, last_error, status, priority, next_retry_at
+            FROM etf_name_retry_queue
+            WHERE status = 'pending' AND next_retry_at <= datetime('now')
+            ORDER BY priority DESC, created_at ASC
+            LIMIT ?
+        """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [
+            {
+                'id': row[0],
+                'code': row[1],
+                'attempt_count': row[2],
+                'last_error': row[3],
+                'status': row[4],
+                'priority': row[5],
+                'next_retry_at': row[6],
+            }
+            for row in rows
+        ]
+    
+    def complete_retry_task(self, code: str):
+        """标记重试任务完成"""
+        conn = self._get_connection()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE etf_name_retry_queue
+            SET status = 'done', finished_at = ?
+            WHERE code = ?
+        """, (now, code))
+        
+        conn.commit()
+        conn.close()
+    
+    def fail_retry_task(self, code: str, error: str):
+        """标记重试任务失败"""
+        conn = self._get_connection()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE etf_name_retry_queue
+            SET status = 'failed', last_error = ?, next_retry_at = datetime('now', '+1 hour')
+            WHERE code = ?
+        """, (error, code))
+        
+        conn.commit()
+        conn.close()
+    
+    def save_metrics(self, code: str, success: bool, verified: bool, duration_ms: int, sources: list):
+        """保存采集指标"""
+        conn = self._get_connection()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO etf_name_metrics (code, success, verified, duration_ms, sources_tried, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (code, 1 if success else 0, 1 if verified else 0, duration_ms, ','.join(sources), now))
+        
+        conn.commit()
+        conn.close()
+    
+    def get_metrics_summary(self, hours: int = 24) -> dict:
+        """获取监控摘要（最近N小时）
+        
+        Returns:
+            {'total': int, 'success_rate': float, 'avg_duration_ms': float, 'failed_codes': list}
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT code, success, verified, duration_ms
+            FROM etf_name_metrics
+            WHERE created_at >= datetime('now', '-{} hours')
+        """.format(hours))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            return {'total': 0, 'success_rate': 0, 'avg_duration_ms': 0, 'failed_codes': []}
+        
+        total = len(rows)
+        success = sum(1 for r in rows if r[1])
+        durations = [r[3] for r in rows if r[3]]
+        failed = [r[0] for r in rows if not r[1]]
+        
+        return {
+            'total': total,
+            'success_rate': success / total if total else 0,
+            'avg_duration_ms': sum(durations) / len(durations) if durations else 0,
+            'failed_codes': failed,
+        }
 
 
 # 全局数据库实例
