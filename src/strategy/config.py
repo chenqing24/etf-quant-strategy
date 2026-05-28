@@ -86,6 +86,8 @@ class BacktestConfig:
     max_positions: int = 2          # 最大持仓数
     commission: float = 0.0003      # 手续费
     slippage: float = 0.001         # 滑点
+    allow_rebalance: bool = True    # 是否允许调仓 (频繁换仓)
+    rebalance_threshold: float = 0.1  # 调仓阈值差值
     
     def to_dict(self) -> Dict:
         """序列化为字典"""
@@ -95,7 +97,9 @@ class BacktestConfig:
             'hold_days': self.hold_days,
             'max_positions': self.max_positions,
             'commission': self.commission,
-            'slippage': self.slippage
+            'slippage': self.slippage,
+            'allow_rebalance': self.allow_rebalance,
+            'rebalance_threshold': self.rebalance_threshold
         }
     
     @classmethod
@@ -107,7 +111,9 @@ class BacktestConfig:
             hold_days=d.get('hold_days', 5),
             max_positions=d.get('max_positions', 2),
             commission=d.get('commission', 0.0003),
-            slippage=d.get('slippage', 0.001)
+            slippage=d.get('slippage', 0.001),
+            allow_rebalance=d.get('allow_rebalance', True),
+            rebalance_threshold=d.get('rebalance_threshold', 0.1)
         )
 
 
