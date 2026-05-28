@@ -1,0 +1,34 @@
+# Data files (do not commit)
+etf_data_live/*.csv
+etf_data_live/*.pkl
+etf_data_live/hot/*.json
+etf_data_live/*.db
+etf_reports/*.txt
+etf_reports/*.json
+
+# Cache
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+*.egg-info/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store
+*.swp
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Experiments data
+data/experiments/*.json
+missions/
