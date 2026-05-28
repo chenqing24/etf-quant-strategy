@@ -1,0 +1,130 @@
+{
+  "updated": "2026-05-24",
+  "etfs": [
+    {
+      "code": "510300",
+      "name": "沪深300",
+      "category": "宽基"
+    },
+    {
+      "code": "510500",
+      "name": "中证500",
+      "category": "宽基"
+    },
+    {
+      "code": "159919",
+      "name": "创业板",
+      "category": "宽基"
+    },
+    {
+      "code": "159901",
+      "name": "深证100",
+      "category": "宽基"
+    },
+    {
+      "code": "159905",
+      "name": "中证100",
+      "category": "宽基"
+    },
+    {
+      "code": "510010",
+      "name": "180ETF",
+      "category": "宽基"
+    },
+    {
+      "code": "510630",
+      "name": "消费ETF",
+      "category": "消费"
+    },
+    {
+      "code": "512010",
+      "name": "医药ETF",
+      "category": "医药"
+    },
+    {
+      "code": "512500",
+      "name": "医药卫生",
+      "category": "医药"
+    },
+    {
+      "code": "159838",
+      "name": "创新药",
+      "category": "医药"
+    },
+    {
+      "code": "159995",
+      "name": "计算机",
+      "category": "科技"
+    },
+    {
+      "code": "512760",
+      "name": "半导体",
+      "category": "科技"
+    },
+    {
+      "code": "159801",
+      "name": "芯片ETF",
+      "category": "科技"
+    },
+    {
+      "code": "159823",
+      "name": "5G通信",
+      "category": "科技"
+    },
+    {
+      "code": "515050",
+      "name": "科技ETF",
+      "category": "科技"
+    },
+    {
+      "code": "159857",
+      "name": "光伏ETF",
+      "category": "新能源"
+    },
+    {
+      "code": "516160",
+      "name": "新能源车",
+      "category": "新能源"
+    },
+    {
+      "code": "159806",
+      "name": "新能源车",
+      "category": "新能源"
+    },
+    {
+      "code": "159942",
+      "name": "有色金属",
+      "category": "周期"
+    },
+    {
+      "code": "510050",
+      "name": "煤炭ETF",
+      "category": "周期"
+    },
+    {
+      "code": "512660",
+      "name": "军工ETF",
+      "category": "军工"
+    },
+    {
+      "code": "516050",
+      "name": "科创成长",
+      "category": "科创"
+    },
+    {
+      "code": "159577",
+      "name": "创新产业",
+      "category": "科创"
+    },
+    {
+      "code": "515000",
+      "name": "工业ETF",
+      "category": "制造"
+    },
+    {
+      "code": "513100",
+      "name": "稀土产业",
+      "category": "资源"
+    }
+  ]
+}

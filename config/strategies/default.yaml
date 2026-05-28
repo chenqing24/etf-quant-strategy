@@ -1,0 +1,33 @@
+version: "1.0"
+name: fishbody_cfg4
+description: 鱼身因子最优配置 (V3实验Top1)
+factors:
+  enabled:
+    - ADX
+    - BB_percent
+    - SAR_trend
+    - OBV_diff
+  weights:
+    ADX: 0.4
+    BB_percent: 0.3
+    SAR_trend: 0.2
+    OBV_diff: 0.1
+  direction:
+    ADX: long
+    BB_percent: long
+    SAR_trend: long
+    OBV_diff: long
+risk:
+  stop_loss: -0.06
+  stop_profit: 0.10
+  max_position: 1
+  max_loss: -0.15
+  hold_days: 20
+execution:
+  min_score: 0.6
+  top_n: 30
+  hold_count: 2
+data:
+  market_code: "510300"
+  train_start: "2022-01-01"
+  train_end: "2024-12-31"
