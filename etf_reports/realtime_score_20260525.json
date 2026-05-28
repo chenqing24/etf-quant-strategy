@@ -1,0 +1,265 @@
+{
+  "date": "2026-05-25 13:54",
+  "top1": {
+    "code": "516050",
+    "name": "科技龙头ETF工银",
+    "price": 1.483,
+    "target": 1.662,
+    "stop": 1.462,
+    "score": 11,
+    "pct": 3.2
+  },
+  "all": [
+    {
+      "code": "516050",
+      "name": "科技龙头ETF工银",
+      "price": 1.483,
+      "pct": 3.2,
+      "score": 11,
+      "factors": "✓ ↑ ✓ ✓ ✓ ✓ ✗",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "放量1.7x",
+        "5日+8.6%"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": true,
+        "ret5d_ok": true,
+        "rsi": 80.19093078758948,
+        "rsi_ok": false
+      }
+    },
+    {
+      "code": "515050",
+      "name": "通信ETF华夏",
+      "price": 1.184,
+      "pct": 2.69,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✓ ✗",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "5日+6.9%"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": true,
+        "rsi": 75.06493506493509,
+        "rsi_ok": false
+      }
+    },
+    {
+      "code": "515880",
+      "name": "通信ETF国泰",
+      "price": 1.539,
+      "pct": 2.26,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✓ ✗",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "5日+2.6%"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": true,
+        "rsi": 70.89108910891088,
+        "rsi_ok": false
+      }
+    },
+    {
+      "code": "159577",
+      "name": "美国50ETF汇添富",
+      "price": 1.603,
+      "pct": 2.43,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✓ ✗",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "5日+2.5%"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": true,
+        "rsi": 80.20304568527914,
+        "rsi_ok": false
+      }
+    },
+    {
+      "code": "159995",
+      "name": "芯片ETF华夏",
+      "price": 2.677,
+      "pct": 5.56,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✓ ✗",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "5日+15.6%"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": true,
+        "rsi": 81.76100628930816,
+        "rsi_ok": false
+      }
+    },
+    {
+      "code": "159915",
+      "name": "创业板ETF易方达",
+      "price": 3.989,
+      "pct": 1.09,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✗ ✓",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "RSI67"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": false,
+        "rsi": 67.58045292014302,
+        "rsi_ok": true
+      }
+    },
+    {
+      "code": "515000",
+      "name": "科技ETF华宝",
+      "price": 1.386,
+      "pct": 2.97,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✓ ✗",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "5日+8.6%"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": true,
+        "rsi": 78.64321608040198,
+        "rsi_ok": false
+      }
+    },
+    {
+      "code": "513100",
+      "name": "纳指ETF国泰",
+      "price": 2.214,
+      "pct": 3.17,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✓ ✗",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "5日+5.4%"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": true,
+        "rsi": 79.43925233644862,
+        "rsi_ok": false
+      }
+    },
+    {
+      "code": "510300",
+      "name": "沪深300ETF华泰柏瑞",
+      "price": 4.901,
+      "pct": 0.8,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✗ ✓",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "RSI56"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": false,
+        "rsi": 56.73400673400672,
+        "rsi_ok": true
+      }
+    },
+    {
+      "code": "510500",
+      "name": "中证500ETF南方",
+      "price": 8.704,
+      "pct": 0.53,
+      "score": 9,
+      "factors": "✓ ↑ ✓ ✓ ✗ ✗ ✓",
+      "reasons": [
+        "MA120",
+        "MA60↑",
+        "MA60",
+        "MA20",
+        "RSI58"
+      ],
+      "details": {
+        "ma120_ok": true,
+        "ma60_up": true,
+        "ma60_ok": true,
+        "ma20_ok": true,
+        "vol_ok": false,
+        "ret5d_ok": false,
+        "rsi": 58.44311377245508,
+        "rsi_ok": true
+      }
+    }
+  ]
+}
