@@ -58,30 +58,41 @@
 class DataFacade:
     """数据层唯一统一入口"""
     
-    # 热数据
-    def get_hot(self, code: str) -> Optional[HotDataRecord]:
-        """获取实时价格（从内存JSON）"""
-    
-    def get_all_hot(self) -> Dict[str, HotDataRecord]:
-        """获取所有ETF实时价格"""
-    
-    # 冷数据
-    def get_daily(self, code: str, days: int = 30) -> pd.DataFrame:
-        """获取日线历史数据（从SQLite）"""
-    
-    def get_hourly(self, code: str, limit: int = 100) -> pd.DataFrame:
-        """获取小时线数据（从新浪API）"""
-    
-    # 合并数据
-    def get_merged(self, code: str, days: int = 30) -> Dict:
+    def get_merged_data(self, code: str) -> Dict[str, Any]:
         """获取合并数据（日线 + 最新热数据）"""
     
-    def get_with_signal(self, code: str, days: int = 30) -> Dict:
-        """获取日线 + 小时线信号（用于策略共振）"""
-    
-    # 生命周期
-    def migrate(self):
+    def migrate(self) -> Dict[str, str]:
         """热数据迁移到冷数据（收盘后执行）"""
+    
+    def get_lifecycle_info(self) -> Dict[str, Any]:
+        """获取生命周期信息"""
+    
+    def is_trading_time(self) -> bool:
+        """判断是否在交易时间"""
+
+class HotDataManager:
+    """热数据管理器（内存缓存）"""
+    
+    def get(self, code: str) -> Optional[HotDataRecord]:
+        """获取单只ETF实时数据"""
+    
+    def get_all(self) -> Dict[str, HotDataRecord]:
+        """获取所有ETF实时数据"""
+    
+    def set(self, code: str, data: Dict[str, Any]):
+        """设置实时数据"""
+    
+    def clear(self):
+        """清空缓存"""
+
+class ColdDataManager:
+    """冷数据管理器（SQLite）"""
+    
+    def get(self, code: str, days: int = 30) -> Optional[pd.DataFrame]:
+        """获取日线历史数据"""
+    
+    def exists(self, code: str) -> bool:
+        """检查ETF是否存在"""
 ```
 
 **依赖**: DataSourceRouter
