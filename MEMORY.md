@@ -43,3 +43,30 @@
 1. 调仓逻辑优化
 2. 第2轮实验 (Exp6-10)
 3. 新因子挖掘
+
+## Git 操作规范（2026-05-28 总结）
+
+### 正确的 GitHub 交互流程
+```bash
+# 1. 配置 SOCKS5 代理（本地 1080 端口）
+git config --global http.proxy "socks5://127.0.0.1:1080"
+git config --global https.proxy "socks5://127.0.0.1:1080"
+
+# 2. 先 fetch 再 push
+git fetch github
+git merge github/main --allow-unrelated-histories  # 首次合并需要此参数
+git push github main
+
+# 3. 不要强制推送，除非明确知道远程不需要保留历史
+```
+
+### 隐私文件处理
+- .env 文件必须从 Git 历史中清除：`git filter-repo --path .env --invert-paths --force`
+- 备份恢复后立即检查是否包含敏感文件
+
+### 遇到的问题和解决方案
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| git push 超时 | 直接连接 GitHub 被阻断 | 配置 SOCKS5 代理 |
+| 拒绝合并无关历史 | 本地仓库和远程仓库无共同祖先 | 使用 `--allow-unrelated-histories` |
+| .env 被跟踪 | 备份恢复时带入了 Git 跟踪的文件 | 从 Git 历史中删除 (`git rm --cached .env`) |
