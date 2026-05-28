@@ -152,7 +152,11 @@ class TencentETFetcher:
         return results
     
     def save_etf(self, code: str, df: pd.DataFrame):
-        """保存ETF数据"""
+        """保存ETF数据到CSV和SQLite"""
+        import sqlite3
+        from src.constants import DB_NAME
+        
+        # 1. 保存到CSV
         path = os.path.join(self.data_dir, f"{code}.csv")
         
         # 读取现有数据
@@ -167,6 +171,49 @@ class TencentETFetcher:
             combined.to_csv(path, index=False)
         else:
             df.to_csv(path, index=False)
+        
+        # 2. 保存到SQLite (etf.db)
+        db_path = os.path.join(self.data_dir, DB_NAME)
+        
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            
+            # 确保表存在
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS daily (
+                    code TEXT,
+                    date TEXT,
+                    open REAL,
+                    high REAL,
+                    low REAL,
+                    close REAL,
+                    volume INTEGER,
+                    PRIMARY KEY (code, date)
+                )
+            ''')
+            
+            # 批量插入/更新 (去掉sh/sz前缀)
+            save_code = code.replace('sh', '').replace('sz', '')
+            for _, row in df.iterrows():
+                cur.execute('''
+                    INSERT OR REPLACE INTO daily (code, date, open, high, low, close, volume)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    save_code,
+                    row['date'].strftime('%Y-%m-%d') if hasattr(row['date'], 'strftime') else str(row['date'])[:10],
+                    float(row['open']),
+                    float(row['high']),
+                    float(row['low']),
+                    float(row['close']),
+                    int(float(row['volume']))
+                ))
+            
+            conn.commit()
+            conn.close()
+            logger.debug(f"  SQLite已更新: {code} ({len(df)}条)")
+        except Exception as e:
+            logger.warning(f"  SQLite更新失败 {code}: {e}")
     
     def get_local_latest_date(self, code: str) -> str:
         """获取本地存储的最新日期"""
@@ -192,7 +239,7 @@ class TencentETFetcher:
             today = datetime.now()
             days_diff = (today - local_date).days
             
-            if days_diff <= 1:
+            if days_diff == 0:
                 # 本地数据已是最新，无需请求
                 logger.debug(f"  {code}: 本地已是最新 ({local_latest})")
                 return pd.DataFrame()

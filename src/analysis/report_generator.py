@@ -500,7 +500,7 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
         report += f"""
 【核心推荐】
 1. {self.current_etfs[0]['code']} {self.current_etfs[0]['name']} - 分数{self.current_etfs[0]['score']}分 (最高)
-2. {self.current_etfs[1]['code']} {self.current_etfs[1]['name']} - 分数{self.current_etfs[1]['score']}分
+{f"2. {self.current_etfs[1]['code']} {self.current_etfs[1]['name']} - 分数{self.current_etfs[1]['score']}分" if len(self.current_etfs) > 1 else ""}
 
 {'='*70}
 四、资金配置方案
