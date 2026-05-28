@@ -201,24 +201,49 @@ class ETFDecisionEngine:
             
             if data_age == 0:
                 data_freshness = '✅ 正常'
-            elif 1 <= data_age <= 2:
+            else:
+                # 数据不新鲜，尝试更新（最多2次）
                 data_freshness = '⚠️ 数据略旧'
                 data_warning = f'数据距今{data_age}天'
-            else:
-                data_freshness = '❌ 数据过期'
-                data_warning = f'数据超过{data_age}天未更新'
-                logger.warn(f"⚠️ 数据过期 ({data_age}天)，尝试更新...")
+                logger.warn(f"⚠️ 数据略旧 ({data_age}天)，尝试更新...")
                 
-                # 尝试更新数据
-                try:
-                    self.fetcher.update_all(days=7)
-                    logger.info("  数据更新成功")
-                    # 重新加载数据
-                    self._etf_data = loader.load('etf_data_live')
-                    data_freshness = '✅ 已更新'
-                    data_warning = ''
-                except Exception as e:
-                    logger.error(f"  数据更新失败: {e}")
+                update_success = False
+                for attempt in range(2):
+                    try:
+                        self.fetcher.update_all(days=7)
+                        # 重新加载数据
+                        self._etf_data = loader.load('etf_data_live')
+                        # 重新检查数据新鲜度
+                        latest_data_date_new = None
+                        for code, df in self._etf_data.items():
+                            if 'date' in df.columns:
+                                max_date = pd.to_datetime(df['date']).max()
+                                if latest_data_date_new is None or max_date > latest_data_date_new:
+                                    latest_data_date_new = max_date
+                                break
+                        if latest_data_date_new:
+                            new_data_date = latest_data_date_new.date()
+                            new_data_age = (today - new_data_date).days
+                            if new_data_age == 0:
+                                data_freshness = '✅ 已更新'
+                                data_warning = ''
+                                logger.info(f"  数据更新成功 (原{data_age}天 → 今日)")
+                                update_success = True
+                                break
+                            else:
+                                logger.warn(f"  第{attempt+1}次更新后仍为{new_data_age}天")
+                                if attempt < 1:
+                                    logger.warn("  尝试第2次...")
+                                else:
+                                    data_freshness = '⚠️ 更新后仍略旧'
+                                    data_warning = f'数据距今{new_data_age}天'
+                    except Exception as e:
+                        if attempt < 1:
+                            logger.warn(f"  第{attempt+1}次更新失败: {e}，尝试第2次...")
+                        else:
+                            logger.error(f"  2次更新都失败: {e}")
+                            data_freshness = '❌ 更新失败'
+                            data_warning = f'数据距今{data_age}天，更新异常'
         
         # 1. 生成决策报告
         logger.info("[1/3] 生成决策报告...")
