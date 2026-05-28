@@ -282,6 +282,22 @@ class MultiETFFishBodyV3:
         drawdowns = (cumulative - running_max)
         stats.max_drawdown = np.min(drawdowns) if len(drawdowns) > 0 else 0
         
+        # 年化收益 (假设每年约252个交易日，平均持仓天数)
+        avg_hold_days = np.mean([t.hold_days for t in trades]) if trades else 10
+        trading_days_per_year = 252
+        if avg_hold_days > 0:
+            annual_trades = trading_days_per_year / avg_hold_days
+            stats.annual_return = stats.total_return * annual_trades / len(trades) if len(trades) > 0 else 0
+        
+        # 夏普比率
+        if stats.annual_return > 0 and returns:
+            # 计算收益标准差
+            return_std = np.std(returns) if len(returns) > 1 else 1
+            # 年化波动率
+            annual_volatility = return_std * np.sqrt(trading_days_per_year / avg_hold_days) if avg_hold_days > 0 else 1
+            if annual_volatility > 0:
+                stats.sharpe_ratio = (stats.annual_return - 2.0) / annual_volatility  # 假设无风险利率2%
+        
         # IC计算
         if len(df) > 20:
             future_return = df['close'].shift(-5) / df['close'] - 1
