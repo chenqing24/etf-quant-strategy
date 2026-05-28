@@ -138,8 +138,8 @@ class ReportBuilder:
             lines.append("")  # 空行
             lines.append("---")  # 分隔线
             lines.append("")  # 空行
-            lines.append(ln(f"🛡️ 止损: **{price*0.95:.3f}** (-5%)"))
-            lines.append(ln(f"🎯 止盈: **{price*1.08:.3f}** (+8%)"))
+            lines.append(ln(f"🛡️ 止损: **{price*0.94:.3f}** (-6%)"))
+            lines.append(ln(f"🎯 止盈: **{price*1.10:.3f}** (+10%)"))
             
         elif action == '卖出':
             lines.append(ln(f"**🔴 卖出** {code} {name}"))
