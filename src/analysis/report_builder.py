@@ -11,46 +11,19 @@ class ReportBuilder:
     """统一报告构建器"""
     
     def __init__(self):
-        self._etf_names = self._load_etf_names()
+        from src.data.loader import ETFNameLoader
+        self._name_loader = ETFNameLoader()
+        self._names_cache = None
     
-    @staticmethod
-    def _load_etf_names() -> Dict[str, str]:
-        """加载ETF名称映射（已通过腾讯API验证）"""
-        return {
-            '510300': '沪深300',
-            '510500': '中证500',
-            '159919': '沪深300ETF',
-            '159915': '创业板ETF',
-            '512880': '证券ETF',
-            '512170': '医疗ETF',
-            '512200': '房地产ETF',
-            '159928': '消费ETF',
-            '159825': '农业ETF',
-            '512010': '医药ETF',
-            '512500': '中证500ETF',
-            '159952': '创业板ETF',
-            '159997': '券商ETF',
-            '159995': '芯片ETF',
-            '512760': '芯片ETF',
-            '159801': '芯片ETF',
-            '159823': '新能源车',
-            '515050': '5GETF',
-            '159857': '光伏ETF',
-            '516160': '新能源ETF',
-            '159806': '新能源车',
-            '159942': '教育ETF',
-            '510050': '上证50',
-            '512660': '军工ETF',
-            '159920': '中证500ETF',
-            '159867': '农业ETF',
-            '518880': '黄金ETF',
-            '159934': '黄金ETF',
-            '159577': '美国50ETF汇添富',  # 2026-05-28 腾讯API验证
-        }
+    def _get_etf_names(self) -> Dict[str, str]:
+        """懒加载ETF名称"""
+        if self._names_cache is None:
+            self._names_cache = self._name_loader.load_all_names()
+        return self._names_cache
     
     def get_etf_name(self, code: str) -> str:
-        """获取ETF名称"""
-        return self._etf_names.get(code, code)
+        """获取ETF名称（数据库优先，无则从API获取）"""
+        return self._name_loader.get_name(code)
     
     def build_simple(self, results: Dict) -> str:
         """构建简版报告（钉钉/移动端）
