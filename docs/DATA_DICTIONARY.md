@@ -122,10 +122,83 @@ CREATE TABLE stock_info (
 | name_updated_at | 自动 | 名称变更时更新 | YYYY-MM-DD HH:MM:SS 格式 |
 | etf_type | 自动 | 创建时设置 | 固定值 'ETF' |
 
-### 2.7 版本历史
+### 2.7 etf_pools（ETF池配置）
+
+> v2.2 新增：ETF池配置表
+
+```sql
+CREATE TABLE etf_pools (
+    code TEXT PRIMARY KEY,           -- ETF代码
+    pool_type TEXT NOT NULL,         -- 池类型（core/extended）
+    scale_rank INTEGER DEFAULT 0,    -- 规模排名
+    daily_volume REAL DEFAULT 0,     -- 日均成交量
+    last_fetch_at TEXT,              -- 最后采集时间
+    fetch_count INTEGER DEFAULT 0,   -- 采集次数
+    status TEXT DEFAULT 'active',    -- active/inactive/failed
+    created_at TEXT,                 -- 创建时间
+    updated_at TEXT                  -- 更新时间
+);
+```
+
+### 2.8 etf_names（ETF名称）
+
+> v2.2 新增：ETF名称表（多渠道验证）
+
+```sql
+CREATE TABLE etf_names (
+    code TEXT PRIMARY KEY,           -- ETF代码
+    name TEXT NOT NULL,              -- ETF名称（腾讯API）
+    name_sina TEXT,                 -- ETF名称（新浪API）
+    verified BOOLEAN DEFAULT 0,      -- 是否验证通过
+    verify_count INTEGER DEFAULT 0, -- 验证次数
+    last_verify_at TEXT,            -- 最后验证时间
+    created_at TEXT,                -- 创建时间
+    updated_at TEXT                 -- 更新时间
+);
+```
+
+### 2.9 etf_name_retry_queue（重试队列）
+
+> v2.2 新增：持久化重试队列表
+
+```sql
+CREATE TABLE etf_name_retry_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL,             -- ETF代码
+    attempt_count INTEGER DEFAULT 0, -- 重试次数
+    last_error TEXT,                -- 最后错误
+    status TEXT DEFAULT 'pending',  -- pending/in_progress/failed/done
+    priority INTEGER DEFAULT 0,     -- 优先级
+    created_at TEXT,                -- 创建时间
+    next_retry_at TEXT,            -- 下次重试时间
+    finished_at TEXT                -- 完成时间
+);
+CREATE INDEX idx_retry_status ON etf_name_retry_queue(status, next_retry_at);
+```
+
+### 2.10 etf_name_metrics（采集监控）
+
+> v2.2 新增：采集监控指标表
+
+```sql
+CREATE TABLE etf_name_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL,             -- ETF代码
+    success BOOLEAN,               -- 是否成功
+    verified BOOLEAN,               -- 是否验证通过
+    duration_ms INTEGER,            -- 耗时（毫秒）
+    sources_tried TEXT,            -- 尝试的渠道（逗号分隔）
+    created_at TEXT                -- 创建时间
+);
+CREATE INDEX idx_metrics_code ON etf_name_metrics(code);
+CREATE INDEX idx_metrics_time ON etf_name_metrics(created_at);
+```
+
+### 2.11 版本历史
 
 | 版本 | 日期 | 变更内容 |
 |------|------|----------|
+| v2.2 | 2026-05-29 | 添加 etf_pools、etf_names、etf_name_retry_queue、etf_name_metrics 表 |
 | v2.1 | 2026-05-29 | 添加 stock_info.etf_type、name_updated_at 字段 |
 | v2.0 | 2026-05-27 | 统一字段定义 |
 
