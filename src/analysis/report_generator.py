@@ -10,7 +10,7 @@ from pathlib import Path
 from src.utils.config import run_strategy, StrategyConfig
 from src.core.selector import Selector
 from src.analysis.indicator import Indicator
-from src.data.loader import DataLoader
+from src.data.loader import DataLoader, ETFNameLoader
 
 # 尝试导入热冷数据管理器
 try:
@@ -26,47 +26,21 @@ except ImportError:
     Recommendation = None
 
 
-# ETF代码中文名称映射（来源：腾讯API实时获取，2026-05-28验证）
-ETF_NAMES = {
-    # 宽基ETF
-    '510050': '上证50',
-    '510300': '沪深300',
-    '510500': '中证500',
-    '159919': '创业板指',
-    '159920': '中证100',
-    
-    # 行业ETF（已验证）
-    '516050': '科创成长',
-    '515050': '科技50',
-    '159577': '美国50ETF汇添富',  # 2026-05-28 验证：腾讯API返回"美国50ETF汇添富"
-    '515000': '工业ETF',
-    '513100': '稀土产业',
-    '512010': '医药ETF',
-    '512500': '中证医药',
-    '159838': '创新药',
-    '159995': '计算机',
-    '512760': '半导体',
-    '159801': '芯片ETF',
-    '159823': '5G通信',
-    '510630': '消费ETF',
-    '159857': '光伏ETF',
-    '516160': '新能源车',
-    '159806': '新能源车',
-    '159942': '有色金属',
-    '512660': '军工ETF',
-    '512880': '军工',
-    
-    # 商品ETF
-    '518880': '黄金ETF',
-    
-    # 跨境ETF
-    '513120': '港股创新药',
-    '513330': '恒生互联网',
-    '513310': '中韩半导体',
-    
-    # 债券/货币ETF
-    '511010': '国债ETF',
-}
+# ETF名称加载器（从数据库读取，不再硬编码）
+# 首次使用时从数据库加载，数据库无数据时自动从腾讯API获取并更新
+_etf_name_loader = None
+
+def _get_etf_name_loader() -> ETFNameLoader:
+    """获取ETF名称加载器（懒加载）"""
+    global _etf_name_loader
+    if _etf_name_loader is None:
+        _etf_name_loader = ETFNameLoader()
+    return _etf_name_loader
+
+def get_etf_name(code: str) -> str:
+    """获取单个ETF名称（数据库优先，无则从API获取）"""
+    loader = _get_etf_name_loader()
+    return loader.get_name(code)
 
 
 class ETFReportGenerator:
@@ -136,7 +110,7 @@ class ETFReportGenerator:
                     price = row.iloc[0]['close']
                     scores.append({
                         'code': code,
-                        'name': ETF_NAMES.get(code, code),
+                        'name': get_etf_name(code),
                         'score': s,
                         'price': price,
                         'reasons': reasons

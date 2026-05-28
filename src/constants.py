@@ -16,6 +16,7 @@ DB_NAME = 'etf.db'              # 数据库文件名
 # 腾讯行情API
 TENCENT_BASE_URL = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get'
 TENCENT_QT_URL = 'https://qt.gtimg.cn/q='
+TENCENT_REALTIME_URL = 'https://qt.gtimg.cn/q={code}'  # 实时价格，含ETF名称
 
 # 新浪API
 SINA_REALTIME_URL = 'https://hq.sinajs.cn/list='
