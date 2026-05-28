@@ -140,6 +140,7 @@ def quick_run(
     stop_profit: float = 0.10,
     threshold: float = 0.6,
     hold_days: int = 5,
+    allow_rebalance: bool = True,
     db_path: str = "data/etf_factors.db"
 ) -> Dict:
     """
@@ -154,6 +155,7 @@ def quick_run(
         stop_profit: 止盈
         threshold: 分数阈值
         hold_days: 持仓天数
+        allow_rebalance: 是否允许调仓
         db_path: 数据库路径
         
     Returns:
@@ -169,7 +171,8 @@ def quick_run(
         stop_loss=stop_loss,
         stop_profit=stop_profit,
         threshold=threshold,
-        hold_days=hold_days
+        hold_days=hold_days,
+        allow_rebalance=allow_rebalance
     )
     
     executor = UniversalExecutor(config)

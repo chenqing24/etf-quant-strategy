@@ -182,8 +182,8 @@ class UniversalExecutor:
             for code in list(executor.positions.keys()):
                 current_price = current_prices.get(code, executor.positions[code].entry_price)
                 
-                # 持仓评分检查 - 低分时平仓
-                if code in current_rows:
+                # 持仓评分检查 - 低分时平仓 (仅当允许调仓时)
+                if self.config.backtest.allow_rebalance and code in current_rows:
                     pos_score, _ = self.scorer.calculate(current_rows[code])
                     # 更激进的平仓 - 低于阈值一半就平
                     if pos_score < self.config.factor_strategy.score_config.threshold * 0.5:
@@ -217,8 +217,8 @@ class UniversalExecutor:
                     if executor.open_position(code, price, current_date, score):
                         break
             
-            # 调仓：如果有持仓的ETF评分太低，用更高分的替换
-            elif executor.positions:
+            # 调仓：如果有持仓的ETF评分太低，用更高分的替换 (仅当允许调仓时)
+            elif self.config.backtest.allow_rebalance and executor.positions:
                 # 找持仓中最差的
                 worst_pos = None
                 worst_score = 1.0
@@ -241,8 +241,9 @@ class UniversalExecutor:
                         best_new = (code, new_score, current_prices[code])
                 
                 # 如果新标的比持仓好超过阈值，调仓
+                threshold = self.config.backtest.rebalance_threshold
                 if (worst_pos and best_new and 
-                    best_score > worst_score + 0.1 and
+                    best_score > worst_score + threshold and
                     best_score >= self.config.factor_strategy.score_config.threshold):
                     # 平仓差的
                     worst_price = current_prices.get(worst_pos, executor.positions[worst_pos].entry_price)
@@ -294,7 +295,8 @@ def create_config(
     stop_loss: float = -0.05,
     stop_profit: float = 0.10,
     threshold: float = 0.6,
-    hold_days: int = 5
+    hold_days: int = 5,
+    allow_rebalance: bool = True
 ) -> ExperimentConfig:
     """
     快速创建配置
@@ -308,6 +310,7 @@ def create_config(
         stop_profit: 止盈
         threshold: 分数阈值
         hold_days: 持仓天数
+        allow_rebalance: 是否允许调仓
         
     Returns:
         ExperimentConfig
@@ -325,7 +328,8 @@ def create_config(
     backtest = BacktestConfig(
         stop_loss=stop_loss,
         stop_profit=stop_profit,
-        hold_days=hold_days
+        hold_days=hold_days,
+        allow_rebalance=allow_rebalance
     )
     
     return ExperimentConfig(
