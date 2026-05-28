@@ -38,35 +38,31 @@
   - engine.py: 统一执行引擎
   - store.py: 实验存储
 - `tests/strategy/`: 48个测试用例
+- `src/core/selector.py`: 因子评分选择器（P0-3改造后从配置读取权重）
 
 ## 待办
-1. 调仓逻辑优化
-2. 第2轮实验 (Exp6-10)
-3. 新因子挖掘
+1. 调仓逻辑优化（禁止频繁调仓可提升收益19%）
+2. 交易记录 hold_days 字段修复
+3. 第2轮实验 (Exp6-10)
+4. 新因子挖掘（"只吃鱼身"原则）
 
-## Git 操作规范（2026-05-28 总结）
+---
 
-### 正确的 GitHub 交互流程
-```bash
-# 1. 配置 SOCKS5 代理（本地 1080 端口）
-git config --global http.proxy "socks5://127.0.0.1:1080"
-git config --global https.proxy "socks5://127.0.0.1:1080"
+## 项目经验教训
 
-# 2. 先 fetch 再 push
-git fetch github
-git merge github/main --allow-unrelated-histories  # 首次合并需要此参数
-git push github main
+### 调仓陷阱
+- 禁止调仓后收益反而增加19% (574.8% → 686.2%)
+- 频繁调仓损害收益，应设置持仓最低天数限制
 
-# 3. 不要强制推送，除非明确知道远程不需要保留历史
-```
+### 过拟合检验
+- Train/Test收益比需 < 2
+- 滚动窗口交叉验证收益比需 < 1.2
+- Exp48过拟合风险最低（训练期夏普4.37, 测试期8.46）
 
-### 隐私文件处理
-- .env 文件必须从 Git 历史中清除：`git filter-repo --path .env --invert-paths --force`
-- 备份恢复后立即检查是否包含敏感文件
+### 技术指标无未来函数
+- ADX/BB/SAR/OBV代码审查：无shift(-)引用，只使用历史数据
+- 滚动窗口W4反转验证：收益比<1，证明无系统性未来偏差
 
-### 遇到的问题和解决方案
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| git push 超时 | 直接连接 GitHub 被阻断 | 配置 SOCKS5 代理 |
-| 拒绝合并无关历史 | 本地仓库和远程仓库无共同祖先 | 使用 `--allow-unrelated-histories` |
-| .env 被跟踪 | 备份恢复时带入了 Git 跟踪的文件 | 从 Git 历史中删除 (`git rm --cached .env`) |
+### 隐私安全
+- Tushare Token 必须存放在 .env 文件
+- 使用 git-filter-repo 清理 Git 历史中的敏感信息
