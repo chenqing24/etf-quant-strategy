@@ -164,7 +164,8 @@ def run_strategy(
     dd = Path(data_dir)
     if not dd.exists():
         dd = Path.cwd() / data_dir
-    data = loader.load(str(dd))
+    # DataLoader.load() 参数是 min_rows，不是路径
+    data = loader.load(min_rows=100)
     
     if not data:
         raise ValueError(f"无法加载数据: {data_dir}")

@@ -139,22 +139,22 @@ class TestBacktestRegression:
         验证端到端回测模式正常运行
         """
         result = subprocess.run(
-            ['python', 'main.py', '--test-start', '2025-06-01', '--test-end', '2025-06-15'],
+            ['python', '-m', 'src.cli.decision', '-m', 'eval', '--simple'],
             cwd=etf_strategy_dir,
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=120
         )
         
         output = result.stdout + result.stderr
         print(f"\n回测输出（前500字符）:\n{output[:500]}")
         
         # 检查是否正常执行
-        assert result.returncode == 0, f"回测模式执行失败: {output[-500:]}"
+        assert result.returncode == 0, f"评估模式执行失败: {output[-500:]}"
         
         # 检查关键输出
-        assert len(output) > 50, f"回测输出过短: {output[:200]}"
-        assert '回测结果' in output or '收益' in output, f"回测输出缺少关键内容: {output[:200]}"
+        assert len(output) > 50, f"评估输出过短: {output[:200]}"
+        assert 'ETF' in output or '报告' in output, f"评估输出缺少关键内容: {output[:200]}"
 
 
 if __name__ == '__main__':

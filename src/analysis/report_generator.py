@@ -77,7 +77,7 @@ class ETFReportGenerator:
             loader._simple_mode = True
             from src.core.selector import Selector
             Selector._simple_mode = True
-        self.data = loader.load(self.data_dir)
+        self.data = loader.load(min_rows=100)  # 降低门槛以便加载更多ETF
         self.latest_date = max(df['date'].max() for df in self.data.values())
         
         # 预计算所有ETF的技术指标 (供报告使用RSI等)
