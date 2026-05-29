@@ -1,11 +1,11 @@
 {
-  "159577": {
-    "name": "美国50ETF汇添富",
-    "price": 1.583,
-    "yclose": 1.535,
-    "pct": 3.13,
-    "code_raw": "159577",
+  "159919": {
+    "name": "沪深300ETF嘉实",
+    "price": 5.132,
+    "yclose": 5.143,
+    "pct": -0.21,
+    "code_raw": "159919",
     "data_source": "tencent"
   },
-  "_cache_time": 1779986931.528217
+  "_cache_time": 1780042119.73011
 }
