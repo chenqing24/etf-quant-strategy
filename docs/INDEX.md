@@ -45,6 +45,7 @@ python scripts/repair_data.py --dry-run
 ### 场景5: 想理解系统架构
 
 → `docs/ARCHITECTURE.md` (数据层架构)
+→ `docs/DATA_LAYER.md` (统一数据层 v3.0)
 → `docs/INTERFACE_CONTRACT.md` (模块接口)
 
 ---
@@ -70,6 +71,25 @@ python scripts/repair_data.py --dry-run
 
 ---
 
+### 场景9: 想监控数据质量
+
+→ `docs/DATA_LAYER.md` 第3节"监控机制"
+```bash
+python -m src.data.monitor --json
+python scripts/backup_sqlite.py --status
+```
+
+---
+
+### 场景10: 想备份数据库
+
+→ `docs/DATA_LAYER.md` 第5节"备份管理"
+```bash
+python scripts/backup_sqlite.py --type daily
+```
+
+---
+
 ## 二、按文件名查找
 
 ### 核心代码
@@ -78,7 +98,9 @@ python scripts/repair_data.py --dry-run
 |------|------|------------|
 | `src/decision_cli.py` | 命令行入口 | `main()` |
 | `src/data/manager.py` | 数据统一入口 | `DataFacade` |
-| `src/data/fetcher.py` | 数据采集路由 | `DataSourceRouter` |
+| `src/data/fetcher.py` | 数据采集 | `TencentETFetcher` |
+| `src/data/writer.py` | 统一写入 | `DataWriter` |
+| `src/data/loader.py` | 统一读取 | `DataLoader` |
 | `src/strategy/engine.py` | 回测引擎 | `BacktestEngine` |
 | `src/strategy/config.py` | 配置管理 | `BacktestConfig` |
 | `src/strategy/scorer.py` | 因子评分 | `FactorScorer` |
@@ -97,6 +119,20 @@ python scripts/repair_data.py --dry-run
 | `scripts/prefetch_data.py` | 数据预获取 |
 | `scripts/migrate_csv_to_sqlite.py` | CSV→SQLite迁移 |
 | `scripts/supplement_history_data.py` | 历史数据补全 |
+| `scripts/backup_sqlite.py` | SQLite备份管理 |
+
+---
+
+### 数据层（v3.0统一数据入口）
+
+| 文件 | 功能 | 关键类/函数 |
+|------|------|------------|
+| `src/data/writer.py` | 统一写入器 | `DataWriter` |
+| `src/data/loader.py` | 统一读取器 | `DataLoader` |
+| `src/data/fetcher.py` | 数据采集 | `TencentETFetcher` |
+| `src/data/monitor.py` | 数据监控 | `DataQualityMonitor` |
+| `src/data/exceptions.py` | 异常定义 | `DataValidationError` |
+| `src/data/types.py` | 数据类型 | `RealtimeQuote`, `DailyRecord` |
 
 ---
 
@@ -131,7 +167,7 @@ python scripts/repair_data.py --dry-run
 |--------|---------|
 | 批量实验/quick_run | TOOLS.md, store.py |
 | 每日决策/decision_cli | USAGE.md |
-| 数据采集 | ARCHITECTURE.md |
+| 数据采集 | DATA_LAYER.md, ARCHITECTURE.md |
 | 策略参数/阈值 | TOOLS.md, STRATEGY_FRAMEWORK_DESIGN.md |
 | 回测/Backtest | BACKTEST_SPEC.md, engine.py |
 | 因子/指标 | INDICATOR_SPEC.md, scorer.py |
@@ -139,6 +175,8 @@ python scripts/repair_data.py --dry-run
 | 实验结果 | round2.json, round2_fixed.json |
 | 过拟合 | overfitting_analysis.md |
 | 未来函数 | future_function_check.md |
+| SQLite/统一数据层 | DATA_LAYER.md, writer.py |
+| 数据监控/backup | DATA_LAYER.md, monitor.py |
 
 ---
 
