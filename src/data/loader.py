@@ -19,6 +19,41 @@ from src.constants import DB_NAME, DATA_DIR
 logger = logging.getLogger(__name__)
 
 
+# ETF名称加载器 - 从数据库读取真实名称
+class ETFNameLoader:
+    """ETF名称加载器 - 兼容旧代码"""
+    
+    def __init__(self, db_path: str = None):
+        self.db_path = db_path or str(Path(DATA_DIR) / DB_NAME)
+        self._name_cache: Dict[str, str] = {}
+    
+    def get_name(self, code: str) -> str:
+        """获取ETF名称"""
+        if code in self._name_cache:
+            return self._name_cache[code]
+        
+        # 从数据库读取
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cur = conn.execute('SELECT name FROM stock_info WHERE code=?', (code,))
+            row = cur.fetchone()
+            if row:
+                name = row[0] or code
+            else:
+                name = code
+        except:
+            name = code
+        finally:
+            conn.close()
+        
+        self._name_cache[code] = name
+        return name
+    
+    def get_names(self, codes: List[str]) -> Dict[str, str]:
+        """批量获取ETF名称"""
+        return {code: self.get_name(code) for code in codes}
+
+
 class DataLoader:
     """
     ETF数据加载器 - 从SQLite读取（唯一数据源）
@@ -74,11 +109,13 @@ class DataLoader:
             
             data = {}
             for code in codes:
+                # 检查列是否存在
+                cur.execute('PRAGMA table_info(daily)')
+                cols = [r[1] for r in cur.fetchall()]
+                select_cols = ', '.join([c for c in cols if c != 'id'])
+                
                 df = pd.read_sql(
-                    '''
-                    SELECT date, open, high, low, close, volume, amount
-                    FROM daily WHERE code=? ORDER BY date
-                    ''',
+                    f'SELECT {select_cols} FROM daily WHERE code=? ORDER BY date',
                     conn,
                     params=(code,)
                 )
@@ -139,11 +176,13 @@ class DataLoader:
         conn = sqlite3.connect(self.db_path)
         
         try:
+            # 检查列是否存在
+            cur = conn.execute('PRAGMA table_info(daily)')
+            cols = [r[1] for r in cur.fetchall()]
+            select_cols = ', '.join([c for c in cols if c != 'id'])
+            
             df = pd.read_sql(
-                '''
-                SELECT date, open, high, low, close, volume, amount
-                FROM daily WHERE code=? ORDER BY date
-                ''',
+                f'SELECT {select_cols} FROM daily WHERE code=? ORDER BY date',
                 conn,
                 params=(code,)
             )
