@@ -325,7 +325,8 @@ python -m pytest tests/unit/test_data_layer.py::TestDataWriter -v
 | `tests/unit/test_data_regression.py` | 12 | 回归测试 |
 | `tests/integration/test_data_integration.py` | 7 | 集成测试 |
 | `tests/e2e/test_data_e2e.py` | 6 | 端到端测试 |
-| **总计** | **43** | **全部通过** |
+| `tests/e2e/test_data_production.py` | 8 | 生产场景测试 |
+| **总计** | **51** | **全部通过** |
 
 ### 8.2 运行测试
 
@@ -334,13 +335,17 @@ python -m pytest tests/unit/test_data_layer.py::TestDataWriter -v
 python -m pytest tests/unit/test_data_layer.py \
                  tests/unit/test_data_regression.py \
                  tests/integration/test_data_integration.py \
-                 tests/e2e/test_data_e2e.py -v
+                 tests/e2e/test_data_e2e.py \
+                 tests/e2e/test_data_production.py -v
 
 # 快速检查
 python -m pytest tests/unit/test_data_layer.py -v
 
 # 回归测试
 python -m pytest tests/unit/test_data_regression.py -v
+
+# 生产场景测试
+python -m pytest tests/e2e/test_data_production.py -v
 ```
 
 ---
