@@ -1,38 +1,24 @@
-# Data files (do not commit)
-etf_data_live/*.csv
-etf_data_live/*.pkl
-etf_data_live/hot/*.json
+# 数据文件（不提交）
 etf_data_live/*.db
-etf_reports/*.txt
-etf_reports/*.json
+etf_data_live/*.json
+etf_data_live/hot/
+etf_data_live/csv/
 
-# Cache
+# 备份
+etf_backups/
+
+# Python缓存
 __pycache__/
-*.pyc
+*.py[cod]
+**/__pycache__/
+
+# 测试
 .pytest_cache/
 .coverage
-*.egg-info/
-
-# Logs
-*.log
 
 # IDE
 .vscode/
 .idea/
 
-# System
-.DS_Store
-*.swp
-
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# Large files
-*.tar.gz
-*.zip
-*.pdf
-
-# Backup
-*_backup*
+# 报告
+etf_reports/*.txt
