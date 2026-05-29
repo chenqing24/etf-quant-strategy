@@ -97,9 +97,28 @@ class DataLoader:
         
         return self.data
     
-    def _load_from_sqlite(self, min_rows: int = 300) -> Dict[str, pd.DataFrame]:
-        """从SQLite加载数据"""
-        conn = sqlite3.connect(self.db_path)
+    def _load_from_sqlite(self, min_rows: int = 300, db_path: str = None) -> Dict[str, pd.DataFrame]:
+        """从SQLite加载数据
+        
+        Args:
+            min_rows: 最小行数
+            db_path: 可选的数据库路径（用于测试覆盖）
+        """
+        # 支持传入 db_path 或使用实例的 db_path
+        effective_path = db_path if db_path is not None else self.db_path
+        # 确保是字符串
+        effective_path = str(effective_path) if not isinstance(effective_path, str) else effective_path
+        
+        # 如果传入的是路径而不是 int，说明参数位置被调用方搞混了，忽略 min_rows
+        if not isinstance(min_rows, int):
+            min_rows = 300
+        
+        # 检查数据库文件是否存在
+        if not Path(effective_path).exists():
+            logger.warning(f"数据库文件不存在: {effective_path}")
+            return {}
+        
+        conn = sqlite3.connect(effective_path)
         
         try:
             # 获取所有ETF代码
@@ -173,7 +192,9 @@ class DataLoader:
         if not Path(self.db_path).exists():
             return None
         
-        conn = sqlite3.connect(self.db_path)
+        # 确保 db_path 是字符串
+        db_path = str(self.db_path) if not isinstance(self.db_path, str) else self.db_path
+        conn = sqlite3.connect(db_path)
         
         try:
             # 检查列是否存在
