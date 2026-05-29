@@ -300,9 +300,11 @@ python -m pytest tests/unit/test_data_layer.py::TestDataWriter -v
 
 ### 7.2 迁移步骤
 
-1. **Phase 1**: 新增 DataWriter（保持旧逻辑）
-2. **Phase 2**: 切换写入入口
-3. **Phase 3**: 清理 CSV 写入代码
+| 阶段 | 任务 | 状态 |
+|------|------|------|
+| Phase 1 | 新增 DataWriter（保持旧逻辑） | ✅ |
+| Phase 2 | 切换写入入口，测试集成 | ✅ |
+| Phase 3 | 回归测试，清理死代码 | ✅ |
 
 ### 7.3 回滚方案
 
@@ -310,6 +312,36 @@ python -m pytest tests/unit/test_data_layer.py::TestDataWriter -v
 1. 停止新数据写入
 2. 使用最近备份恢复 SQLite
 3. 恢复旧代码
+
+---
+
+## 八、测试覆盖
+
+### 8.1 测试文件
+
+| 文件 | 用例数 | 说明 |
+|------|--------|------|
+| `tests/unit/test_data_layer.py` | 18 | 核心组件单元测试 |
+| `tests/unit/test_data_regression.py` | 12 | 回归测试 |
+| `tests/integration/test_data_integration.py` | 7 | 集成测试 |
+| `tests/e2e/test_data_e2e.py` | 6 | 端到端测试 |
+| **总计** | **43** | **全部通过** |
+
+### 8.2 运行测试
+
+```bash
+# 运行所有数据层测试
+python -m pytest tests/unit/test_data_layer.py \
+                 tests/unit/test_data_regression.py \
+                 tests/integration/test_data_integration.py \
+                 tests/e2e/test_data_e2e.py -v
+
+# 快速检查
+python -m pytest tests/unit/test_data_layer.py -v
+
+# 回归测试
+python -m pytest tests/unit/test_data_regression.py -v
+```
 
 ---
 
