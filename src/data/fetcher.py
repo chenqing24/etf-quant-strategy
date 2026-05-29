@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
+"""腾讯ETF数据采集器 - 统一数据层版本
+
+重构说明（v3.0 Phase 2）：
+- 写入使用 DataWriter（统一数据入口）
+- CSV 作为外部备份，不参与业务逻辑
+"""
 import json
-"""腾讯ETF数据采集"""
-import requests
-import pandas as pd
+import os
+import sqlite3
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import time
-import os
 
+import pandas as pd
+import requests
+
+from src.constants import TENCENT_BASE_URL, HTTP_TIMEOUT_SHORT, DB_NAME, DATA_DIR
 from src.utils.logger import get_logger
 
 logger = get_logger()
@@ -16,11 +24,10 @@ logger = get_logger()
 class TencentETFetcher:
     """腾讯ETF数据采集器"""
     
-    # 腾讯API地址
-    from src.constants import TENCENT_BASE_URL as BASE_URL, HTTP_TIMEOUT_SHORT
+    BASE_URL = TENCENT_BASE_URL
+    HTTP_TIMEOUT_SHORT = HTTP_TIMEOUT_SHORT
     
     # ETF代码列表 (需要带sh/sz前缀)
-    # 优先使用动态池，否则使用默认列表
     _cached_codes = None
     
     @classmethod
@@ -60,8 +67,14 @@ class TencentETFetcher:
     
     ETF_CODES = property(lambda self: self.get_etf_codes())
     
-    def __init__(self, data_dir: str = 'etf_data_live'):
-        self.data_dir = data_dir
+    def __init__(self, data_dir: str = None):
+        """
+        初始化采集器
+        
+        Args:
+            data_dir: 数据目录，默认使用 DATA_DIR
+        """
+        self.data_dir = data_dir or DATA_DIR
         self._ensure_dir()
     
     def _ensure_dir(self):
@@ -85,11 +98,10 @@ class TencentETFetcher:
         
         try:
             response = requests.get(self.BASE_URL, params=params, timeout=self.HTTP_TIMEOUT_SHORT)
-            # 腾讯API返回带前缀的JSON: kline_dayqfq={...}，需要去掉前缀
             text = response.text.replace('kline_dayqfq=', '', 1)
             data = json.loads(text)
             
-            # 解析数据: data.{code}.{field}，字段名可能是 qfqday 或 day
+            # 解析数据
             etf_data = data.get('data', {}).get(code, {})
             records_data = None
             for field in ['qfqday', 'day']:
@@ -98,31 +110,65 @@ class TencentETFetcher:
                     break
             
             if not records_data:
-                logger.warn(f"  警告: {code} 无数据")
+                logger.debug(f"  无数据: {code}")
                 return pd.DataFrame()
             
             # 转换为DataFrame
-            # ⚠️ 腾讯API数组顺序: [date, open, close, high, low, volume]
-            #   索引:                [0]    [1]   [2]    [3]   [4]   [5]
+            # 腾讯API数组顺序: [date, open, close, high, low, volume]
             records = []
             for item in records_data:
                 records.append({
-                    'date': item[0],      # 日期
-                    'open': float(item[1]),    # 开盘价
-                    'close': float(item[2]),   # 收盘价 ← 注意：是索引2
-                    'high': float(item[3]),    # 最高价 ← 注意：是索引3
-                    'low': float(item[4]),      # 最低价 ← 注意：是索引4
-                    'volume': float(item[5])    # 成交量
+                    'date': item[0],
+                    'open': float(item[1]),
+                    'close': float(item[2]),
+                    'high': float(item[3]),
+                    'low': float(item[4]),
+                    'volume': float(item[5])
                 })
             
             df = pd.DataFrame(records)
-            df['date'] = pd.to_datetime(df['date'])
+            df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
             
             return df
             
         except Exception as e:
-            logger.info(f"  收盘后无新数据: {code}")
+            logger.debug(f"  获取失败: {code}, {e}")
             return pd.DataFrame()
+    
+    def get_code_without_prefix(self, code: str) -> str:
+        """去掉前缀"""
+        return code.replace('sh', '').replace('sz', '')
+    
+    def save_etf(self, code: str, df: pd.DataFrame):
+        """保存ETF数据（使用统一 DataWriter）
+        
+        Args:
+            code: ETF代码（如 'sh510300'）
+            df: 日线数据
+        """
+        if df.empty:
+            return
+        
+        try:
+            # 使用 DataWriter 写入（统一入口）
+            from src.data.writer import DataWriter
+            writer = DataWriter()
+            
+            save_code = self.get_code_without_prefix(code)
+            
+            # 格式化 date 列
+            df = df.copy()
+            if 'date' in df.columns:
+                df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
+            
+            count = writer.write_daily(save_code, df)
+            if count > 0:
+                logger.debug(f"  SQLite已更新: {code} (+{count}条)")
+            else:
+                logger.debug(f"  SQLite已是最新: {code}")
+                
+        except Exception as e:
+            logger.warning(f"  SQLite更新失败 {code}: {e}")
     
     def fetch_all(self, days: int = 30) -> Dict[str, pd.DataFrame]:
         """获取所有ETF数据
@@ -138,90 +184,30 @@ class TencentETFetcher:
             logger.debug(f"  [{i}/{len(self.ETF_CODES)}] 获取 {code} ... ")
             df = self.fetch_etf(code, days)
             if len(df) > 0:
-                # 去掉前缀保存
-                save_code = code.replace('sh', '').replace('sz', '')
+                save_code = self.get_code_without_prefix(code)
                 results[save_code] = df
                 logger.debug(f"OK ({len(df)}条)")
             else:
                 logger.debug("失败")
             
-            # 避免请求过快
             time.sleep(0.2)
         
         logger.info(f"成功获取 {len(results)} 只ETF")
         return results
     
-    def save_etf(self, code: str, df: pd.DataFrame):
-        """保存ETF数据到CSV和SQLite"""
-        import sqlite3
-        from src.constants import DB_NAME
+    def get_local_latest_date(self, code: str) -> Optional[str]:
+        """获取本地存储的最新日期（从 SQLite）
         
-        # 1. 保存到CSV
-        path = os.path.join(self.data_dir, f"{code}.csv")
-        
-        # 读取现有数据
-        if os.path.exists(path):
-            existing = pd.read_csv(path)
-            existing['date'] = pd.to_datetime(existing['date'])
-            
-            # 合并数据，去重
-            combined = pd.concat([existing, df])
-            combined = combined.drop_duplicates(subset=['date'], keep='last')
-            combined = combined.sort_values('date')
-            combined.to_csv(path, index=False)
-        else:
-            df.to_csv(path, index=False)
-        
-        # 2. 保存到SQLite (etf.db)
-        db_path = os.path.join(self.data_dir, DB_NAME)
-        
+        Args:
+            code: ETF代码（如 'sh510300'）
+        """
         try:
-            conn = sqlite3.connect(db_path)
-            cur = conn.cursor()
-            
-            # 确保表存在
-            cur.execute('''
-                CREATE TABLE IF NOT EXISTS daily (
-                    code TEXT,
-                    date TEXT,
-                    open REAL,
-                    high REAL,
-                    low REAL,
-                    close REAL,
-                    volume INTEGER,
-                    PRIMARY KEY (code, date)
-                )
-            ''')
-            
-            # 批量插入/更新 (去掉sh/sz前缀)
-            save_code = code.replace('sh', '').replace('sz', '')
-            for _, row in df.iterrows():
-                cur.execute('''
-                    INSERT OR REPLACE INTO daily (code, date, open, high, low, close, volume)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    save_code,
-                    row['date'].strftime('%Y-%m-%d') if hasattr(row['date'], 'strftime') else str(row['date'])[:10],
-                    float(row['open']),
-                    float(row['high']),
-                    float(row['low']),
-                    float(row['close']),
-                    int(float(row['volume']))
-                ))
-            
-            conn.commit()
-            conn.close()
-            logger.debug(f"  SQLite已更新: {code} ({len(df)}条)")
-        except Exception as e:
-            logger.warning(f"  SQLite更新失败 {code}: {e}")
-    
-    def get_local_latest_date(self, code: str) -> str:
-        """获取本地存储的最新日期"""
-        path = os.path.join(self.data_dir, f"{code}.csv")
-        if os.path.exists(path):
-            df = pd.read_csv(path)
-            return pd.to_datetime(df['date']).max().strftime('%Y-%m-%d')
-        return None
+            from src.data.writer import DataWriter
+            writer = DataWriter()
+            save_code = self.get_code_without_prefix(code)
+            return writer.get_latest_date(save_code)
+        except:
+            return None
     
     def fetch_etf_incremental(self, code: str, days: int = 7) -> pd.DataFrame:
         """增量获取ETF数据
@@ -230,26 +216,26 @@ class TencentETFetcher:
         2. 计算需要补充的天数
         3. 只获取缺失的数据
         """
+        save_code = self.get_code_without_prefix(code)
         local_latest = self.get_local_latest_date(code)
         
         if local_latest:
-            # 计算需要获取的天数
-            from datetime import datetime, timedelta
-            local_date = datetime.strptime(local_latest, '%Y-%m-%d')
-            today = datetime.now()
+            from datetime import datetime as dt
+            local_date = dt.strptime(local_latest, '%Y-%m-%d')
+            today = dt.now()
             days_diff = (today - local_date).days
             
             if days_diff == 0:
-                # 本地已是最新，但仍获取数据用于更新SQLite
-                logger.debug(f"  {code}: 本地已是最新 ({local_latest})，仍同步SQLite")
-                fetch_days = min(7, days)  # 获取约7天数据用于更新SQLite
+                # 本地已是最新
+                logger.debug(f"  {code}: 本地已是最新 ({local_latest})")
+                return pd.DataFrame()
             
             # 需要补充的天数 + 缓冲
             fetch_days = min(days_diff + 3, days)
-            logger.debug(f"  {code}: 本地最新{local_latest}, 补充{fetch_days}天 ... ")
+            logger.debug(f"  {code}: 本地最新 {local_latest}, 补充 {fetch_days}天 ... ")
         else:
             # 首次获取，获取足够的历史数据
-            fetch_days = 365  # 首次获取1年数据
+            fetch_days = 365
             logger.debug(f"  {code}: 首次获取 {fetch_days}天 ... ")
         
         df = self.fetch_etf(code, days=fetch_days)
@@ -261,8 +247,8 @@ class TencentETFetcher:
         
         return df
     
-    def update_all(self, days: int = 7):
-        """增量更新所有ETF (检查本地缓存，只获取最新)
+    def update_all(self, days: int = 7) -> Dict[str, pd.DataFrame]:
+        """增量更新所有ETF
         
         Returns:
             {code: DataFrame}
@@ -275,36 +261,29 @@ class TencentETFetcher:
                 results[code] = df
         return results
     
-    def update_all_incremental(self, days: int = 7):
-        """增量更新所有ETF (别名，兼容旧代码)
-        
-        Returns:
-            {code: DataFrame}
-        """
+    def update_all_incremental(self, days: int = 7) -> Dict[str, pd.DataFrame]:
+        """增量更新所有ETF (别名，兼容旧代码)"""
         return self.update_all(days)
     
-    def get_latest_date(self) -> str:
+    def get_latest_date(self) -> Optional[str]:
         """获取本地数据最新日期"""
-        latest = None
-        
-        for f in os.listdir(self.data_dir):
-            if f.endswith('.csv'):
-                df = pd.read_csv(os.path.join(self.data_dir, f))
-                date = pd.to_datetime(df['date']).max()
-                if latest is None or date > latest:
-                    latest = date
-        
-        return latest.strftime('%Y-%m-%d') if latest else None
+        try:
+            from src.data.writer import DataWriter
+            writer = DataWriter()
+            return writer.get_latest_date()
+        except:
+            return None
 
 
 def quick_fetch():
     """快速测试"""
-    fetcher = TencentETFetcher('etf_data_live')
+    fetcher = TencentETFetcher()
     
     # 测试获取1只ETF
     df = fetcher.fetch_etf('sh510300', days=5)
     print(f"获取到 {len(df)} 条数据")
-    print(df.tail(3))
+    if not df.empty:
+        print(df.tail(3))
     
     return df
 
@@ -312,33 +291,14 @@ def quick_fetch():
 # === ETF名称获取方法 ===
 
 def _get_prefix(code: str) -> str:
-    """获取交易所前缀
-    
-    Args:
-        code: ETF代码，如 '510300' 或 '159577'
-        
-    Returns:
-        'sh' 或 'sz'
-    """
-    # 上海交易所: 510xxx, 511xxx, 512xxx, 513xxx, 515xxx, 516xxx, 518xxx, 588xxx
+    """获取交易所前缀"""
     if code.startswith(('510', '511', '512', '513', '515', '516', '518', '588')):
         return 'sh'
     return 'sz'
 
 
 def _fetch_name_from_api(code: str) -> Optional[str]:
-    """从腾讯API获取ETF名称
-    
-    腾讯API返回格式：
-    v_sz159577="51~美国50ETF汇添富~159577~1.583~..."
-                       ↑ [1] 名称字段
-    
-    Args:
-        code: ETF代码，如 '159577' (不带前缀)
-        
-    Returns:
-        ETF名称，如 "美国50ETF汇添富"，失败返回 None
-    """
+    """从腾讯API获取ETF名称"""
     prefix = _get_prefix(code)
     url = f"https://qt.gtimg.cn/q={prefix}{code}"
     
@@ -346,7 +306,6 @@ def _fetch_name_from_api(code: str) -> Optional[str]:
         response = requests.get(url, timeout=10)
         text = response.content.decode('gbk', errors='replace')
         
-        # 解析: v_sz159577="51~美国50ETF汇添富~..."
         match = text.split('="')
         if len(match) < 2:
             return None
