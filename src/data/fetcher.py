@@ -36,18 +36,20 @@ class TencentETFetcher:
         if cls._cached_codes is not None:
             return cls._cached_codes
         
-        # 尝试从池文件加载
+        # 优先从池文件加载
         try:
-            from .etf_pool_updater import ETFListUpdater
-            updater = ETFListUpdater('etf_pool.json')
-            codes = updater.get_tencent_codes()
+            from .etf_pool_loader import ETFListLoader
+            loader = ETFListLoader()
+            codes = loader.get_tencent_codes()
             if codes:
                 cls._cached_codes = codes
+                logger.info(f"使用动态池: {len(codes)}只ETF")
                 return codes
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"池文件加载失败: {e}")
         
-        # 使用默认列表
+        # 兜底：硬编码列表
+        logger.warning("使用硬编码ETF列表（回退）")
         cls._cached_codes = [
             'sh510300', 'sh510500', 'sz159919', 'sh159915',
             'sh512880', 'sh512170', 'sh512200',
