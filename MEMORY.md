@@ -29,6 +29,32 @@
 | DIF | -0.0209 | -0.26 | short |
 | OBV_diff | -0.0281 | -0.40 | short |
 
+## 数据源状态
+
+### 验证通过的数据源（14个接口）
+
+| 数据源 | 接口 | 状态 |
+|--------|------|------|
+| 腾讯API | 实时行情、日线历史 | ✅ |
+| 新浪财经API | 实时行情、30分钟K线 | ✅ |
+| 天天基金 | 实时估值 | ✅ |
+| BaoStock | ETF日线 | ✅ |
+| AKShare 新浪 | fund_etf_hist_sina (3400条) | ✅ |
+| AKShare 上交所 | fund_name_em, fund_etf_scale_sse | ✅ |
+| AKShare 东财 | fund_etf_spot_em, fund_etf_fund_info_em | ⚠️ 部分 |
+| **AKTools HTTP API** | **本地API（8080端口）** | ✅ **新增** |
+
+### 待验证
+- Tushare Pro（需要Token）
+- 雪球API（需要Cookie）
+
+### 不可用接口
+- 雪球Xueqiu（数据格式异常）
+- 百度百科（限流严重）
+- 东方财富EMF（ETF不可用）
+
+---
+
 ## 关键文件
 - `src/strategy/`: 配置驱动执行框架
   - config.py: 配置类

@@ -1,7 +1,7 @@
 # 工具清单
 
 > 本文件索引项目中所有可用脚本、命令行工具和Python API
-> 生成时间: 2026-05-28 | 更新: 每次添加新工具时
+> 生成时间: 2026-05-30 | 更新: 2026-05-30 (新增AKTools HTTP API)
 
 ---
 
@@ -326,6 +326,37 @@ info = facade.get_lifecycle_info()  # 返回 {'stage': 'TRADING', ...}
 
 **位置**: `src/data/manager.py`
 **类**: `DataFacade`, `HotDataManager`, `ColdDataManager`
+
+### 4.1.1 AKTools HTTP API（本地数据源）
+
+```python
+import requests
+
+# AKTools HTTP API 配置
+AKTOOLS_BASE = "http://127.0.0.1:8080"
+
+# 获取ETF实时行情（1486条，全市场）
+response = requests.get(f"{AKTOOLS_BASE}/api/public/fund_etf_spot_em", timeout=60)
+etf_list = response.json()
+
+# 获取ETF历史日线（单只，最多3400条）
+response = requests.get(
+    f"{AKTOOLS_BASE}/api/public/fund_etf_hist_sina",
+    params={"symbol": "sz159919"},
+    timeout=30
+)
+daily_data = response.json()
+
+# 获取ETF分类列表
+response = requests.get(f"{AKTOOLS_BASE}/api/public/fund_etf_category_sina", timeout=30)
+categories = response.json()
+
+# 注意：调用间隔需 ≥5秒，避免限流
+```
+
+**服务地址**: `http://127.0.0.1:8080`
+**启动命令**: `cd aktools-server && python -m aktools`
+**AKTools版本**: 0.0.91 | AKShare版本**: 1.18.63
 
 ---
 
