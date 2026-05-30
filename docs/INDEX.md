@@ -19,6 +19,7 @@
 | **数据质量检查** | `scripts/daily_data_check.py` | `scripts/` |
 | **修复数据问题** | `scripts/repair_data.py` | `scripts/` |
 | **补充历史数据** | `AKTools + DataWriter` | 见下方工作流 |
+| **获取ETF池** | `ETFListLoader.load()` | `src/data/etf_pool_loader.py` |
 
 ---
 
@@ -236,6 +237,7 @@ etf_strategy/
 | 补充历史数据 | AKTools采集 → DataFrame转换 → `DataWriter.write_daily()` |
 | 读取数据 | `DataLoader.load()` |
 | 运行回测 | `quick_run()` |
+| 获取ETF池 | `ETFListLoader.load()` → `to_tencent_codes()` |
 | 风控检查 | `RiskManager` |
 | 获取实时数据 | AKTools HTTP API |
 
