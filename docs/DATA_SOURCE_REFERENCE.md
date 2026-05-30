@@ -738,6 +738,7 @@ curl -H "User-Agent: Mozilla/5.0" "https://baike.baidu.com/item/ETF"
 | 新浪API | 2秒 | 5秒 | 随机 |
 | 天天基金 | 3秒 | 6秒 | 随机 |
 | BaoStock | 无严格 | - | 可批量 |
+| **AKTools/AKShare** | **5秒** | **10秒** | **每次调用间隔≥5秒** |
 | 雪球API | 3秒 | 6秒 | 需Cookie |
 | 百度百科 | ❌ 禁止批量 | - | 限流严重 |
 
@@ -835,7 +836,8 @@ python scripts/verify_all_datasources.py
 | v3.0 | 2026-05-30 | **全面验证**：修正字段映射，标注数据来源（实测/官方），东方财富EMF标记为ETF不可用 |
 | v3.1 | 2026-05-30 | **新增AKTools**：AKTools本地部署HTTP API，fund_etf_spot_em、fund_etf_hist_em官方接口文档 |
 | v3.2 | 2026-05-30 | **验证AKTools**：实测5个非东财接口，更新文档（推荐fund_etf_hist_sina、fund_etf_category_sina），HTTP API不稳定建议用Python SDK |
+| v3.3 | 2026-05-30 | **AKTools限速**：记录5秒间隔限制，避免滥用 |
 
 ---
 
-*文档版本: v3.2 | 更新: 2026-05-30 | 验证脚本: scripts/verify_all_datasources.py*
+*文档版本: v3.3 | 更新: 2026-05-30 | 验证脚本: scripts/verify_all_datasources.py*
