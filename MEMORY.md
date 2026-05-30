@@ -86,6 +86,74 @@
 
 ## 项目经验教训
 
+### 💡 数据源建设核心经验（2026-05-30）
+
+#### 一、网络访问规则（必须遵守）
+```
+✅ 国内网站：直接访问（腾讯、新浪、天天基金、东方财富）
+❌ 国外网站：必须走代理（socks5://127.0.0.1:1080）
+```
+**教训**：之前混用导致国内网站超时，修正后稳定。
+
+#### 二、限速规则（硬约束）
+| 数据源 | 最小间隔 | 说明 |
+|--------|---------|------|
+| 腾讯API | 2秒 | 随机 |
+| 新浪API | 2秒 | 随机 |
+| 天天基金 | 3秒 | 随机 |
+| **AKTools** | **5秒** | **必须遵守** |
+| AKShare东财 | 5秒 | 随机 |
+
+#### 三、数据源可靠性排序
+```
+高 → 低
+腾讯API > 新浪API > AKShare新浪 > 天天基金 > BaoStock > AKShare东财
+```
+
+#### 四、不可用接口清单（避免重复踩坑）
+| 接口 | 原因 | 替代方案 |
+|------|------|---------|
+| 雪球Xueqiu | 数据格式异常 | 无需替代 |
+| 百度百科 | 限流严重 | 无需替代 |
+| 东方财富EMF | ETF不可用 | AKShare东财 |
+| AKShare东财fund_etf_hist_em | 不可用 | AKShare新浪 |
+
+#### 五、AKTools HTTP API 使用规范
+```bash
+# 启动服务
+cd /home/qwenpaw/.qwenpaw/workspaces/default/aktools-server && python -m aktools
+
+# 接口调用
+http://127.0.0.1:8080/api/public/fund_etf_spot_em      # 1486条，16秒
+http://127.0.0.1:8080/api/public/fund_etf_hist_sina    # 单只3400条，0.24秒
+http://127.0.0.1:8080/api/public/fund_etf_scale_sse    # 593条，0.5秒
+```
+**注意**：调用间隔≥5秒，避免限流。
+
+#### 六、代理配置（只在需要时启用）
+```python
+# 国外网站用代理
+proxies = {"https": "socks5://127.0.0.1:1080"}
+
+# 国内网站无需代理
+# 腾讯、新浪、天天基金、东方财富、百度 直接访问
+```
+
+#### 七、数据库元数据表
+```sql
+-- 位置
+etf_data_live/etf.db
+
+-- 表结构
+etf_names: code(主键), name, exchange, aum, category, verified
+
+-- 填充脚本
+scripts/fill_etf_metadata.py --dry-run  # 先模拟
+scripts/fill_etf_metadata.py            # 再写入
+```
+
+---
+
 ### 💰 数据源从0到1486的全流程复盘
 
 #### 一、问题起点
