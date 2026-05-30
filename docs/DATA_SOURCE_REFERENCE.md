@@ -25,7 +25,7 @@
 | 4 | BaoStock | ETF/股票日线 | ⭐⭐⭐⭐ | 无严格 | ✅ 有 | ✅ 已验证 |
 | 5 | 东方财富EMF | 股票数据 | ⭐⭐⭐ | 3-6秒 | ❌ 无 | ❌ ETF不可用 |
 | 6 | Tushare Pro | 日线备源（需Token） | ⭐⭐⭐⭐ | 有限制 | ✅ 有 | ⚠️ 待验证 |
-| 7 | AKShare | 股票分钟线 | ⭐⭐⭐ | 无严格 | ✅ 有 | ⚠️ 待验证 |
+| 7 | AKShare + AKTools | ETF基金数据、本地API | ⭐⭐⭐⭐ | 无严格 | ✅ 有 | ✅ 已验证 |
 | 8 | 雪球Xueqiu | 基金详情 | ⭐⭐⭐⭐ | 需Cookie | ❌ 无 | ✅ 页面已验证 |
 | 9 | 百度百科 | ETF基础知识 | ⭐⭐ | 限流 | ✅ 有 | ⚠️ 限流严重 |
 
@@ -491,37 +491,105 @@ df = pro.fund_daily(
 
 ---
 
-## 八、AKShare ⚠️ 待验证
+## 八、AKShare + AKTools ✅ 已验证
 
 ### 8.1 概述
-- **安装**: `pip install akshare`
-- **官网**: https://akshare.akfamily.xyz
-- **用途**: 股票分钟线
-- **返回格式**: DataFrame
+- **AKShare官网**: https://akshare.akfamily.xyz
+- **AKTools官网**: https://aktools.akfamily.xyz
+- **安装**: `pip install akshare` 或 `pip install aktools`
+- **用途**: ETF基金数据、股票分钟线
+- **AKTools**: 可本地部署 HTTP API，支持多语言调用
 
-### 8.2 股票日线接口
+### 8.2 AKTools 本地部署
+
+**安装**:
+```bash
+pip install aktools>=0.0.86
+```
+
+**启动服务**:
+```bash
+python -m aktools
+# 服务地址: http://127.0.0.1:8080
+```
+
+**调用示例**:
+```bash
+# 获取ETF列表
+curl "http://127.0.0.1:8080/api/public/fund_etf_spot_em"
+
+# 获取ETF历史K线
+curl "http://127.0.0.1:8080/api/public/fund_etf_hist_em?symbol=159919&period=daily&start_date=20260101&end_date=20260530&adjust="
+```
+
+### 8.3 ETF基金实时行情接口
+
+**Python接口**: `fund_etf_spot_em()`
+
+**返回字段**:
+| 字段 | 类型 | 说明 | 来源 |
+|------|------|------|------|
+| 日期 | string | 更新时间 | ✅官方文档 |
+| 基金代码 | string | ETF代码 | ✅官方文档 |
+| 基金简称 | string | ETF名称 | ✅官方文档 |
+| 最新价 | float | 当前价格 | ✅官方文档 |
+| 涨跌幅 | float | 涨跌幅(%) | ✅官方文档 |
+| 成交量 | float | 成交量 | ✅官方文档 |
+| 成交额 | float | 成交额 | ✅官方文档 |
+| 振幅 | float | 振幅(%) | ✅官方文档 |
+| 换手率 | float | 换手率(%) | ✅官方文档 |
+
+### 8.4 ETF基金历史行情接口
+
+**Python接口**: `fund_etf_hist_em(symbol, period, start_date, end_date, adjust)`
+
+**参数说明**:
+| 参数 | 类型 | 说明 | 示例 |
+|------|------|------|------|
+| symbol | str | ETF代码 | `159919` |
+| period | str | 周期 | `daily`/`weekly`/`monthly` |
+| start_date | str | 开始日期 | `20000101` |
+| end_date | str | 结束日期 | `20230201` |
+| adjust | str | 复权方式 | 空/`qfq`/`hfq` |
+
+**返回字段**:
+| 字段 | 类型 | 说明 | 来源 |
+|------|------|------|------|
+| 日期 | string | YYYY-MM-DD | ✅官方文档 |
+| 开盘 | float | 开盘价 | ✅官方文档 |
+| 收盘 | float | 收盘价 | ✅官方文档 |
+| 最高 | float | 最高价 | ✅官方文档 |
+| 最低 | float | 最低价 | ✅官方文档 |
+| 成交量 | float | 成交量 | ✅官方文档 |
+| 成交额 | float | 成交额 | ✅官方文档 |
+| 振幅 | float | 振幅(%) | ✅官方文档 |
+| 涨跌幅 | float | 涨跌幅(%) | ✅官方文档 |
+| 涨跌额 | float | 涨跌额 | ✅官方文档 |
+| 换手率 | float | 换手率(%) | ✅官方文档 |
 
 **Python示例**:
 ```python
 import akshare as ak
 
-# 东方财富-股票日线数据
-df = ak.stock_zh_a_hist(
+# 获取ETF历史日线（前复权）
+df = ak.fund_etf_hist_em(
     symbol="159919",
     period="daily",
     start_date="20260101",
     end_date="20260530",
     adjust="qfq"
 )
+print(df)
 ```
 
-### 8.3 适用场景
+### 8.5 适用场景
 
 | 场景 | 状态 | 说明 |
 |------|------|------|
-| 股票日线 | ⚠️ 可用 | 参考用 |
-| ETF日线 | ⚠️ 不稳定 | 数据可能不完整 |
-| 分钟线 | ⚠️ 可用 | 参考用 |
+| ETF历史日线 | ✅ 主要 | 支持前复权/后复权 |
+| ETF实时行情 | ✅ 主要 | 东方财富数据 |
+| 股票分钟线 | ⚠️ 可用 | 参考用 |
+| 本地部署 | ✅ 可用 | AKTools HTTP API |
 
 ---
 
@@ -617,9 +685,9 @@ curl -H "User-Agent: Mozilla/5.0" "https://baike.baidu.com/item/ETF"
 
 | 数据类型 | 优先级1 | 优先级2 | 优先级3 | 最后 |
 |---------|---------|---------|--------|------|
-| ETF实时价格 | 腾讯API | 新浪API | 天天基金 | 昨收价 |
-| ETF日线（上交所） | 腾讯API | BaoStock | - | - |
-| ETF日线（深交所） | BaoStock | 腾讯API | - | - |
+| ETF实时价格 | 腾讯API | AKShare | 新浪API | 昨收价 |
+| ETF日线（上交所） | 腾讯API | AKShare | BaoStock | - |
+| ETF日线（深交所） | BaoStock | 腾讯API | AKShare | - |
 | ETF小时线 | 新浪scale=30 | - | - | - |
 | ETF历史净值 | 天天基金 | BaoStock | - | - |
 | 股票日线 | BaoStock | Tushare | AKShare | - |
@@ -738,7 +806,8 @@ python scripts/verify_all_datasources.py
 | v2.0 | 2026-05-30 | 新增字段说明、天天基金接口、BaoStock示例 |
 | v2.1 | 2026-05-30 | 新增雪球Xueqiu、百度百科两个数据源 |
 | v3.0 | 2026-05-30 | **全面验证**：修正字段映射，标注数据来源（实测/官方），东方财富EMF标记为ETF不可用 |
+| v3.1 | 2026-05-30 | **新增AKTools**：AKTools本地部署HTTP API，fund_etf_spot_em、fund_etf_hist_em官方接口文档 |
 
 ---
 
-*文档版本: v3.0 | 更新: 2026-05-30 | 验证脚本: scripts/verify_all_datasources.py*
+*文档版本: v3.1 | 更新: 2026-05-30 | 验证脚本: scripts/verify_all_datasources.py*
