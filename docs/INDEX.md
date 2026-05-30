@@ -1,256 +1,275 @@
-# 项目索引
+# 📋 ETF量化系统 - 项目索引
 
-> 本文件帮助快速定位项目中的文档、工具和功能
-> 生成时间: 2026-05-28 | 更新: 每次变更时
+> 本文件帮助快速定位项目中的工具和文档
+> 更新：2026-05-30 | 规则：先调研，再动手
 
 ---
 
-## 一、按场景查找
+## 一、🔴 按场景查找
 
-### 场景1: 想运行每日决策
+| 场景 | 工具/文档 | 位置 |
+|------|-----------|------|
+| **写入数据到数据库** | `DataWriter.write_daily()` | `src/data/writer.py` |
+| **读取数据库数据** | `DataLoader.load()` | `src/data/loader.py` |
+| **获取ETF名称** | `ETFNameLoader.get_name()` | `src/data/loader.py` |
+| **采集实时数据** | AKTools HTTP API | `http://127.0.0.1:8080` |
+| **运行回测实验** | `quick_run()` | `src/strategy/store.py` |
+| **风控检查** | `RiskManager` | `src/risk/manager.py` |
+| **每日决策** | CLI | `python -m src.cli.main -m daily` |
+| **数据质量检查** | `scripts/daily_data_check.py` | `scripts/` |
+| **修复数据问题** | `scripts/repair_data.py` | `scripts/` |
+| **补充历史数据** | `AKTools + DataWriter` | 见下方工作流 |
 
-→ `docs/USAGE.md` 第1节"命令行调用"
-```bash
-python -m src.decision_cli -m daily
+---
+
+## 二、数据层（核心）
+
+### 写入数据（必须使用）
+
+```python
+from src.data.writer import DataWriter
+
+writer = DataWriter()
+df = pd.DataFrame({...})
+count = writer.write_daily(code, df)  # 自动增量+防重复
+```
+
+❌ **禁止**：直接 `sqlite3.execute(INSERT)`
+
+### 读取数据
+
+```python
+from src.data.loader import DataLoader
+
+loader = DataLoader()
+data = loader.load()           # 加载所有
+df = loader.load_single(code)  # 加载单个
+codes = loader.get_etf_list()  # 获取列表
+```
+
+### 名称获取
+
+```python
+from src.data.loader import ETFNameLoader
+
+loader = ETFNameLoader()
+name = loader.get_name('510300')
+```
+
+### 统一门面
+
+```python
+from src.data.manager import DataFacade
+
+facade = DataFacade('etf_data_live')
+df = facade.get_daily(code, days=30)
 ```
 
 ---
 
-### 场景2: 想批量运行实验
+## 三、数据采集
 
-→ `docs/TOOLS.md` 第1.2节"批量实验运行"
+### AKTools HTTP API（推荐）
+
+```python
+import requests
+
+AKTOOLS_URL = "http://127.0.0.1:8080"
+AKTOOLS_INTERVAL = 5  # 限速：≥5秒/次
+
+# 全市场ETF实时（1486条）
+r = requests.get(f"{AKTOOLS_URL}/api/public/fund_etf_spot_em")
+
+# 单只ETF历史日线
+r = requests.get(
+    f"{AKTOOLS_URL}/api/public/fund_etf_hist_sina",
+    params={"symbol": "sz159919"}
+)
+```
+
+**服务**：见 TOOLS.md 第3节
+
+### 脚本工具
+
+| 脚本 | 用途 |
+|------|------|
+| `scripts/prefetch_data.py` | 批量预获取 |
+| `scripts/fetch_today.py` | 获取今日 |
+| `scripts/supplement_history_data.py` | 补全历史 |
+| `scripts/migrate_csv_to_sqlite.py` | CSV迁移 |
+| `scripts/daily_data_check.py` | 数据检查 |
+| `scripts/repair_data.py` | 数据修复 |
+
+---
+
+## 四、策略层
+
+### 快速实验
+
 ```python
 from src.strategy.store import quick_run
-r = quick_run(name='test', factors=[...], ...)
+
+result = quick_run(
+    name='test',
+    factors=['ADX', 'BB_percent'],
+    weights={'ADX': 0.6, 'BB_percent': 0.4},
+    stop_loss=-0.05,
+    stop_profit=0.10,
+    threshold=0.8,
+    hold_days=3
+)
+
+result['train'].total_return
+result['test'].sharpe_ratio
+```
+
+### 回测引擎
+
+```python
+from src.strategy.engine import BacktestEngine
+
+engine = BacktestEngine(config)
+result = engine.run(data, initial_capital=20000)
 ```
 
 ---
 
-### 场景3: 想修改策略参数
+## 五、风控层
 
-→ `docs/STRATEGY_FRAMEWORK_DESIGN.md`
-或直接查看 `src/strategy/config.py`
+```python
+from src.risk.manager import RiskManager
+
+risk = RiskManager(
+    stop_loss=-0.05,
+    stop_profit=0.10,
+    max_position=1,
+    hold_days=5
+)
+
+risk.check_entry(portfolio)
+risk.check_exit(position, current_price)
+```
 
 ---
 
-### 场景4: 想修复数据问题
+## 六、命令行工具
 
-→ `docs/TOOLS.md` 第2.2节"数据修复"
 ```bash
-python scripts/repair_data.py --dry-run
+# 每日决策
+python -m src.cli.main -m daily
+
+# 完整评估
+python -m src.cli.main -m eval
+
+# 记录交易
+python -m src.cli.main -m trade --code 510300 --action buy --price 3.50 --quantity 1000
+
+# 查看绩效
+python -m src.cli.main -m perf
+
+# 更新ETF池
+python -m src.cli.main -m update_pool
 ```
 
 ---
 
-### 场景5: 想理解系统架构
+## 七、一次性脚本（⚠️ 谨慎使用）
 
-→ `docs/ARCHITECTURE.md` (数据层架构)
-→ `docs/DATA_LAYER.md` (统一数据层 v3.0)
-→ `docs/INTERFACE_CONTRACT.md` (模块接口)
+> 这些脚本用于特定场景，执行后可能不再需要
 
----
-
-### 场景6: 想查看实验结果
-
-→ `data/experiments/round2_fixed.json` (修复后45个实验结果)
-→ `docs/round2_summary.md` (实验汇总)
+| 脚本 | 用途 | 状态 |
+|------|------|------|
+| `scripts/filter_top500*.py` | ETF筛选 | 一次性 |
+| `scripts/fill_missing_etf_history.py` | 补数据 | 已重构 |
+| `scripts/update_etf_names.py` | 更新名称 | 一次性 |
+| `scripts/backup_sqlite.py` | 备份数据库 | 一次性 |
 
 ---
 
-### 场景7: 想添加新指标
-
-→ `docs/INDICATOR_SPEC.md` (指标规范)
-→ `docs/FACTOR_MINING_PLAN_v2.md` (因子挖掘计划)
-
----
-
-### 场景8: 想了解回测逻辑
-
-→ `docs/BACKTEST_SPEC.md` (回测规范)
-→ `src/strategy/engine.py` (引擎实现)
-
----
-
-### 场景9: 想监控数据质量
-
-→ `docs/DATA_LAYER.md` 第3节"监控机制"
-```bash
-python -m src.data.monitor --json
-python scripts/backup_sqlite.py --status
-```
-
----
-
-### 场景10: 想备份数据库
-
-→ `docs/DATA_LAYER.md` 第5节"备份管理"
-```bash
-python scripts/backup_sqlite.py --type daily
-```
-
----
-
-## 二、按文件名查找
-
-### 核心代码
-
-| 文件 | 功能 | 关键类/函数 |
-|------|------|------------|
-| `src/decision_cli.py` | 命令行入口 | `main()` |
-| `src/data/manager.py` | 数据统一入口 | `DataFacade` |
-| `src/data/fetcher.py` | 数据采集 | `TencentETFetcher` |
-| `src/data/writer.py` | 统一写入 | `DataWriter` |
-| `src/data/loader.py` | 统一读取 | `DataLoader` |
-| `src/strategy/engine.py` | 回测引擎 | `BacktestEngine` |
-| `src/strategy/config.py` | 配置管理 | `BacktestConfig` |
-| `src/strategy/scorer.py` | 因子评分 | `FactorScorer` |
-| `src/strategy/executor.py` | 交易执行 | `TradeExecutor` |
-| `src/strategy/store.py` | 结果存储 | `quick_run()` |
-
----
-
-### 数据脚本
-
-| 文件 | 功能 |
-|------|------|
-| `scripts/daily_data_check.py` | 每日数据检查 |
-| `scripts/repair_data.py` | 数据修复 |
-| `scripts/cross_validate_data.py` | 数据交叉验证 |
-| `scripts/prefetch_data.py` | 数据预获取 |
-| `scripts/migrate_csv_to_sqlite.py` | CSV→SQLite迁移 |
-| `scripts/supplement_history_data.py` | 历史数据补全 |
-| `scripts/backup_sqlite.py` | SQLite备份管理 |
-
----
-
-### 数据层（v3.0统一数据入口）
-
-| 文件 | 功能 | 关键类/函数 |
-|------|------|------------|
-| `src/data/writer.py` | 统一写入器 | `DataWriter` |
-| `src/data/loader.py` | 统一读取器 | `DataLoader` |
-| `src/data/fetcher.py` | 数据采集 | `TencentETFetcher` |
-| `src/data/monitor.py` | 数据监控 | `DataQualityMonitor` |
-| `src/data/exceptions.py` | 异常定义 | `DataValidationError` |
-| `src/data/types.py` | 数据类型 | `RealtimeQuote`, `DailyRecord` |
-
----
-
-### 分析脚本
-
-| 文件 | 功能 |
-|------|------|
-| `scripts/analyze_volatility.py` | 波动率分析 |
-| `scripts/check_date_gaps.py` | 日期缺口检查 |
-| `scripts/check_missing_etfs.py` | 缺失ETF检查 |
-| `scripts/compare_data.py` | 数据对比 |
-| `scripts/test_sina_hourly_api.py` | 新浪API测试 |
-
----
-
-### 分析报告
-
-| 文件 | 内容 |
-|------|------|
-| `docs/overfitting_analysis.md` | 过拟合分析 |
-| `docs/future_function_check.md` | 未来函数检测 |
-| `docs/hold_days_analysis.md` | 持仓时间分析 |
-| `docs/indicator_future_check.md` | 指标未来函数检查 |
-| `docs/strategy_detail.md` | 策略详细方案 |
-| `docs/round2_summary.md` | 实验汇总 |
-
----
-
-## 三、按关键词查找
-
-| 关键词 | 相关文档 |
-|--------|---------|
-| 批量实验/quick_run | TOOLS.md, store.py |
-| 每日决策/decision_cli | USAGE.md |
-| 数据采集 | DATA_LAYER.md, ARCHITECTURE.md |
-| 策略参数/阈值 | TOOLS.md, STRATEGY_FRAMEWORK_DESIGN.md |
-| 回测/Backtest | BACKTEST_SPEC.md, engine.py |
-| 因子/指标 | INDICATOR_SPEC.md, scorer.py |
-| 数据修复 | TOOLS.md, repair_data.py |
-| 实验结果 | round2.json, round2_fixed.json |
-| 过拟合 | overfitting_analysis.md |
-| 未来函数 | future_function_check.md |
-| SQLite/统一数据层 | DATA_LAYER.md, writer.py |
-| 数据监控/backup | DATA_LAYER.md, monitor.py |
-
----
-
-## 四、目录结构
+## 八、项目结构
 
 ```
 etf_strategy/
 ├── src/
-│   ├── decision_cli.py       # CLI入口
-│   ├── data/                 # 数据层
-│   │   ├── manager.py        # DataFacade
-│   │   └── fetcher.py        # DataSourceRouter
-│   └── strategy/             # 策略层
-│       ├── engine.py          # 回测引擎
-│       ├── config.py          # 配置
-│       ├── scorer.py          # 评分器
-│       ├── executor.py        # 执行器
-│       └── store.py          # 结果存储
-├── scripts/                  # 数据脚本
+│   ├── cli/                  # 命令行
+│   │   └── main.py           # CLI入口
+│   ├── data/                 # 🔴 数据层（统一入口）
+│   │   ├── writer.py         # DataWriter（写入）
+│   │   ├── loader.py         # DataLoader, ETFNameLoader（读取）
+│   │   ├── manager.py        # DataFacade（门面）
+│   │   ├── contracts.py      # 数据契约
+│   │   └── exceptions.py     # 异常类
+│   ├── strategy/             # 🟢 策略层
+│   │   ├── engine.py         # BacktestEngine
+│   │   ├── scorer.py         # FactorScorer
+│   │   ├── executor.py       # TradeExecutor
+│   │   └── store.py          # quick_run()
+│   ├── risk/                 # 🟠 风控层
+│   │   └── manager.py        # RiskManager
+│   ├── indicators/           # 📊 指标
+│   │   └── *.py              # ADX, MACD, KDJ等
+│   └── notify/              # 🔔 通知
+│       └── dingtalk.py      # 钉钉通知
+├── scripts/                  # 🟡 脚本工具
+│   ├── data/                 # 数据脚本
+│   ├── analysis/            # 分析脚本
+│   ├── factor_mining/        # 因子挖掘
+│   └── *.py                 # 工具脚本
 ├── tests/                    # 测试
-├── docs/                     # 文档
-│   ├── ARCHITECTURE.md       # 架构
-│   ├── INTERFACE_CONTRACT.md # 接口契约
-│   ├── TOOLS.md             # 工具清单
-│   ├── INDEX.md             # 本文档
-│   └── ...                   # 其他文档
-├── data/
-│   ├── experiments/          # 实验结果
-│   │   ├── round2.json      # 原始结果
-│   │   ├── round3.json
-│   │   ├── round4.json
-│   │   ├── round5.json
-│   │   └── round2_fixed.json # 修复后结果
-│   └── etf_pool.json        # ETF股票池
-└── etf_data_live/           # 实时数据
+├── docs/                     # 📄 文档
+│   ├── INDEX.md              # 本文档（场景索引）
+│   ├── TOOLS.md              # 工具清单
+│   ├── DATA_SOURCE_REFERENCE.md  # 数据源参考
+│   └── *.md                  # 其他文档
+├── etf_data_live/            # 💾 SQLite数据
+│   └── etf.db
+└── data/                      # 其他数据
+    └── experiments/          # 实验结果
 ```
 
 ---
 
-## 五、常用命令速查
+## 九、快速索引
 
-```bash
-# 1. 每日决策
-python -m src.decision_cli -m daily
+| 任务 | 标准做法 |
+|------|----------|
+| 补充历史数据 | AKTools采集 → DataFrame转换 → `DataWriter.write_daily()` |
+| 读取数据 | `DataLoader.load()` |
+| 运行回测 | `quick_run()` |
+| 风控检查 | `RiskManager` |
+| 获取实时数据 | AKTools HTTP API |
 
-# 2. 查看绩效
-python -m src.decision_cli -m perf
+---
 
-# 3. 查看历史
-python -m src.decision_cli -m history
+## 十、工作流程（标准）
 
-# 4. 数据检查
-python scripts/daily_data_check.py
-
-# 5. 数据修复
-python scripts/repair_data.py --dry-run
-
-# 6. 预获取数据
-python scripts/prefetch_data.py --days 30
+```
+┌────────────────────────────────────────────────────────────┐
+│  补充历史数据标准流程                                        │
+├────────────────────────────────────────────────────────────┤
+│  1. 调研工具                                               │
+│     ✓ 查看 docs/INDEX.md（场景索引）                        │
+│     ✓ 查看 docs/TOOLS.md（工具清单）                        │
+│                                                            │
+│  2. 确定工具                                               │
+│     ✓ 数据采集：AKTools HTTP API / 腾讯API                  │
+│     ✓ 数据写入：DataWriter.write_daily()                    │
+│     ✓ 禁止：直接sqlite3.execute(INSERT)                    │
+│                                                            │
+│  3. 编写脚本                                               │
+│     ✓ 使用统一工具                                          │
+│     ✓ 参考TOOLS.md中的示例代码                              │
+│                                                            │
+│  4. 测试验证                                               │
+│     ✓ 小批量测试                                           │
+│     ✓ 用DataLoader验证写入结果                              │
+│                                                            │
+│  5. 提交代码                                               │
+│     ✓ 小步提交                                             │
+│     ✓ 更新文档（如需）                                      │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 六、关键配置
-
-| 配置项 | 位置 | 默认值 |
-|--------|------|--------|
-| 阈值 threshold | config.py | 0.8 |
-| 止损 stop_loss | config.py | -0.05 |
-| 止盈 stop_profit | config.py | 0.10 |
-| 持仓 hold_days | config.py | 3 |
-| 允许调仓 allow_rebalance | config.py | False |
-| 本金 initial_capital | executor.py | 20000 |
-
----
-
-*文档版本: v1.0 | 创建: 2026-05-28*
+*文档版本: v2.0 | 更新: 2026-05-30*
