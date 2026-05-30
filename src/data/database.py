@@ -493,14 +493,9 @@ class Database:
         
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO etf_name_retry_queue 
+            INSERT OR REPLACE INTO etf_name_retry_queue 
             (code, attempt_count, last_error, status, priority, created_at, next_retry_at)
             VALUES (?, ?, ?, 'pending', ?, ?, ?)
-            ON CONFLICT(code) DO UPDATE SET
-                attempt_count = attempt_count + 1,
-                last_error = excluded.last_error,
-                status = 'pending',
-                next_retry_at = excluded.next_retry_at
         """, (code, 1, error, priority, now, now))
         
         conn.commit()
