@@ -1,0 +1,297 @@
+[
+  {
+    "source": "腾讯行情API",
+    "interface": "实时行情",
+    "status": "✅通过",
+    "message": "返回88个字段",
+    "data_sample": {
+      "code": "159919",
+      "name": "沪深300ETF嘉实",
+      "price": "5.132",
+      "prev_close": "5.143",
+      "volume": "1271218"
+    }
+  },
+  {
+    "source": "腾讯行情API",
+    "interface": "实时行情",
+    "status": "✅通过",
+    "message": "返回88个字段",
+    "data_sample": {
+      "code": "510300",
+      "name": "沪深300ETF华泰柏瑞",
+      "price": "4.923",
+      "prev_close": "4.932",
+      "volume": "6566854"
+    }
+  },
+  {
+    "source": "腾讯行情API",
+    "interface": "实时行情",
+    "status": "✅通过",
+    "message": "返回88个字段",
+    "data_sample": {
+      "code": "510050",
+      "name": "上证50ETF华夏",
+      "price": "2.997",
+      "prev_close": "2.985",
+      "volume": "6306753"
+    }
+  },
+  {
+    "source": "腾讯行情API",
+    "interface": "日线历史",
+    "status": "✅通过",
+    "message": "返回10条日线",
+    "data_sample": [
+      "2026-05-18",
+      "5.067",
+      "5.059",
+      "5.090",
+      "5.023",
+      "1746825.000"
+    ]
+  },
+  {
+    "source": "腾讯行情API",
+    "interface": "日线历史",
+    "status": "✅通过",
+    "message": "返回10条日线",
+    "data_sample": [
+      "2026-05-18",
+      "4.855",
+      "4.852",
+      "4.885",
+      "4.819",
+      "5835764.000"
+    ]
+  },
+  {
+    "source": "腾讯行情API",
+    "interface": "日线历史",
+    "status": "✅通过",
+    "message": "返回10条日线",
+    "data_sample": [
+      "2026-05-18",
+      "3.020",
+      "3.008",
+      "3.030",
+      "2.992",
+      "8709846.000"
+    ]
+  },
+  {
+    "source": "新浪财经API",
+    "interface": "实时行情",
+    "status": "✅通过",
+    "message": "返回33个字段",
+    "data_sample": {
+      "name": "沪深300",
+      "price": "5.132",
+      "prev_close": "5.143",
+      "open": "5.153"
+    }
+  },
+  {
+    "source": "新浪财经API",
+    "interface": "实时行情",
+    "status": "✅通过",
+    "message": "返回34个字段",
+    "data_sample": {
+      "name": "沪深300ETF华泰柏瑞",
+      "price": "4.923",
+      "prev_close": "4.932",
+      "open": "4.946"
+    }
+  },
+  {
+    "source": "新浪财经API",
+    "interface": "实时行情",
+    "status": "✅通过",
+    "message": "返回34个字段",
+    "data_sample": {
+      "name": "上证50ETF华夏",
+      "price": "2.997",
+      "prev_close": "2.985",
+      "open": "2.988"
+    }
+  },
+  {
+    "source": "新浪财经API",
+    "interface": "30分钟K线",
+    "status": "✅通过",
+    "message": "返回5条K线",
+    "data_sample": {
+      "day": "2026-05-29 11:30:00",
+      "open": "5.151",
+      "high": "5.156",
+      "low": "5.136",
+      "close": "5.147",
+      "volume": "9519100",
+      "amount": "48976279.6135"
+    }
+  },
+  {
+    "source": "新浪财经API",
+    "interface": "30分钟K线",
+    "status": "✅通过",
+    "message": "返回5条K线",
+    "data_sample": {
+      "day": "2026-05-29 11:30:00",
+      "open": "4.943",
+      "high": "4.947",
+      "low": "4.930",
+      "close": "4.935",
+      "volume": "50875184",
+      "amount": "251204081.0205"
+    }
+  },
+  {
+    "source": "新浪财经API",
+    "interface": "30分钟K线",
+    "status": "✅通过",
+    "message": "返回5条K线",
+    "data_sample": {
+      "day": "2026-05-29 11:30:00",
+      "open": "2.996",
+      "high": "3.003",
+      "low": "2.992",
+      "close": "2.997",
+      "volume": "54307640",
+      "amount": "162710892.0052"
+    }
+  },
+  {
+    "source": "天天基金网",
+    "interface": "实时估值",
+    "status": "✅通过",
+    "message": "获取成功",
+    "data_sample": {
+      "fundcode": "159919",
+      "name": "沪深300ETF嘉实",
+      "gsz": "5.1215",
+      "gszzl": "-0.45"
+    }
+  },
+  {
+    "source": "天天基金网",
+    "interface": "实时估值",
+    "status": "✅通过",
+    "message": "获取成功",
+    "data_sample": {
+      "fundcode": "510300",
+      "name": "沪深300ETF华泰柏瑞",
+      "gsz": "4.9136",
+      "gszzl": "-0.45"
+    }
+  },
+  {
+    "source": "天天基金网",
+    "interface": "实时估值",
+    "status": "✅通过",
+    "message": "获取成功",
+    "data_sample": {
+      "fundcode": "510050",
+      "name": "上证50ETF华夏",
+      "gsz": "2.9949",
+      "gszzl": "0.24"
+    }
+  },
+  {
+    "source": "BaoStock",
+    "interface": "日线数据",
+    "status": "✅通过",
+    "message": "返回95条记录",
+    "data_sample": [
+      "2026-01-05",
+      "4.8480",
+      "4.9280",
+      "4.8480",
+      "4.9210",
+      "241130705"
+    ]
+  },
+  {
+    "source": "BaoStock",
+    "interface": "日线数据",
+    "status": "✅通过",
+    "message": "返回95条记录",
+    "data_sample": [
+      "2026-01-05",
+      "4.7830",
+      "4.8480",
+      "4.7800",
+      "4.8440",
+      "1017132485"
+    ]
+  },
+  {
+    "source": "BaoStock",
+    "interface": "日线数据",
+    "status": "✅通过",
+    "message": "返回95条记录",
+    "data_sample": [
+      "2026-01-05",
+      "3.1160",
+      "3.1820",
+      "3.1160",
+      "3.1740",
+      "799217865"
+    ]
+  },
+  {
+    "source": "东方财富EMF",
+    "interface": "实时行情",
+    "status": "❌失败",
+    "message": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+    "data_sample": null
+  },
+  {
+    "source": "东方财富EMF",
+    "interface": "实时行情",
+    "status": "❌失败",
+    "message": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+    "data_sample": null
+  },
+  {
+    "source": "东方财富EMF",
+    "interface": "实时行情",
+    "status": "❌失败",
+    "message": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+    "data_sample": null
+  },
+  {
+    "source": "雪球Xueqiu",
+    "interface": "基金页面",
+    "status": "✅通过",
+    "message": "页面可访问",
+    "data_sample": {
+      "title": "雪球ETF页面"
+    }
+  },
+  {
+    "source": "雪球Xueqiu",
+    "interface": "基金页面",
+    "status": "✅通过",
+    "message": "页面可访问",
+    "data_sample": {
+      "title": "雪球ETF页面"
+    }
+  },
+  {
+    "source": "雪球Xueqiu",
+    "interface": "基金页面",
+    "status": "✅通过",
+    "message": "页面可访问",
+    "data_sample": {
+      "title": "雪球ETF页面"
+    }
+  },
+  {
+    "source": "百度百科",
+    "interface": "词条搜索",
+    "status": "❌失败",
+    "message": "HTTP 403",
+    "data_sample": null
+  }
+]
