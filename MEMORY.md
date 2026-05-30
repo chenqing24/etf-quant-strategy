@@ -65,6 +65,16 @@
   - store.py: 实验存储
 - `tests/strategy/`: 48个测试用例
 - `src/core/selector.py`: 因子评分选择器（P0-3改造后从配置读取权重）
+- `scripts/fill_etf_metadata.py`: ETF元数据填充脚本（新增）
+
+## ETF元数据表
+
+- **表名**: `etf_names`
+- **记录数**: 1486条（全市场ETF）
+- **字段**: code, name, exchange, aum, verified等
+- **数据来源**: AKTools HTTP API
+  - `/api/public/fund_etf_spot_em`: 实时行情
+  - `/api/public/fund_etf_scale_sse`: 上交所规模（571条更新）
 
 ## 待办
 1. 调仓逻辑优化（禁止频繁调仓可提升收益19%）
