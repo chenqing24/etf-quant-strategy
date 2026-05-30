@@ -25,7 +25,7 @@
 | 4 | BaoStock | ETF/股票日线 | ⭐⭐⭐⭐ | 无严格 | ✅ 有 | ✅ 已验证 |
 | 5 | 东方财富EMF | 股票数据 | ⭐⭐⭐ | 3-6秒 | ❌ 无 | ❌ ETF不可用 |
 | 6 | Tushare Pro | 日线备源（需Token） | ⭐⭐⭐⭐ | 有限制 | ✅ 有 | ⚠️ 待验证 |
-| 7 | AKShare + AKTools | ETF基金数据、本地API | ⭐⭐⭐⭐ | 无严格 | ✅ 有 | ✅ 已验证 |
+| 7 | AKShare + AKTools | ETF基金数据、本地API | ⭐⭐⭐⭐ | 无严格 | ✅ 有 | ✅ **已验证** |
 | 8 | 雪球Xueqiu | 基金详情 | ⭐⭐⭐⭐ | 需Cookie | ❌ 无 | ✅ 页面已验证 |
 | 9 | 百度百科 | ETF基础知识 | ⭐⭐ | 限流 | ✅ 有 | ⚠️ 限流严重 |
 
@@ -491,105 +491,132 @@ df = pro.fund_daily(
 
 ---
 
-## 八、AKShare + AKTools ✅ 已验证
+## 八、AKShare + AKTools ✅ 已验证（本地部署）
 
 ### 8.1 概述
 - **AKShare官网**: https://akshare.akfamily.xyz
 - **AKTools官网**: https://aktools.akfamily.xyz
 - **安装**: `pip install akshare` 或 `pip install aktools`
-- **用途**: ETF基金数据、股票分钟线
-- **AKTools**: 可本地部署 HTTP API，支持多语言调用
+- **本地服务**: `python -m aktools`（默认端口8080）
+- **工作目录**: `/home/qwenpaw/.qwenpaw/workspaces/default/aktools-server`
+- **用途**: ETF基金数据
 
-### 8.2 AKTools 本地部署
+### 8.2 服务状态
 
-**安装**:
-```bash
-pip install aktools>=0.0.86
-```
+| 项目 | 状态 |
+|------|------|
+| AKTools版本 | 0.0.91 ✅ |
+| AKShare版本 | 1.18.63 ⚠️ |
+| 服务地址 | http://127.0.0.1:8080 |
+| 启动命令 | `cd aktools-server && python -m aktools` |
 
-**启动服务**:
-```bash
-python -m aktools
-# 服务地址: http://127.0.0.1:8080
-```
+### 8.3 验证通过的接口（非东财）
 
-**调用示例**:
-```bash
-# 获取ETF列表
-curl "http://127.0.0.1:8080/api/public/fund_etf_spot_em"
+| 接口 | 用途 | 记录数 | 字段 |
+|------|------|--------|------|
+| `fund_etf_hist_sina` | 新浪ETF历史日线 | 3400条 | date, open, high, low, close, volume, amount |
+| `fund_etf_category_sina` | 新浪ETF/LOF分类 | 382条 | 代码, 名称, 最新价, 涨跌额, 涨跌幅, 买入, 卖出, 昨收, 今开, 最高, 最低, 成交量, 成交额 |
+| `fund_etf_dividend_sina` | 新浪ETF分红历史 | 7条 | 日期, 累计分红 |
+| `fund_etf_scale_sse` | 上交所ETF规模 | 593条 | 序号, 基金代码, 基金简称, ETF类型, 统计日期, 基金份额 |
 
-# 获取ETF历史K线
-curl "http://127.0.0.1:8080/api/public/fund_etf_hist_em?symbol=159919&period=daily&start_date=20260101&end_date=20260530&adjust="
-```
+### 8.4 新浪ETF历史日线接口（推荐）
 
-### 8.3 ETF基金实时行情接口
-
-**Python接口**: `fund_etf_spot_em()`
-
-**返回字段**:
-| 字段 | 类型 | 说明 | 来源 |
-|------|------|------|------|
-| 日期 | string | 更新时间 | ✅官方文档 |
-| 基金代码 | string | ETF代码 | ✅官方文档 |
-| 基金简称 | string | ETF名称 | ✅官方文档 |
-| 最新价 | float | 当前价格 | ✅官方文档 |
-| 涨跌幅 | float | 涨跌幅(%) | ✅官方文档 |
-| 成交量 | float | 成交量 | ✅官方文档 |
-| 成交额 | float | 成交额 | ✅官方文档 |
-| 振幅 | float | 振幅(%) | ✅官方文档 |
-| 换手率 | float | 换手率(%) | ✅官方文档 |
-
-### 8.4 ETF基金历史行情接口
-
-**Python接口**: `fund_etf_hist_em(symbol, period, start_date, end_date, adjust)`
+**Python接口**: `fund_etf_hist_sina(symbol)`
 
 **参数说明**:
 | 参数 | 类型 | 说明 | 示例 |
 |------|------|------|------|
-| symbol | str | ETF代码 | `159919` |
-| period | str | 周期 | `daily`/`weekly`/`monthly` |
-| start_date | str | 开始日期 | `20000101` |
-| end_date | str | 结束日期 | `20230201` |
-| adjust | str | 复权方式 | 空/`qfq`/`hfq` |
+| symbol | str | ETF代码（含前缀） | `sz159919`、`sh510300` |
 
 **返回字段**:
 | 字段 | 类型 | 说明 | 来源 |
 |------|------|------|------|
-| 日期 | string | YYYY-MM-DD | ✅官方文档 |
-| 开盘 | float | 开盘价 | ✅官方文档 |
-| 收盘 | float | 收盘价 | ✅官方文档 |
-| 最高 | float | 最高价 | ✅官方文档 |
-| 最低 | float | 最低价 | ✅官方文档 |
-| 成交量 | float | 成交量 | ✅官方文档 |
-| 成交额 | float | 成交额 | ✅官方文档 |
-| 振幅 | float | 振幅(%) | ✅官方文档 |
-| 涨跌幅 | float | 涨跌幅(%) | ✅官方文档 |
-| 涨跌额 | float | 涨跌额 | ✅官方文档 |
-| 换手率 | float | 换手率(%) | ✅官方文档 |
+| date | string | YYYY-MM-DD | ✅官方文档 |
+| open | float | 开盘价 | ✅官方文档 |
+| high | float | 最高价 | ✅官方文档 |
+| low | float | 最低价 | ✅官方文档 |
+| close | float | 收盘价 | ✅官方文档 |
+| volume | int | 成交量 | ✅官方文档 |
+| amount | float | 成交额 | ✅官方文档 |
 
 **Python示例**:
 ```python
 import akshare as ak
 
-# 获取ETF历史日线（前复权）
-df = ak.fund_etf_hist_em(
-    symbol="159919",
-    period="daily",
-    start_date="20260101",
-    end_date="20260530",
-    adjust="qfq"
-)
-print(df)
+# 获取沪深300ETF嘉实历史日线
+df = ak.fund_etf_hist_sina(symbol="sz159919")
+print(df.head())
 ```
 
-### 8.5 适用场景
+**特点**:
+- 历史数据从2012年开始
+- 返回约3400条记录
+- **非东财数据源** ✅
+
+### 8.5 新浪ETF分类接口
+
+**Python接口**: `fund_etf_category_sina()`
+
+**返回字段**:
+| 字段 | 类型 | 说明 | 来源 |
+|------|------|------|------|
+| 代码 | string | ETF代码（含sz/sh前缀） | ✅官方文档 |
+| 名称 | string | ETF名称 | ✅官方文档 |
+| 最新价 | float | 当前价格 | ✅官方文档 |
+| 涨跌额 | float | 涨跌额 | ✅官方文档 |
+| 涨跌幅 | float | 涨跌幅(%) | ✅官方文档 |
+| 买入/卖出 | float | 买卖价 | ✅官方文档 |
+| 昨收/今开 | float | 昨收价/今开盘 | ✅官方文档 |
+| 最高/最低 | float | 日最高/最低价 | ✅官方文档 |
+| 成交量/成交额 | float | 成交数量/金额 | ✅官方文档 |
+
+**Python示例**:
+```python
+import akshare as ak
+
+# 获取实时ETF/LOF列表
+df = ak.fund_etf_category_sina()
+# 筛选沪深300ETF
+df[df['名称'].str.contains('沪深300')]
+```
+
+### 8.6 上交所ETF规模接口
+
+**Python接口**: `fund_etf_scale_sse()`
+
+**返回字段**:
+| 字段 | 类型 | 说明 | 来源 |
+|------|------|------|------|
+| 序号 | int | 序号 | ✅官方文档 |
+| 基金代码 | string | ETF代码 | ✅官方文档 |
+| 基金简称 | string | ETF名称 | ✅官方文档 |
+| ETF类型 | string | 单市/跨沪/跨深 | ✅官方文档 |
+| 统计日期 | string | YYYY-MM-DD | ✅官方文档 |
+| 基金份额 | float | 份额数量 | ✅官方文档 |
+
+### 8.7 HTTP API 说明
+
+⚠️ **注意**: AKTools HTTP API 目前返回不稳定，建议直接使用 Python SDK：
+
+```python
+# ✅ 推荐：直接调用 Python SDK
+import akshare as ak
+df = ak.fund_etf_hist_sina(symbol="sz159919")
+
+# ⚠️ 不推荐：HTTP API（返回空数据）
+# curl "http://127.0.0.1:8080/api/public/fund_etf_hist_sina?symbol=sz159919"
+```
+
+### 8.8 适用场景
 
 | 场景 | 状态 | 说明 |
 |------|------|------|
-| ETF历史日线 | ✅ 主要 | 支持前复权/后复权 |
-| ETF实时行情 | ✅ 主要 | 东方财富数据 |
-| 股票分钟线 | ⚠️ 可用 | 参考用 |
-| 本地部署 | ✅ 可用 | AKTools HTTP API |
+| ETF历史日线（非东财） | ✅ 主要 | fund_etf_hist_sina |
+| ETF实时行情（非东财） | ✅ 主要 | fund_etf_category_sina |
+| ETF分红历史 | ✅ 可用 | fund_etf_dividend_sina |
+| 上交所ETF规模 | ✅ 可用 | fund_etf_scale_sse |
+| 深交所ETF规模 | ❌ 不可用 | 接口返回异常 |
+| 本地HTTP API | ⚠️ 不稳定 | 建议用Python SDK |
 
 ---
 
@@ -807,7 +834,8 @@ python scripts/verify_all_datasources.py
 | v2.1 | 2026-05-30 | 新增雪球Xueqiu、百度百科两个数据源 |
 | v3.0 | 2026-05-30 | **全面验证**：修正字段映射，标注数据来源（实测/官方），东方财富EMF标记为ETF不可用 |
 | v3.1 | 2026-05-30 | **新增AKTools**：AKTools本地部署HTTP API，fund_etf_spot_em、fund_etf_hist_em官方接口文档 |
+| v3.2 | 2026-05-30 | **验证AKTools**：实测5个非东财接口，更新文档（推荐fund_etf_hist_sina、fund_etf_category_sina），HTTP API不稳定建议用Python SDK |
 
 ---
 
-*文档版本: v3.1 | 更新: 2026-05-30 | 验证脚本: scripts/verify_all_datasources.py*
+*文档版本: v3.2 | 更新: 2026-05-30 | 验证脚本: scripts/verify_all_datasources.py*
