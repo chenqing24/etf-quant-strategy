@@ -86,6 +86,78 @@
 
 ## 项目经验教训
 
+### 💰 数据源从0到1486的全流程复盘
+
+#### 一、问题起点
+系统只覆盖约70只ETF（硬编码列表），无法获取全市场1486只ETF信息。缺乏：
+- ETF完整列表
+- 实时行情
+- 历史日线
+- 元数据管理
+
+#### 二、解决步骤
+
+**Step 1: 全面调研数据源**
+- 调研11个数据源（腾讯、新浪、天天基金、BaoStock、AKShare、雪球等）
+- 测试17个接口：13通过，4失败
+- 发现关键数据源：AKShare + AKTools
+
+**Step 2: 部署本地HTTP API (AKTools)**
+- 部署 `aktools-server/`，解决限流问题
+- 本地服务 `http://127.0.0.1:8080`
+- 封装为统一HTTP接口，调用间隔≥5秒
+
+**Step 3: 验证接口可用性**
+- `/api/public/fund_etf_spot_em`: 1486条全市场ETF ✅
+- `/api/public/fund_etf_scale_sse`: 593条上交所规模 ✅
+- `/api/public/fund_etf_hist_sina`: 单只ETF历史3400条 ✅
+
+**Step 4: 填充元数据表**
+- 编写 `scripts/fill_etf_metadata.py`
+- 从AKTools API获取全市场ETF列表
+- 写入 `etf_names` 表（code, name, exchange, aum）
+
+#### 三、关键决策
+
+| 决策 | 原因 | 结果 |
+|------|------|------|
+| 部署AKTools本地服务 | 解决限流问题 | 稳定调用 |
+| 使用HTTP API封装 | 统一接口，隔离底层 | 便于扩展 |
+| 代理只用于国外网站 | 国内网站直连更快 | 避免超时 |
+| 非东财接口优先 | 东财接口不稳定 | 提高成功率 |
+
+#### 四、技术沉淀
+
+**数据源可靠性排序**：
+```
+腾讯API > 新浪API > AKShare新浪 > 天天基金 > BaoStock > AKShare东财
+```
+
+**数据路由优先级**：
+- ETF实时价格 → 腾讯API → AKShare东财
+- ETF历史日线 → AKShare新浪 → 腾讯API → BaoStock
+- ETF净值 → 天天基金 → AKShare东财
+
+#### 五、经验总结
+
+1. **调研先行**：不要急着写代码，先测试所有数据源
+2. **本地服务**：限流严重时，部署本地服务（aktools-server）更可靠
+3. **数据契约**：每个数据源必须验证字段格式，形成文档
+4. **渐进验证**：逐步验证每个接口，先小批量再全量
+5. **统一入口**：通过HTTP API封装，避免直接调用底层库
+
+#### 六、交付成果
+
+| 成果 | 说明 |
+|------|------|
+| `docs/DATA_SOURCE_REFERENCE.md` | 数据源完整文档 v4.1 |
+| `aktools-server/` | AKTools本地服务 |
+| `scripts/fill_etf_metadata.py` | ETF元数据填充工具 |
+| `etf_names` 表 | 1486条全市场ETF元数据 |
+| `docs/TOOLS.md` | 工具清单（更新至2026-05-30） |
+
+---
+
 ### 调仓陷阱
 - 禁止调仓后收益反而增加19% (574.8% → 686.2%)
 - 频繁调仓损害收益，应设置持仓最低天数限制
