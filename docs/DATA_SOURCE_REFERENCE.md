@@ -26,9 +26,10 @@
 | 5 | AKShare 新浪接口 | ETF历史日线 | ⭐⭐⭐⭐ | 5秒 | ✅ 有 | ✅ 已验证 |
 | 6 | AKShare 东财接口 | ETF实时/净值 | ⭐⭐⭐⭐ | 5秒 | ✅ 有 | ⚠️ 部分验证 |
 | 7 | AKShare 上交所接口 | ETF规模 | ⭐⭐⭐ | 5秒 | ✅ 有 | ✅ 已验证 |
-| 8 | Tushare Pro | 日线备源 | ⭐⭐⭐⭐ | 有限制 | ✅ 有 | ⚠️ 待验证 |
-| 9 | 雪球Xueqiu | 基金详情 | ⭐⭐⭐⭐ | 需Cookie | ❌ 无 | ❌ 不可用 |
-| 10 | 百度百科 | ETF基础知识 | ⭐⭐ | 限流 | ✅ 有 | ⚠️ 限流严重 |
+| 8 | **AKTools HTTP API** | **本地HTTP API（通过akshare调用）** | ⭐⭐⭐⭐ | 5秒 | ✅ 有 | ✅ **已验证** |
+| 9 | Tushare Pro | 日线备源 | ⭐⭐⭐⭐ | 有限制 | ✅ 有 | ⚠️ 待验证 |
+| 10 | 雪球Xueqiu | 基金详情 | ⭐⭐⭐⭐ | 需Cookie | ❌ 无 | ❌ 不可用 |
+| 11 | 百度百科 | ETF基础知识 | ⭐⭐ | 限流 | ✅ 有 | ⚠️ 限流严重 |
 
 ---
 
@@ -371,9 +372,73 @@ df = ak.fund_etf_scale_sse()  # 593条ETF
 
 ---
 
-## 九、数据源路由表
+## 九、AKTools HTTP API ✅ **已验证**
 
-### 9.1 优先级配置
+### 9.1 概述
+- **服务地址**: `http://127.0.0.1:8080`
+- **工作目录**: `/home/qwenpaw/.qwenpaw/workspaces/default/aktools-server`
+- **启动命令**: `cd aktools-server && python -m aktools`
+- **AKTools版本**: 0.0.91
+- **AKShare版本**: 1.18.63
+- **用途**: 本地HTTP API，通过akshare调用各数据源
+
+### 9.2 HTTP API 接口验证
+
+| 接口 | HTTP路径 | 返回 | 耗时 | 状态 |
+|------|----------|------|------|------|
+| 版本信息 | `/version` | {"ak_version":"1.18.63"...} | 0.01s | ✅ |
+| ETF实时行情 | `/api/public/fund_etf_spot_em` | 1486条 | 16.88s | ✅ |
+| ETF历史日线 | `/api/public/fund_etf_hist_sina?symbol=sz159919` | 3400条 | 0.24s | ✅ |
+| ETF分类 | `/api/public/fund_etf_category_sina` | 382条 | 0.62s | ✅ |
+
+### 9.3 调用示例
+
+```bash
+# 获取版本信息
+curl "http://127.0.0.1:8080/version"
+
+# 获取ETF实时行情（全市场1486条）
+curl "http://127.0.0.1:8080/api/public/fund_etf_spot_em"
+
+# 获取ETF历史日线
+curl "http://127.0.0.1:8080/api/public/fund_etf_hist_sina?symbol=sz159919"
+
+# 获取ETF分类
+curl "http://127.0.0.1:8080/api/public/fund_etf_category_sina"
+```
+
+### 9.4 返回格式
+
+```json
+// 成功返回 JSON 数组
+[
+  {
+    "date": "2012-05-28T00:00:00.000",
+    "open": 0.951,
+    "high": 0.983,
+    "low": 0.951,
+    "close": 0.983,
+    "volume": 1079199232,
+    "amount": 1037835072
+  }
+]
+```
+
+### 9.5 限速规则
+
+⚠️ **重要**: HTTP API 调用间隔至少 **5秒**，每次请求耗时 0.5-17 秒不等。
+
+| 接口 | 建议间隔 |
+|------|---------|
+| 轻量接口（如版本） | 无限制 |
+| ETF历史日线 | 5秒+ |
+| ETF实时行情 | 10秒+ |
+
+---
+
+## 十、数据源路由表
+
+### 10.1 优先级配置
 
 | 数据类型 | 优先级1 | 优先级2 | 优先级3 | 最后 |
 |---------|---------|---------|--------|------|
@@ -391,7 +456,7 @@ df = ak.fund_etf_scale_sse()  # 593条ETF
 
 ---
 
-## 十、限速规则
+## 十一、限速规则
 
 | 数据源 | 最小间隔 | 最大间隔 | 说明 |
 |--------|---------|---------|------|
@@ -404,7 +469,7 @@ df = ak.fund_etf_scale_sse()  # 593条ETF
 
 ---
 
-## 十一、接口映射表
+## 十二、接口映射表
 
 ### 11.1 统一数据格式
 
@@ -440,7 +505,7 @@ class ETFData:
 
 ---
 
-## 十二、测试脚本
+## 十三、测试脚本
 
 | 脚本 | 说明 |
 |------|------|
@@ -449,7 +514,7 @@ class ETFData:
 
 ---
 
-## 十三、更新记录
+## 十四、更新记录
 
 | 版本 | 日期 | 更新内容 |
 |------|------|---------|
@@ -461,7 +526,8 @@ class ETFData:
 | v3.2 | 2026-05-30 | 验证AKTools非东财接口 |
 | v3.3 | 2026-05-30 | 记录AKTools 5秒限速规则 |
 | **v4.0** | **2026-05-30** | **全面测试17个接口：13通过，4失败** |
+| **v4.1** | **2026-05-30** | **新增AKTools HTTP API验证结果：本地API已部署并测试通过（4个接口验证）** |
 
 ---
 
-*文档版本: v4.0 | 更新: 2026-05-30 | 测试脚本: scripts/verify_all_datasources.py, aktools-server/full_api_test.py*
+*文档版本: v4.1 | 更新: 2026-05-30 | 测试脚本: scripts/verify_all_datasources.py, aktools-server/test_http_api.py*
