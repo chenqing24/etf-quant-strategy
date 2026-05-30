@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""合并流动性Top60与现有ETF池，生成新ETF列表"""
+"""合并流动性Top60与现有ETF池，生成无重复的新列表"""
 import sqlite3
 import json
 
@@ -22,158 +22,122 @@ def get_existing_etf(db_path):
     """获取数据库中已存在的ETF"""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
     cursor.execute("SELECT code, name, exchange, aum FROM etf_names ORDER BY code")
     rows = cursor.fetchall()
-    
     conn.close()
-    
     return {row[0]: {'code': row[0], 'name': row[1], 'exchange': row[2], 'aum': row[3]} for row in rows}
 
 def get_daily_count(db_path):
     """获取每只ETF的日线数据条数"""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
     cursor.execute("SELECT code, COUNT(*) as cnt FROM daily GROUP BY code ORDER BY cnt DESC")
     rows = cursor.fetchall()
-    
     conn.close()
-    
     return {row[0]: row[1] for row in rows}
 
 def main():
-    # 获取现有ETF
     existing = get_existing_etf(DB_PATH)
     daily_counts = get_daily_count(DB_PATH)
     
     print("=" * 80)
-    print("📊 ETF池合并分析")
+    print("📊 ETF池合并分析（去重版）")
     print("=" * 80)
     
-    # 分析Top60与现有的关系
-    in_both = []      # 既在Top60又在数据库中
-    only_top60 = []    # 只在Top60中
-    only_existing = [] # 只在数据库中
+    # 分析
+    top60_in_db = [c for c in TOP60_CODES if c in existing]
+    top60_not_in_db = [c for c in TOP60_CODES if c not in existing]
     
-    for code in TOP60_CODES:
-        if code in existing:
-            in_both.append(code)
-        else:
-            only_top60.append(code)
-    
-    # 统计有日线数据的
-    in_both_with_data = [c for c in in_both if daily_counts.get(c, 0) > 0]
-    only_top60_with_data = [c for c in only_top60 if daily_counts.get(c, 0) > 0]
-    
-    print(f"\n📈 流动性Top60分析:")
-    print(f"  - 与现有数据库重叠: {len(in_both)} 只")
-    print(f"    - 其中有日线数据: {len(in_both_with_data)} 只")
-    print(f"  - 新增（数据库无记录）: {len(only_top60)} 只")
-    print(f"    - 其中有日线数据: {len(only_top60_with_data)} 只")
+    print(f"\n📈 流动性Top60:")
+    print(f"  - 数据库已有: {len(top60_in_db)} 只")
+    print(f"  - 数据库无记录: {len(top60_not_in_db)} 只")
     
     print(f"\n📦 现有数据库:")
     print(f"  - 总ETF数: {len(existing)} 只")
-    print(f"  - 有日线数据: {sum(1 for c in existing if daily_counts.get(c, 0) > 0)} 只")
     
-    # 合并Top60 + 有数据的现有ETF
-    merged_codes = set(in_both) | set(only_top60) | {c for c in existing if daily_counts.get(c, 0) > 100}
+    # 构建无重复的合并列表
+    merged = []  # 最终列表（去重）
+    seen = set()  # 已添加的代码
     
-    print(f"\n🆕 合并后ETF池:")
-    print(f"  - 总数: {len(merged_codes)} 只")
-    
-    # 生成新列表
+    # 1. Top60 排在前面
     print("\n" + "=" * 80)
-    print("📋 新ETF池列表（按流动性排序）")
+    print("📋 新ETF池列表（Top60优先，无重复）")
     print("=" * 80)
-    print(f"{'排名':<4} {'代码':<10} {'名称':<25} {'来源':<12} {'日线数据':<10}")
-    print("-" * 80)
+    print(f"{'排名':<4} {'代码':<10} {'名称':<25} {'日线数据':<8}")
+    print("-" * 60)
     
-    # 按Top60优先，再按数据库顺序
-    ranked_list = []
+    rank = 1
+    for code in sorted(TOP60_CODES):
+        if code in seen:
+            continue
+        seen.add(code)
+        
+        name = existing[code]['name'] if code in existing else '未知'
+        daily = daily_counts.get(code, 0)
+        
+        merged.append({'rank': rank, 'code': code, 'name': name, 'daily': daily})
+        print(f"{rank:<4} {code:<10} {name:<25} {daily:<8}")
+        rank += 1
     
-    # Top60排在前面
-    for code in TOP60_CODES:
-        if code in existing:
-            etf = existing[code]
-            ranked_list.append({
-                'rank': len(ranked_list) + 1,
-                'code': code,
-                'name': etf['name'],
-                'source': 'Top60+DB',
-                'daily_count': daily_counts.get(code, 0)
-            })
-        else:
-            ranked_list.append({
-                'rank': len(ranked_list) + 1,
-                'code': code,
-                'name': '新增ETF',
-                'source': 'Top60新增',
-                'daily_count': 0
-            })
-    
-    # 补充数据库中其他有数据的ETF
-    existing_codes_sorted = sorted(
-        [c for c in existing if c not in TOP60_CODES and daily_counts.get(c, 0) > 100],
+    # 2. 补充数据库中有历史数据但不在Top60的ETF
+    existing_with_data = sorted(
+        [c for c in existing if c not in seen and daily_counts.get(c, 0) > 100],
         key=lambda x: daily_counts.get(x, 0),
         reverse=True
     )[:40]  # 最多补充40只
     
-    for code in existing_codes_sorted:
-        etf = existing[code]
-        ranked_list.append({
-            'rank': len(ranked_list) + 1,
-            'code': code,
-            'name': etf['name'],
-            'source': 'DB补充',
-            'daily_count': daily_counts.get(code, 0)
-        })
+    for code in existing_with_data:
+        if code in seen:
+            continue
+        seen.add(code)
+        
+        name = existing[code]['name']
+        daily = daily_counts.get(code, 0)
+        
+        merged.append({'rank': rank, 'code': code, 'name': name, 'daily': daily})
+        print(f"{rank:<4} {code:<10} {name:<25} {daily:<8}")
+        rank += 1
     
-    # 输出
-    for item in ranked_list:
-        print(f"{item['rank']:<4} {item['code']:<10} {item['name']:<25} {item['source']:<12} {item['daily_count']:<10}")
+    print("-" * 60)
+    print(f"✅ 总计: {len(merged)} 只ETF（无重复）")
     
-    print("-" * 80)
-    print(f"总计: {len(ranked_list)} 只ETF")
+    # 验证无重复
+    codes_only = [item['code'] for item in merged]
+    unique_codes = set(codes_only)
+    if len(codes_only) != len(unique_codes):
+        print(f"\n❌ 警告：仍有 {len(codes_only) - len(unique_codes)} 个重复！")
+    else:
+        print(f"✅ 验证通过：无重复代码")
     
-    # 生成代码列表（用于配置文件）
-    all_codes = [item['code'] for item in ranked_list]
+    # 统计
+    top60_count = len([c for c in codes_only if c in TOP60_CODES])
+    db_count = len(codes_only) - top60_count
     
-    print("\n" + "=" * 80)
-    print("📝 ETF代码列表（可直接复制到配置）")
-    print("=" * 80)
-    
-    # 按每行10个分组
-    for i in range(0, len(all_codes), 10):
-        chunk = all_codes[i:i+10]
-        print("    '" + "', '".join(chunk) + "',")
+    print(f"\n📊 统计:")
+    print(f"  - Top60贡献: {top60_count} 只")
+    print(f"  - 数据库补充: {db_count} 只")
     
     # 保存到文件
-    output = {
-        'total': len(ranked_list),
-        'from_top60': len(TOP60_CODES),
-        'from_existing': len(existing_codes_sorted),
-        'etf_list': ranked_list,
-        'codes': all_codes
-    }
-    
-    with open('etf_data_live/merged_etf_pool.json', 'w', encoding='utf-8') as f:
-        json.dump(output, f, ensure_ascii=False, indent=2)
-    
-    print(f"\n✅ 已保存到: etf_data_live/merged_etf_pool.json")
-    
-    # 保存为Python列表格式
     with open('etf_data_live/merged_etf_pool.txt', 'w', encoding='utf-8') as f:
         f.write("# 合并后的ETF池（流动性Top60 + 数据库）\n")
-        f.write(f"# 总数: {len(all_codes)}\n\n")
+        f.write(f"# 总数: {len(merged)} | Top60: {top60_count} | 数据库: {db_count}\n")
+        f.write("# 去重验证: ✅ 无重复\n\n")
         f.write("ETF_POOL = [\n")
-        for code in all_codes:
-            f.write(f"    '{code}',\n")
+        for item in merged:
+            f.write(f"    '{item['code']}',  # {item['name']}\n")
         f.write("]\n")
     
-    print(f"✅ 已保存到: etf_data_live/merged_etf_pool.txt")
+    print(f"\n✅ 已保存: etf_data_live/merged_etf_pool.txt")
     
-    return ranked_list
+    # 输出代码列表（简洁版）
+    print("\n" + "=" * 80)
+    print("📝 代码列表（可复制）")
+    print("=" * 80)
+    for i in range(0, len(codes_only), 10):
+        chunk = codes_only[i:i+10]
+        print("    '" + "', '".join(chunk) + "',")
+    
+    return merged
 
 if __name__ == "__main__":
     main()
