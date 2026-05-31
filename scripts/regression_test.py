@@ -145,12 +145,12 @@ def main():
             new_results.append({
                 'factors': factors,
                 'etf_code': etf_code,
-                'old_pass': model.get('pass_core', False),
-                'new_score': result.composite_score,
-                'new_pass': result.pass_,
-                'wf_score': result.walk_forward_score,
-                'mc_score': result.monte_carlo_score,
-                'ce_score': result.cross_etf_score
+                'old_pass': bool(model.get('pass_core', False)),
+                'new_score': float(result.composite_score),
+                'new_pass': bool(result.pass_),
+                'wf_score': float(result.walk_forward_score),
+                'mc_score': float(result.monte_carlo_score),
+                'ce_score': float(result.cross_etf_score)
             })
             
             print(f"    综合分: {result.composite_score:.3f}")

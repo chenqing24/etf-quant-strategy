@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-01T04:31:03.620057",
+  "timestamp": "2026-06-01T05:07:52.799226",
   "old_results_count": 5,
   "tested_count": 5,
   "old_pass_count": 5,
@@ -14,4 +14,71 @@
       "etf_code": "512200",
       "old_pass": true,
       "new_score": 0.1,
-      "new_pass": 
+      "new_pass": false,
+      "wf_score": 0.0,
+      "mc_score": 0.0,
+      "ce_score": 0.0
+    },
+    {
+      "factors": [
+        "T2_MA多头",
+        "T4_ADX趋势",
+        "B1_布林上轨突破"
+      ],
+      "etf_code": "512200",
+      "old_pass": true,
+      "new_score": 0.1,
+      "new_pass": false,
+      "wf_score": 0.0,
+      "mc_score": 0.0,
+      "ce_score": 0.0
+    },
+    {
+      "factors": [
+        "T4_ADX趋势",
+        "V1_放量",
+        "B1_布林上轨突破"
+      ],
+      "etf_code": "512200",
+      "old_pass": true,
+      "new_score": 0.1,
+      "new_pass": false,
+      "wf_score": 0.0,
+      "mc_score": 0.0,
+      "ce_score": 0.0
+    },
+    {
+      "factors": [
+        "T4_ADX趋势",
+        "B1_布林上轨突破"
+      ],
+      "etf_code": "512200",
+      "old_pass": true,
+      "new_score": 0.1,
+      "new_pass": false,
+      "wf_score": 0.0,
+      "mc_score": 0.0,
+      "ce_score": 0.0
+    },
+    {
+      "factors": [
+        "T1_MACD红柱",
+        "T4_ADX趋势",
+        "B1_布林上轨突破"
+      ],
+      "etf_code": "512200",
+      "old_pass": true,
+      "new_score": 0.1,
+      "new_pass": false,
+      "wf_score": 0.0,
+      "mc_score": 0.0,
+      "ce_score": 0.0
+    }
+  ],
+  "averages": {
+    "composite_score": 0.1,
+    "wf_score": 0.0,
+    "mc_score": 0.0,
+    "ce_score": 0.0
+  }
+}

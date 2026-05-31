@@ -19,6 +19,7 @@ DEFAULT_CONFIG = {
     'walk_forward': {
         'train_months': 6,
         'test_months': 3,
+        'min_windows': 6,       # 【修复】与WalkForwardEngine一致
         'transaction_cost': 0.002
     },
     'monte_carlo': {
@@ -28,17 +29,19 @@ DEFAULT_CONFIG = {
     },
     'cross_etf': {
         'train_ratio': 0.5,
+        'min_train_etfs': 7,     # 【修复】与CrossEtfValidator一致
+        'min_test_etfs': 5,      # 【修复】与CrossEtfValidator一致
         'min_gap': 0.2
     },
-    # 评分权重
+    # 评分权重【修复】降低MC权重（因为MC得分总是1.0）
     'weights': {
-        'walk_forward': 0.30,
-        'monte_carlo': 0.30,
-        'cross_etf': 0.30,
+        'walk_forward': 0.40,   # 【修复】从0.30改为0.40
+        'monte_carlo': 0.15,    # 【修复】从0.30改为0.15
+        'cross_etf': 0.35,      # 【修复】从0.30改为0.35
         'consistency': 0.10
     },
-    # 通过阈值
-    'pass_threshold': 0.5,
+    # 通过阈值【修复】从0.5提高到0.6
+    'pass_threshold': 0.6,
     # 市场基准
     'market_benchmark': '510300'
 }

@@ -14,12 +14,13 @@ from .walk_forward import WalkForwardEngine, WalkForwardResult, to_dict as wf_to
 # 默认配置
 DEFAULT_CONFIG = {
     'train_ratio': 0.5,        # 训练集比例
-    'min_train_etfs': 5,       # 最少训练ETF数
-    'min_test_etfs': 3,        # 最少测试ETF数
-    'min_gap': 0.2,            # 最大泛化差距
+    'min_train_etfs': 7,       # 【修复】从5改为7，确保统计意义
+    'min_test_etfs': 5,        # 【修复】从3改为5，确保泛化验证有效
+    'min_gap': 0.2,            # 最大泛化差距（训练/测试通过率差距）
     'walk_forward_config': {
         'train_months': 6,
         'test_months': 3,
+        'min_windows': 6,       # 【新增】与WalkForwardEngine一致
         'transaction_cost': 0.002
     }
 }

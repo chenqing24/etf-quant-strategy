@@ -13,12 +13,14 @@ from typing import Callable, Dict, List, Any
 DEFAULT_CONFIG = {
     'train_months': 6,
     'test_months': 3,
-    'min_windows': 3,
+    'min_windows': 6,          # 【修复】从3改为6，确保统计意义
+    'min_test_ratio': 0.3,    # 【新增】测试集至少占30%数据
     'transaction_cost': 0.002,  # 双边交易成本0.2%
     'pass_criteria': {
         'min_test_return': 0,
-        'max_decay': 0.5,
+        'max_decay': 0.5,       # 【修复】衰减不超过50%
         'min_test_sharpe': 0.3,
+        'min_pass_rate': 0.5,   # 【新增】至少50%窗口通过
     }
 }
 
