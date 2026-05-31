@@ -1,50 +1,84 @@
 # ETF量化系统 - 文档索引
 
-> 快速查找需要的文档
+> 快速查找需要的文档 | 更新: 2026-05-31
 
-## 文档分类
+---
+
+## 📁 文档目录结构
+
+```
+docs/
+├── ⭐ 核心文档（必须阅读）
+│   ├── INDEX.md              # 场景索引（工具定位）
+│   ├── TOOLS.md              # 工具清单
+│   └── SOP_INDEX.md          # SOP文档索引
+├── 📐 架构设计
+│   ├── ARCHITECTURE_DESIGN_V3.md  # 完整设计文档（推荐）
+│   ├── ARCHITECTURE_FULL.md       # 架构图+模块说明
+│   └── ARCHITECTURE_MINDMAP.md    # 思维导图
+├── 📊 SOP标准流程
+│   ├── SOP_01_DATA_MINING.md      # 数据挖掘流程
+│   ├── SOP_02_REFACTOR_DEV.md     # 重构修复流程
+│   ├── SOP_03_EXPERIMENT.md        # 实验执行流程
+│   └── SOP_04_DATA_SOURCE.md      # 数据源接入流程
+├── 📖 业务规则
+│   ├── SELECTION_RULES.md    # 选股规则
+│   ├── POSITION_MANAGEMENT.md  # 持仓管理
+│   └── BACKTEST_SPEC.md      # 回测规范
+└── archive/                  # 历史文档（可忽略）
+    ├── architecture/         # 旧版架构文档
+    ├── experiment_reports/    # 旧版实验报告
+    ├── plans/                # 旧版计划文档
+    └── top3/                 # 旧版TOP3报告
+```
+
+---
+
+## 文档分类索引
 
 ### 📚 架构设计
 
 | 文档 | 说明 | 优先级 |
 |------|------|--------|
-| [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) | **系统总览**（全局视图+术语表） | ⭐⭐⭐ |
-| [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md) | 系统完整架构 | ⭐⭐⭐ |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | 热冷数据分离架构 | ⭐⭐ |
-| [EXECUTION_LAYER.md](./EXECUTION_LAYER.md) | 执行层架构（交易流程） | ⭐⭐ |
-| [MONITORING.md](./MONITORING.md) | 监控层架构（告警规则） | ⭐⭐ |
+| [ARCHITECTURE_DESIGN_V3.md](./ARCHITECTURE_DESIGN_V3.md) | **完整设计文档**（推荐） | ⭐⭐⭐ |
+| [ARCHITECTURE_FULL.md](./ARCHITECTURE_FULL.md) | 架构图+模块说明 | ⭐⭐⭐ |
+| [ARCHITECTURE_MINDMAP.md](./ARCHITECTURE_MINDMAP.md) | 思维导图（快速浏览） | ⭐⭐ |
+| [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) | 系统总览+术语表 | ⭐⭐ |
+| [EXECUTION_LAYER.md](./EXECUTION_LAYER.md) | 执行层架构 | ⭐⭐ |
 
 ### 📐 接口规范
 
 | 文档 | 说明 | 优先级 |
 |------|------|--------|
-| [INTERFACE_CONTRACT.md](./INTERFACE_CONTRACT.md) | **模块接口契约** | ⭐⭐⭐ |
-| [DATA_DICTIONARY.md](./DATA_DICTIONARY.md) | **字段定义+错误码** | ⭐⭐⭐ |
+| [INTERFACE_CONTRACT.md](./INTERFACE_CONTRACT.md) | 模块接口契约 | ⭐⭐⭐ |
+| [DATA_DICTIONARY.md](./DATA_DICTIONARY.md) | 字段定义+错误码 | ⭐⭐⭐ |
 | [LOG_SPEC.md](./LOG_SPEC.md) | 日志规范 | ⭐⭐ |
-| [OUTPUT_FORMAT.md](./OUTPUT_FORMAT.md) | 输出格式规范 | ⭐⭐ |
 
 ### 📋 业务规则
 
 | 文档 | 说明 | 优先级 |
 |------|------|--------|
 | [SELECTION_RULES.md](./SELECTION_RULES.md) | 7因子选股规则 | ⭐⭐⭐ |
-| [STRATEGY_IMPROVEMENT.md](./STRATEGY_IMPROVEMENT.md) | 策略优化方向（已验证结论） | ⭐⭐⭐ |
 | [POSITION_MANAGEMENT.md](./POSITION_MANAGEMENT.md) | 持仓管理规则 | ⭐⭐ |
 | [PRD.md](./PRD.md) | 产品需求文档 | ⭐⭐ |
-| [BACKTEST_SPEC.md](./BACKTEST_SPEC.md) | 回测规范（每日评分回测） | ⭐⭐ |
-| [DATA_ACQUISITION.md](./DATA_ACQUISITION.md) | 数据采集规范（腾讯API） | ⭐⭐ |
-| [TRADE_VALIDATION.md](./TRADE_VALIDATION.md) | 交易验证规范（信号校验） | ⭐⭐ |
-| [INDICATOR_SPEC.md](./INDICATOR_SPEC.md) | 技术指标规范（MA/RSI） | ⭐⭐ |
-| [TRADING_COST.md](./TRADING_COST.md) | 交易成本规范 | ⭐⭐ |
-| [INDUSTRY_CONFIG.md](./INDUSTRY_CONFIG.md) | 行业配置规范 | ⭐⭐ |
+| [BACKTEST_SPEC.md](./BACKTEST_SPEC.md) | 回测规范 | ⭐⭐ |
 
-### 📖 使用说明
+### 📖 SOP标准流程
+
+| 文档 | 说明 | 用途 |
+|------|------|------|
+| [SOP_01_DATA_MINING.md](./SOP_01_DATA_MINING.md) | 数据挖掘8步流程 | 因子研究 |
+| [SOP_02_REFACTOR_DEV.md](./SOP_02_REFACTOR_DEV.md) | 重构与修复流程 | 问题修复 |
+| [SOP_03_EXPERIMENT.md](./SOP_03_EXPERIMENT.md) | 实验执行流程 | 批量测试 |
+| [SOP_04_DATA_SOURCE.md](./SOP_04_DATA_SOURCE.md) | 数据源接入流程 | 新API验证 |
+
+### 📊 数据相关
 
 | 文档 | 说明 | 优先级 |
 |------|------|--------|
-| [USAGE.md](./USAGE.md) | 使用说明 | ⭐⭐⭐ |
-| [CRON_SETUP.md](./CRON_SETUP.md) | 定时任务配置 | ⭐⭐ |
-| [NOTIFICATION_ARCHITECTURE.md](./NOTIFICATION_ARCHITECTURE.md) | 通知架构 | ⭐⭐ |
+| [DATA_SOURCE_REFERENCE.md](./DATA_SOURCE_REFERENCE.md) | **数据源完整文档** | ⭐⭐⭐ |
+| [DATA_DICTIONARY.md](./DATA_DICTIONARY.md) | 字段定义 | ⭐⭐ |
+| [DATA_LAYER.md](./DATA_LAYER.md) | 数据层架构 | ⭐⭐ |
 
 ### 📝 开发记录
 
@@ -53,65 +87,51 @@
 | [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md) | 开发日志 |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 开发计划 |
 | [BUILD_REVIEW.md](./BUILD_REVIEW.md) | 复盘总结 |
-| [TASK_TRACKING.md](./TASK_TRACKING.md) | 任务跟踪 |
-| [ETF_SKILL_PLAN.md](./ETF_SKILL_PLAN.md) | 技能规划 |
+| [DOC_CLEANUP_PLAN.md](./DOC_CLEANUP_PLAN.md) | 文档清理记录 |
 
 ---
 
 ## 按职责查找
 
 ### 👋 我是新用户
-1. [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) - 快速了解系统
-2. [USAGE.md](./USAGE.md) - 开始使用
+1. [INDEX.md](./INDEX.md) - 快速定位工具
+2. [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) - 了解系统
+3. [TOOLS.md](./TOOLS.md) - 查看可用工具
 
 ### 🔧 我要修改代码
 1. [INTERFACE_CONTRACT.md](./INTERFACE_CONTRACT.md) - 看接口定义
 2. [DATA_DICTIONARY.md](./DATA_DICTIONARY.md) - 看字段含义
-3. [LOG_SPEC.md](./LOG_SPEC.md) - 看日志规范
 
 ### 📊 我要理解策略
 1. [SELECTION_RULES.md](./SELECTION_RULES.md) - 看选股规则
 2. [POSITION_MANAGEMENT.md](./POSITION_MANAGEMENT.md) - 看持仓规则
-3. [PRD.md](./PRD.md) - 看需求背景
 
 ### 🔧 我要处理数据
-1. [DATA_ACQUISITION.md](./DATA_ACQUISITION.md) - 看数据采集规范
-2. [BACKTEST_SPEC.md](./BACKTEST_SPEC.md) - 看回测规范
-3. [TRADE_VALIDATION.md](./TRADE_VALIDATION.md) - 看交易验证
+1. [DATA_SOURCE_REFERENCE.md](./DATA_SOURCE_REFERENCE.md) - 看数据源
+2. [SOP_04_DATA_SOURCE.md](./SOP_04_DATA_SOURCE.md) - 接入新数据源
+3. [TOOLS.md](./TOOLS.md) - 找工具
+
+### 📈 我要跑实验
+1. [SOP_03_EXPERIMENT.md](./SOP_03_EXPERIMENT.md) - 实验执行流程
+2. [SOP_01_DATA_MINING.md](./SOP_01_DATA_MINING.md) - 因子挖掘流程
 
 ### 🏗️ 我要新增模块
-1. [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) - 看模块关系
+1. [ARCHITECTURE_DESIGN_V3.md](./ARCHITECTURE_DESIGN_V3.md) - 看架构设计
 2. [INTERFACE_CONTRACT.md](./INTERFACE_CONTRACT.md) - 定义接口
-3. [EXECUTION_LAYER.md](./EXECUTION_LAYER.md) - 参考架构模式
-
-### 📈 我要监控策略
-1. [MONITORING.md](./MONITORING.md) - 看监控指标
-2. [PERFORMANCE_METRICS.md](./PERFORMANCE_METRICS.md) - 看性能定义
 
 ---
 
-## 文档状态
+## 历史文档（archive/）
 
-| 状态 | 含义 |
+旧版本文档已移动到 `archive/` 目录，如有需要可查阅：
+
+| 目录 | 内容 |
 |------|------|
-| ✅ 完整 | 文档内容完整，可直接使用 |
-| ⚠️ 待完善 | 有内容但需补充细节 |
-| ⏳ 待实现 | 仅有框架，内容待填充 |
+| `archive/architecture/` | 旧版架构文档（V1/V2） |
+| `archive/experiment_reports/` | 旧版实验报告 |
+| `archive/plans/` | 旧版计划文档 |
+| `archive/top3/` | 旧版TOP3报告 |
 
 ---
 
-## 贡献指南
-
-### 新增文档
-1. 在对应分类下添加文档
-2. 更新本文档索引
-3. 遵循命名规范：`MODULE_NAME.md`
-
-### 更新文档
-1. 在文档末尾添加修订历史
-2. 更新本文档的"最后更新"时间
-3. Git提交时标注修改范围
-
----
-
-**最后更新**: 2026-05-26
+**最后更新**: 2026-05-31

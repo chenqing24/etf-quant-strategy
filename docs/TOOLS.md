@@ -5,7 +5,22 @@
 
 ---
 
-## 一、项目结构总览
+## 一、⭐ SOP标准流程
+
+> 执行任务前，先查阅对应SOP
+
+| SOP | 用途 | 触发场景 |
+|-----|------|----------|
+| [SOP_01_DATA_MINING.md](./SOP_01_DATA_MINING.md) | 数据挖掘8步流程 | 因子研究 |
+| [SOP_02_REFACTOR_DEV.md](./SOP_02_REFACTOR_DEV.md) | 重构与修复流程 | 问题修复/重构 |
+| [SOP_03_EXPERIMENT.md](./SOP_03_EXPERIMENT.md) | 实验执行流程 | 批量测试 |
+| [SOP_04_DATA_SOURCE.md](./SOP_04_DATA_SOURCE.md) | 数据源接入流程 | 新API验证 |
+
+完整索引: [SOP_INDEX.md](./SOP_INDEX.md)
+
+---
+
+## 二、项目结构总览
 
 ```
 etf_strategy/
@@ -44,7 +59,7 @@ etf_strategy/
 
 ---
 
-## 二、🔴 数据层（统一入口）
+## 三、🔴 数据层（统一入口）
 
 > **核心原则：数据只存一份（SQLite），入口只有一个**
 
@@ -131,7 +146,7 @@ merged = facade.get_merged('510300')
 
 ---
 
-## 三、数据采集工具
+## 四、数据采集工具
 
 ### 3.1 AKTools HTTP API（本地服务）
 
@@ -190,7 +205,7 @@ data = r.json()['data']['sh510300']['qfqday']
 
 ---
 
-## 四、🟢 策略层
+## 五、🟢 策略层
 
 ### 4.1 quick_run（快速实验）
 
@@ -239,7 +254,7 @@ score, details = scorer.calculate(row)
 
 ---
 
-## 五、🟠 风控层
+## 六、🟠 风控层
 
 ### 5.1 RiskManager
 
@@ -266,7 +281,7 @@ signal = risk.check_exit(position, current_price=3.50)
 
 ---
 
-## 六、💻 命令行工具
+## 七、💻 命令行工具
 
 ### 6.1 决策CLI
 
@@ -291,7 +306,7 @@ python -m src.cli.main -m update_pool
 
 ---
 
-## 七、📊 分析脚本
+## 八、📊 分析脚本
 
 | 脚本 | 用途 | 备注 |
 |------|------|------|
@@ -302,7 +317,7 @@ python -m src.cli.main -m update_pool
 
 ---
 
-## 八、⚠️ 一次性脚本（谨慎使用）
+## 九、⚠️ 一次性脚本（谨慎使用）
 
 > 这些脚本用于特定场景，执行后可能不再需要
 
@@ -316,7 +331,7 @@ python -m src.cli.main -m update_pool
 
 ---
 
-## 九、快速索引
+## 十、快速索引
 
 | 场景 | 工具 |
 |------|------|
@@ -330,7 +345,7 @@ python -m src.cli.main -m update_pool
 
 ---
 
-## 十、工作流程
+## 十一、工作流程
 
 ```
 ┌─────────────────────────────────────────────────────────┐

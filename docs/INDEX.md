@@ -1,7 +1,6 @@
-# 📋 ETF量化系统 - 项目索引
+# 📋 ETF量化系统 - 场景索引
 
-> 本文件帮助快速定位项目中的工具和文档
-> 更新：2026-05-30 | 规则：先调研，再动手
+> 快速定位工具和文档 | 更新: 2026-05-31
 
 ---
 
@@ -18,12 +17,23 @@
 | **每日决策** | CLI | `python -m src.cli.main -m daily` |
 | **数据质量检查** | `scripts/daily_data_check.py` | `scripts/` |
 | **修复数据问题** | `scripts/repair_data.py` | `scripts/` |
-| **补充历史数据** | `AKTools + DataWriter` | 见下方工作流 |
+| **补充历史数据** | AKTools + DataWriter | 见下方工作流 |
 | **获取ETF池** | `ETFListLoader.load()` | `src/data/etf_pool_loader.py` |
 
 ---
 
-## 二、数据层（核心）
+## 二、SOP标准流程索引
+
+| 场景 | SOP文档 |
+|------|---------|
+| 因子挖掘研究 | [SOP_01_DATA_MINING.md](./SOP_01_DATA_MINING.md) |
+| 问题修复/重构 | [SOP_02_REFACTOR_DEV.md](./SOP_02_REFACTOR_DEV.md) |
+| 批量实验执行 | [SOP_03_EXPERIMENT.md](./SOP_03_EXPERIMENT.md) |
+| 接入新数据源 | [SOP_04_DATA_SOURCE.md](./SOP_04_DATA_SOURCE.md) |
+
+---
+
+## 三、数据层（核心）
 
 ### 写入数据（必须使用）
 
@@ -57,18 +67,9 @@ loader = ETFNameLoader()
 name = loader.get_name('510300')
 ```
 
-### 统一门面
-
-```python
-from src.data.manager import DataFacade
-
-facade = DataFacade('etf_data_live')
-df = facade.get_daily(code, days=30)
-```
-
 ---
 
-## 三、数据采集
+## 四、数据采集
 
 ### AKTools HTTP API（推荐）
 
@@ -103,7 +104,7 @@ r = requests.get(
 
 ---
 
-## 四、策略层
+## 五、策略层
 
 ### 快速实验
 
@@ -119,23 +120,11 @@ result = quick_run(
     threshold=0.8,
     hold_days=3
 )
-
-result['train'].total_return
-result['test'].sharpe_ratio
-```
-
-### 回测引擎
-
-```python
-from src.strategy.engine import BacktestEngine
-
-engine = BacktestEngine(config)
-result = engine.run(data, initial_capital=20000)
 ```
 
 ---
 
-## 五、风控层
+## 六、风控层
 
 ```python
 from src.risk.manager import RiskManager
@@ -153,7 +142,7 @@ risk.check_exit(position, current_price)
 
 ---
 
-## 六、命令行工具
+## 七、命令行工具
 
 ```bash
 # 每日决策
@@ -174,58 +163,32 @@ python -m src.cli.main -m update_pool
 
 ---
 
-## 七、一次性脚本（⚠️ 谨慎使用）
-
-> 这些脚本用于特定场景，执行后可能不再需要
-
-| 脚本 | 用途 | 状态 |
-|------|------|------|
-| `scripts/filter_top500*.py` | ETF筛选 | 一次性 |
-| `scripts/fill_missing_etf_history.py` | 补数据 | 已重构 |
-| `scripts/update_etf_names.py` | 更新名称 | 一次性 |
-| `scripts/backup_sqlite.py` | 备份数据库 | 一次性 |
-
----
-
 ## 八、项目结构
 
 ```
 etf_strategy/
 ├── src/
 │   ├── cli/                  # 命令行
-│   │   └── main.py           # CLI入口
 │   ├── data/                 # 🔴 数据层（统一入口）
 │   │   ├── writer.py         # DataWriter（写入）
 │   │   ├── loader.py         # DataLoader, ETFNameLoader（读取）
-│   │   ├── manager.py        # DataFacade（门面）
-│   │   ├── contracts.py      # 数据契约
-│   │   └── exceptions.py     # 异常类
+│   │   └── manager.py        # DataFacade（门面）
 │   ├── strategy/             # 🟢 策略层
 │   │   ├── engine.py         # BacktestEngine
 │   │   ├── scorer.py         # FactorScorer
-│   │   ├── executor.py       # TradeExecutor
 │   │   └── store.py          # quick_run()
 │   ├── risk/                 # 🟠 风控层
 │   │   └── manager.py        # RiskManager
-│   ├── indicators/           # 📊 指标
-│   │   └── *.py              # ADX, MACD, KDJ等
-│   └── notify/              # 🔔 通知
-│       └── dingtalk.py      # 钉钉通知
+│   └── indicators/           # 📊 指标
 ├── scripts/                  # 🟡 脚本工具
-│   ├── data/                 # 数据脚本
-│   ├── analysis/            # 分析脚本
-│   ├── factor_mining/        # 因子挖掘
-│   └── *.py                 # 工具脚本
 ├── tests/                    # 测试
 ├── docs/                     # 📄 文档
+│   ├── README.md             # 文档索引（主入口）
 │   ├── INDEX.md              # 本文档（场景索引）
 │   ├── TOOLS.md              # 工具清单
-│   ├── DATA_SOURCE_REFERENCE.md  # 数据源参考
-│   └── *.md                  # 其他文档
-├── etf_data_live/            # 💾 SQLite数据
-│   └── etf.db
-└── data/                      # 其他数据
-    └── experiments/          # 实验结果
+│   ├── SOP_INDEX.md          # SOP文档索引
+│   └── archive/              # 历史文档
+└── etf_data_live/            # 💾 SQLite数据
 ```
 
 ---
@@ -265,13 +228,9 @@ etf_strategy/
 │  4. 测试验证                                               │
 │     ✓ 小批量测试                                           │
 │     ✓ 用DataLoader验证写入结果                              │
-│                                                            │
-│  5. 提交代码                                               │
-│     ✓ 小步提交                                             │
-│     ✓ 更新文档（如需）                                      │
 └────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-*文档版本: v2.0 | 更新: 2026-05-30*
+*文档版本: v3.0 | 更新: 2026-05-31*
