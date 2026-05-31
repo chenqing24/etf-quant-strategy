@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-06-01T04:31:03.620057",
+  "old_results_count": 5,
+  "tested_count": 5,
+  "old_pass_count": 5,
+  "new_pass_count": 0,
+  "new_results": [
+    {
+      "factors": [
+        "T4_ADX趋势",
+        "M4_KDJ金叉",
+        "B1_布林上轨突破"
+      ],
+      "etf_code": "512200",
+      "old_pass": true,
+      "new_score": 0.1,
+      "new_pass": 
