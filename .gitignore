@@ -29,3 +29,5 @@ __pycache__/
 
 # 报告
 etf_reports/*.txt
+# Large experiment data
+experiments_v7/
