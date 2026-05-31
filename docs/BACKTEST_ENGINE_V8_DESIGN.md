@@ -296,8 +296,8 @@ class BacktestResult:
 | **Phase 1** | 重构 engine.py | ✅ 完成 | 唯一回测引擎 | 9个单元测试通过 |
 | **Phase 2** | 集成测试 | ✅ 完成 | 全链路验证 | 5个集成测试通过 |
 | **Phase 3** | 回归测试 | ✅ 完成 | 行为一致性 | 5个回归测试通过 |
-| **Phase 4** | 迁移脚本 | ⏳ 待执行 | 使用新API | unified_mining_v7适配 |
-| **Phase 5** | 清理归档 | ⏳ 待执行 | 无废弃代码 | 删除archived目录 |
+| **Phase 4** | 迁移脚本 | ✅ 完成 | 使用新API | unified_mining_v8.py已创建 |
+| **Phase 5** | 清理归档 | ✅ 完成 | 无废弃代码 | 26个脚本已删除 |
 
 ## 执行时间线
 
@@ -308,7 +308,9 @@ class BacktestResult:
 ├── Phase 3: 回归测试 5/5 ✅
 ├── Phase 4: 迁移脚本 ✅
 │   └── unified_mining_v8.py 已创建
-└── Phase 5: 清理归档 ⏳
+└── Phase 5: 清理归档 ✅
+    └── 26个废弃脚本已删除
+```
 ```
 
 ## 已知问题修复
