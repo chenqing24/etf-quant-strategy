@@ -29,5 +29,14 @@ __pycache__/
 
 # 报告
 etf_reports/*.txt
-# Large experiment data
+
+# 大型实验数据
 experiments_v7/
+
+# QwenPaw 配置文件（不应提交到项目）
+SOUL.md
+AGENTS.md
+PROFILE.md
+MEMORY.md
+HEARTBEAT.md
+*.skill.md
