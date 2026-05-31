@@ -8,10 +8,10 @@
 cd /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy
 
 # 每日决策 (自动推送到钉钉)
-python -m src.decision_cli -m daily
+python -m src.cli.decision -m daily
 
 # 完整评估
-python -m src.decision_cli -m eval
+python -m src.cli.decision -m eval
 ```
 
 ## 功能
@@ -35,24 +35,26 @@ python -m src.decision_cli -m eval
 ```
 etf_strategy/
 ├── src/              # 核心代码
-│   ├── decision_cli.py     # 命令行入口
-│   ├── data_fetcher.py    # 数据采集
-│   ├── report_generator.py # 报告生成
+│   ├── cli/          # 命令行入口
+│   │   ├── decision.py   # ETF量化决策（daily/eval/trade）
+│   │   └── main.py       # 回测入口
+│   ├── data/         # 数据层（统一入口）
+│   ├── strategy/     # 策略层
+│   ├── risk/         # 风控层
 │   └── ...
 ├── docs/             # 文档
-├── etf_pool.json     # ETF股票池 (25只)
-├── etf_reports/       # 历史报告
-└── etf_trades.json   # 交易记录
+├── etf_data_live/    # SQLite数据库 + 热数据
+└── etf_reports/      # 历史报告
 ```
 
 ## 配置定时任务
 
 ```bash
 # 每日14:30
-30 14 * * 1-5 cd /path/to/etf_strategy && python -m src.decision_cli -m daily
+30 14 * * 1-5 cd /path/to/etf_strategy && python -m src.cli.decision -m daily
 
 # 每2周(1日、15日) 9:00
-0 9 1,15 * * cd /path/to/etf_strategy && python -m src.decision_cli -m update_pool
+0 9 1,15 * * cd /path/to/etf_strategy && python -m src.cli.decision -m update_pool
 ```
 
 ## 文档

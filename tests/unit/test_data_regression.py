@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from src.data.writer import DataWriter
 from src.data.loader import DataLoader
 from src.data.fetcher import TencentETFetcher
-from src.data.facade import DataFacade, HotDataManager, ColdDataManager
+from src.data.manager import DataFacade, HotDataManager, ColdDataManager
 
 
 class TestDataFacadeRegression(unittest.TestCase):
@@ -80,22 +80,25 @@ class TestDataFacadeRegression(unittest.TestCase):
         # 写入热数据
         self.facade.hot.set('510300', {
             'price': 4.0,
-            'change': 0.1,
+            'change_pct': 0.1,
+            'volume': 1000,
             'timestamp': '1704067200'
         })
         
-        # 读取热数据
+        # 读取热数据（返回dict）
         hot = self.facade.hot.get('510300')
         self.assertIsNotNone(hot)
         self.assertEqual(hot['price'], 4.0)
+        self.assertEqual(hot['change_pct'], 0.1)
     
     def test_lifecycle_info(self):
         """测试 DataFacade.get_lifecycle_info()"""
         info = self.facade.get_lifecycle_info()
         
-        self.assertIn('total_rows', info)
-        self.assertIn('etf_count', info)
-        self.assertEqual(info['etf_count'], 1)
+        # 检查新接口
+        self.assertIn('stage', info)
+        self.assertIn('cold_count', info)
+        self.assertEqual(info['cold_count'], 3)
     
     def test_get_daily_batch(self):
         """测试批量获取"""
@@ -110,10 +113,11 @@ class TestDataFacadeRegression(unittest.TestCase):
         })
         self.writer.write_daily('159577', df)
         
-        # 批量获取
+        # 批量获取（返回所有数据，code列标识来源）
         df = self.facade.get_daily_batch(['510300', '159577'], '2024-01-01')
         
-        self.assertEqual(len(df), 2)
+        # 验证：应该有2个ETF
+        self.assertEqual(len(df['code'].unique()), 2)
 
 
 class TestLoaderFacadeIntegration(unittest.TestCase):

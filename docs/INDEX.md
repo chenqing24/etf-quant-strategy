@@ -96,7 +96,6 @@ r = requests.get(
 | 脚本 | 用途 |
 |------|------|
 | `scripts/prefetch_data.py` | 批量预获取 |
-| `scripts/fetch_today.py` | 获取今日 |
 | `scripts/supplement_history_data.py` | 补全历史 |
 | `scripts/migrate_csv_to_sqlite.py` | CSV迁移 |
 | `scripts/daily_data_check.py` | 数据检查 |

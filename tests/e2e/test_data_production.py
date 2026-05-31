@@ -13,7 +13,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.data.writer import DataWriter
-from src.data.facade import DataFacade
+from src.data.manager import DataFacade
 
 
 class TestProductionScenario(unittest.TestCase):
@@ -150,18 +150,17 @@ class TestProductionScenario(unittest.TestCase):
         # 设置实时价格
         self.facade.hot.set('510300', {
             'price': 4.0,
-            'change': 0.1,
-            'change_pct': 2.5,
+            'change_pct': 0.1,
             'volume': 1000000,
             'timestamp': '1704067200'
         })
         
-        # 获取实时价格
+        # 获取实时价格（返回dict）
         hot = self.facade.hot.get('510300')
         
         self.assertIsNotNone(hot)
         self.assertEqual(hot['price'], 4.0)
-        self.assertEqual(hot['change'], 0.1)
+        self.assertEqual(hot['change_pct'], 0.1)
 
 
 class TestDataQualityUnderLoad(unittest.TestCase):
@@ -237,7 +236,7 @@ class TestDataQualityUnderLoad(unittest.TestCase):
             self.writer.write_daily(code, df)
         
         # 测试查询性能
-        from src.data.facade import DataFacade
+        from src.data.manager import DataFacade
         
         facade = DataFacade(self.temp_dir)
         
