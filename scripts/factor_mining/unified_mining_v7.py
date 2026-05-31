@@ -231,6 +231,12 @@ def load_all_data(etf_codes: List[str], benchmark_code: str = '510300') -> Dict[
     df_benchmark = loader.load_single(benchmark_code)
     df_benchmark = ind_calc.calculate_all(df_benchmark)
     
+    # 修复：确保date列为datetime并设为索引（用于相对收益查找）
+    if 'date' in df_benchmark.columns:
+        df_benchmark['date'] = pd.to_datetime(df_benchmark['date'])
+        df_benchmark = df_benchmark.set_index('date')
+        df_benchmark = df_benchmark.sort_index()
+    
     logger.info(f"计算大盘技术指标完成，{len(df_benchmark)}行")
     
     etf_data = {}
@@ -384,25 +390,30 @@ def backtest_single_factor(
             buy_date = trade.get('buy_date')
             sell_date = trade.get('sell_date')
             
-            bm_return = 0
+            bm_return = None
             if buy_date and sell_date and df_benchmark is not None:
                 # 转换日期字符串为datetime用于匹配
                 try:
                     buy_dt = pd.to_datetime(buy_date)
                     sell_dt = pd.to_datetime(sell_date)
-                    # 找到最接近的日期
                     bm_dates = df_benchmark.index
-                    buy_idx = bm_dates.get_indexer([buy_dt], method='nearest')[0]
-                    sell_idx = bm_dates.get_indexer([sell_dt], method='nearest')[0]
-                    if 0 <= buy_idx < len(bm_dates) and 0 <= sell_idx < len(bm_dates):
-                        buy_price = df_benchmark.iloc[buy_idx]['close']
-                        sell_price = df_benchmark.iloc[sell_idx]['close']
-                        bm_return = (sell_price / buy_price) - 1
+                    
+                    # 只在数据范围内查找
+                    if bm_dates.min() <= buy_dt <= bm_dates.max() and bm_dates.min() <= sell_dt <= bm_dates.max():
+                        buy_idx = bm_dates.get_indexer([buy_dt], method='nearest')[0]
+                        sell_idx = bm_dates.get_indexer([sell_dt], method='nearest')[0]
+                        if 0 <= buy_idx < len(bm_dates) and 0 <= sell_idx < len(bm_dates):
+                            buy_price = df_benchmark.iloc[buy_idx]['close']
+                            sell_price = df_benchmark.iloc[sell_idx]['close']
+                            bm_return = (sell_price / buy_price) - 1
+                    else:
+                        # 日期超出大盘数据范围，无法计算相对收益
+                        bm_return = None
                 except Exception:
-                    bm_return = 0
+                    bm_return = None
             
-            trade['benchmark_return'] = bm_return
-            trade['relative_return'] = trade['return'] - bm_return
+            trade['benchmark_return'] = bm_return if bm_return is not None else 0
+            trade['relative_return'] = trade['return'] - trade['benchmark_return']
         
         all_trades.extend(trades)
     
