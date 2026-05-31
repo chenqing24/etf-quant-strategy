@@ -69,6 +69,117 @@ BacktestConfig = SimpleBacktestConfig
 
 
 # ============================================================
+# 简单回测引擎（v7.0自实现）
+# ============================================================
+
+def simple_backtest(
+    df: pd.DataFrame,
+    signal: pd.Series,
+    config: SimpleBacktestConfig,
+    benchmark_codes: List[str] = None
+) -> List[dict]:
+    """
+    简单回测引擎
+    
+    Args:
+        df: ETF数据
+        signal: 买入信号
+        config: 回测配置
+        benchmark_codes: 大盘代码列表（用于计算相对收益）
+    
+    Returns:
+        交易列表
+    """
+    # 确保索引是datetime类型
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df = df.copy()
+        df.index = pd.to_datetime(df.index)
+    
+    # 转为numpy便于索引
+    df_values = df.reset_index(drop=True)
+    signal_values = signal.reset_index(drop=True)
+    
+    # 找信号点
+    signal_idx = np.where(signal_values.values)[0]
+    
+    trades = []
+    
+    for buy_idx in signal_idx:
+        if buy_idx >= len(df_values) - 1:
+            continue
+        
+        # 买入价格（含滑点）
+        buy_price = df_values['close'].iloc[buy_idx] * (1 + config.slippage_rate)
+        
+        # 计算持仓期
+        hold_days = 0
+        sell_price = None
+        sell_reason = None
+        
+        for i in range(buy_idx + 1, min(buy_idx + config.max_hold_days + 1, len(df_values))):
+            hold_days += 1
+            
+            current_price = df_values['close'].iloc[i]
+            current_return = (current_price / buy_price) - 1
+            
+            # 止损
+            if current_return <= -config.stop_loss:
+                sell_price = current_price * (1 - config.slippage_rate)
+                sell_reason = 'stop_loss'
+                break
+            
+            # 止盈
+            if current_return >= config.stop_profit:
+                sell_price = current_price * (1 - config.slippage_rate)
+                sell_reason = 'take_profit'
+                break
+            
+            # 持仓天数不足
+            if hold_days < config.min_hold_days:
+                continue
+        
+        # 如果没有触发止盈止损，按最大持仓期结束
+        if sell_price is None:
+            if hold_days >= config.min_hold_days:
+                sell_idx = min(buy_idx + config.max_hold_days, len(df_values) - 1)
+                sell_price = df_values['close'].iloc[sell_idx]
+                sell_reason = 'max_hold'
+            else:
+                continue
+        
+        # 计算收益
+        trade_return = (sell_price / buy_price) - 1
+        commission = buy_price * config.commission_rate + sell_price * config.commission_rate
+        trade_return -= commission / buy_price
+        
+        # 计算市场收益（用于相对收益）
+        sell_idx = buy_idx + hold_days
+        market_return = (df_values['close'].iloc[min(sell_idx, len(df_values) - 1)] / 
+                        df_values['close'].iloc[buy_idx]) - 1
+        
+        # 正确获取日期（从date列，而非索引）
+        buy_date = df_values['date'].iloc[buy_idx] if buy_idx < len(df_values) else None
+        sell_idx_capped = min(sell_idx, len(df_values) - 1)
+        sell_date = df_values['date'].iloc[sell_idx_capped] if sell_idx_capped < len(df_values) else None
+        
+        trades.append({
+            'buy_date': str(buy_date) if buy_date else None,
+            'sell_date': str(sell_date) if sell_date else None,
+            'buy_price': buy_price,
+            'sell_price': sell_price,
+            'return': trade_return,
+            'holding_days': hold_days,
+            'sell_reason': sell_reason,
+            'market_return': market_return,
+            'commission': commission,
+            'slippage': buy_price * config.slippage_rate,
+            'position_size': 0.3,
+        })
+    
+    return trades
+
+
+# ============================================================
 # 配置
 # ============================================================
 
@@ -117,8 +228,8 @@ def load_all_data(etf_codes: List[str], benchmark_code: str = '510300') -> Dict[
     rel_calc = RelativeCalculator(benchmark_code)
     
     logger.info(f"加载大盘数据: {benchmark_code}")
-    df_benchmark = loader.load_etf_data(benchmark_code)
-    df_benchmark = ind_calc.calculate(df_benchmark)
+    df_benchmark = loader.load_single(benchmark_code)
+    df_benchmark = ind_calc.calculate_all(df_benchmark)
     
     logger.info(f"计算大盘技术指标完成，{len(df_benchmark)}行")
     
@@ -128,8 +239,8 @@ def load_all_data(etf_codes: List[str], benchmark_code: str = '510300') -> Dict[
             continue
             
         logger.info(f"加载ETF数据: {code}")
-        df_etf = loader.load_etf_data(code)
-        df_etf = ind_calc.calculate(df_etf)
+        df_etf = loader.load_single(code)
+        df_etf = ind_calc.calculate_all(df_etf)
         
         # 计算相对指标
         df_etf = rel_calc.calc_all_relative(df_etf, df_benchmark)
@@ -225,37 +336,75 @@ def combine_signals(df: pd.DataFrame, factor_names: List[str], factor_defs: dict
 def backtest_single_factor(
     etf_data: Dict[str, pd.DataFrame],
     factor_names: List[str],
-    config: BacktestConfig
+    config: SimpleBacktestConfig,
+    df_benchmark: pd.DataFrame = None
 ) -> Tuple[List[dict], float, float]:
     """
     回测单个因子组合
     
+    Args:
+        etf_data: ETF数据字典
+        factor_names: 因子列表
+        config: 回测配置
+        df_benchmark: 大盘数据（用于计算真正的相对收益）
+    
     Returns:
         (trades, benchmark_return, etf_pool_return)
     """
-    backtester = FactorBacktester(config)
-    
     all_trades = []
     benchmark_return = 0
     etf_pool_return = 0
     
+    # 构建大盘收益查找表（按日期索引）
+    bm_returns = {}
+    if df_benchmark is not None and len(df_benchmark) > 1:
+        bm_df = df_benchmark.sort_index()
+        bm_df['return'] = bm_df['close'].pct_change().fillna(0)
+        # 构建日期->累计收益的映射
+        bm_cumret = {}
+        cum = 1.0
+        for idx, row in bm_df.iterrows():
+            if pd.notna(row['return']):
+                cum *= (1 + row['return'])
+            bm_cumret[idx] = cum
+        # 计算任意日期区间的收益
+        for idx, cum in bm_cumret.items():
+            bm_returns[idx] = cum - 1
+    
     for code, df in etf_data.items():
         signal = combine_signals(df, factor_names, FACTORS_V7)
         
-        result = backtester.backtest(df, signal)
-        trades = result.trades
+        trades = simple_backtest(df, signal, config)
         
-        # 计算相对收益
+        # 计算真正的相对收益（ETF收益 - 大盘收益）
         for trade in trades:
             trade['etf_code'] = code
-            trade['relative_return'] = trade['return'] - trade.get('market_return', 0)
+            
+            # 获取大盘收益（根据买入日期和卖出日期查找）
+            buy_date = trade.get('buy_date')
+            sell_date = trade.get('sell_date')
+            
+            bm_return = 0
+            if buy_date and sell_date and df_benchmark is not None:
+                # 转换日期字符串为datetime用于匹配
+                try:
+                    buy_dt = pd.to_datetime(buy_date)
+                    sell_dt = pd.to_datetime(sell_date)
+                    # 找到最接近的日期
+                    bm_dates = df_benchmark.index
+                    buy_idx = bm_dates.get_indexer([buy_dt], method='nearest')[0]
+                    sell_idx = bm_dates.get_indexer([sell_dt], method='nearest')[0]
+                    if 0 <= buy_idx < len(bm_dates) and 0 <= sell_idx < len(bm_dates):
+                        buy_price = df_benchmark.iloc[buy_idx]['close']
+                        sell_price = df_benchmark.iloc[sell_idx]['close']
+                        bm_return = (sell_price / buy_price) - 1
+                except Exception:
+                    bm_return = 0
+            
+            trade['benchmark_return'] = bm_return
+            trade['relative_return'] = trade['return'] - bm_return
         
         all_trades.extend(trades)
-    
-    # 计算大盘收益
-    if all_trades:
-        benchmark_return = all_trades[0].get('market_return', 0)
-        etf_pool_return = np.mean([t['return'] for t in all_trades])
     
     return all_trades, benchmark_return, etf_pool_return
 
@@ -279,7 +428,8 @@ class OverfittingResult:
 def rolling_window_test(
     etf_data: Dict[str, pd.DataFrame],
     factor_names: List[str],
-    config: BacktestConfig,
+    config: SimpleBacktestConfig,
+    df_benchmark: pd.DataFrame = None,
     window_days: int = ROLLING_WINDOW_DAYS,
     step_days: int = ROLLING_STEP_DAYS
 ) -> OverfittingResult:
@@ -314,7 +464,7 @@ def rolling_window_test(
                 window_data[code] = window_df
         
         if len(window_data) >= 5:
-            trades, bm_ret, _ = backtest_single_factor(window_data, factor_names, config)
+            trades, bm_ret, _ = backtest_single_factor(window_data, factor_names, config, df_benchmark)
             if trades:
                 window_return = sum(t['return'] for t in trades)
                 window_returns.append({
@@ -336,14 +486,15 @@ def rolling_window_test(
 def monte_carlo_test(
     etf_data: Dict[str, pd.DataFrame],
     factor_names: List[str],
-    config: BacktestConfig,
+    config: SimpleBacktestConfig,
+    df_benchmark: pd.DataFrame = None,
     n_simulations: int = MONTE_CARLO_N
 ) -> OverfittingResult:
     """蒙特卡洛过拟合检验"""
     result = OverfittingResult()
     
     # 获取所有交易收益
-    all_trades, _, _ = backtest_single_factor(etf_data, factor_names, config)
+    all_trades, _, _ = backtest_single_factor(etf_data, factor_names, config, df_benchmark)
     
     if not all_trades or len(all_trades) < 10:
         return result
@@ -370,7 +521,8 @@ def monte_carlo_test(
 def cross_validation_test(
     etf_data: Dict[str, pd.DataFrame],
     factor_names: List[str],
-    config: BacktestConfig,
+    config: SimpleBacktestConfig,
+    df_benchmark: pd.DataFrame = None,
     n_folds: int = 3
 ) -> OverfittingResult:
     """交叉验证过拟合检验"""
@@ -406,7 +558,7 @@ def cross_validation_test(
                 val_data[code] = val_df
         
         if len(val_data) >= 5:
-            trades, _, _ = backtest_single_factor(val_data, factor_names, config)
+            trades, _, _ = backtest_single_factor(val_data, factor_names, config, df_benchmark)
             if trades:
                 cv_return = sum(t['return'] for t in trades)
                 cv_results.append({
@@ -500,8 +652,7 @@ def run_experiment(
     logger.info(f"大盘基准收益: {bm_metrics['benchmark_return']*100:.2f}%")
     
     config = BacktestConfig(
-        initial_capital=100000,
-        take_profit=TAKE_PROFIT,
+        stop_profit=TAKE_PROFIT,
         stop_loss=STOP_LOSS,
         min_hold_days=MIN_HOLD_DAYS,
         max_hold_days=MAX_HOLD_DAYS,
@@ -519,16 +670,16 @@ def run_experiment(
     for name, defn in FACTORS_V7.items():
         logger.info(f"\n测试单因子: {name}")
         
-        trades, bm_ret, pool_ret = backtest_single_factor(etf_data, [name], config)
+        trades, bm_ret, pool_ret = backtest_single_factor(etf_data, [name], config, df_benchmark)
         
         if not trades:
             logger.info(f"  → 无交易，跳过")
             continue
         
         # 过拟合验证
-        overfit = rolling_window_test(etf_data, [name], config)
-        overfit2 = monte_carlo_test(etf_data, [name], config)
-        overfit3 = cross_validation_test(etf_data, [name], config)
+        overfit = rolling_window_test(etf_data, [name], config, df_benchmark)
+        overfit2 = monte_carlo_test(etf_data, [name], config, df_benchmark)
+        overfit3 = cross_validation_test(etf_data, [name], config, df_benchmark)
         
         # 完整评价
         result = evaluate_model(
@@ -571,13 +722,13 @@ def run_experiment(
                 logger.info(f"  已测试 {count} 个组合...")
             
             combo_list = list(combo)
-            trades, bm_ret, pool_ret = backtest_single_factor(etf_data, combo_list, config)
+            trades, bm_ret, pool_ret = backtest_single_factor(etf_data, combo_list, config, df_benchmark)
             
             if not trades or len(trades) < 20:
                 continue
             
             # 快速过拟合检查（只做滚动窗口）
-            overfit = rolling_window_test(etf_data, combo_list, config)
+            overfit = rolling_window_test(etf_data, combo_list, config, df_benchmark)
             if overfit.rolling_pass_rate < 0.5:
                 continue
             

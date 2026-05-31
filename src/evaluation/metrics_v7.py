@@ -371,9 +371,20 @@ def calc_all_metrics(
     if trades:
         total_return = sum(t['return'] for t in trades)
         total_cost = sum(t.get('commission', 0) + t.get('slippage', 0) for t in trades)
-        annual_return = (1 + total_return) ** (365 / trade_days) - 1
+        
+        # 安全计算年化收益
+        if total_return > -1:
+            annual_return = (1 + total_return) ** (365 / trade_days) - 1
+        else:
+            annual_return = -1
+        
         relative_return = total_return - benchmark_return
-        alpha_annual = (1 + relative_return) ** (365 / trade_days) - 1
+        
+        if relative_return > -1:
+            alpha_annual = (1 + relative_return) ** (365 / trade_days) - 1
+        else:
+            alpha_annual = -1
+        
         excess_return = total_return - etf_pool_return
     else:
         total_return = total_cost = annual_return = relative_return = alpha_annual = excess_return = 0
@@ -545,9 +556,17 @@ def calc_all_metrics(
 
         first_half_returns = returns[:n//2]
         second_half_returns = returns[n//2:]
-        if len(first_half_returns) > 1:
-            correlation = np.corrcoef(first_half_returns, second_half_returns)[0, 1]
-            metrics['consistency_score'] = correlation if not np.isnan(correlation) else 0
+        
+        # 确保长度相同（补齐到较短的长度）
+        min_len = min(len(first_half_returns), len(second_half_returns))
+        if min_len >= 2:
+            first_arr = np.array(first_half_returns[:min_len])
+            second_arr = np.array(second_half_returns[:min_len])
+            if len(first_arr) > 1 and len(second_arr) > 1:
+                correlation = np.corrcoef(first_arr, second_arr)[0, 1]
+                metrics['consistency_score'] = correlation if not np.isnan(correlation) else 0
+            else:
+                metrics['consistency_score'] = 0
         else:
             metrics['consistency_score'] = 0
     else:

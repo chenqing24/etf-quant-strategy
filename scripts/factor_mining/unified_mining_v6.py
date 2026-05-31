@@ -54,13 +54,13 @@ ROLLING_STEP_DAYS = 60     # 滚动步长
 MONTE_CARLO_N = 500        # 蒙特卡洛次数
 
 
-# 13个因子定义
+# 13个因子定义（与IndicatorCalculator输出一致）
 FACTORS = {
     # 趋势因子
     'MACD红柱': {'col': 'MACD_hist', 'op': 'gt', 'threshold': 0},
-    'MA多头排列': {'col': 'MA5', 'op': 'gt_both', 'refs': ['MA20', 'MA60']},
+    'DMA多头': {'col': 'DMA', 'op': 'gt', 'threshold': 0},
     '布林上轨突破': {'col': 'close', 'op': 'gt', 'ref': 'BB_upper'},
-    'SAR趋势': {'col': 'SAR', 'op': 'lt', 'ref': 'close'},
+    'SAR趋势': {'col': 'SAR_trend', 'op': 'gt', 'threshold': 0.5},
     '大盘多头': {'col': 'market_bullish', 'op': 'eq', 'threshold': True},
     'ADX趋势': {'col': 'ADX', 'op': 'gt', 'threshold': 25},
     # 动量因子
@@ -69,9 +69,9 @@ FACTORS = {
     'RSI适中': {'col': 'RSI_10', 'op': 'between', 'low': 40, 'high': 70},
     'KDJ金叉': {'col': 'K', 'op': 'gt', 'ref': 'D'},
     # 量能因子
-    'OBV多头': {'col': 'OBV', 'op': 'gt', 'ref': 'OBV_MA'},
+    'OBV多头': {'col': 'OBV', 'op': 'gt', 'ref': 'MAOBV'},
     '放量': {'col': 'volume', 'op': 'gt_ratio', 'ref': 'volume_MA10', 'ratio': 1.2},
-    '资金流入': {'col': 'OBV', 'op': 'gt', 'ref': 'OBV_MA'},
+    '资金流入': {'col': 'OBV_diff', 'op': 'gt', 'threshold': 0},
 }
 
 
@@ -147,47 +147,18 @@ class UnifiedPipeline:
         self.test_start = '2025-05-02'
     
     def _calculate_custom_factors(self, df: pd.DataFrame) -> pd.DataFrame:
-        """计算自定义因子"""
+        """计算自定义因子（补充IndicatorCalculator）"""
         df = df.copy()
-        
-        # 移动平均线
-        for n in [5, 10, 20, 60]:
-            df[f'ma{n}'] = df['close'].rolling(n).mean()
         
         # 收益率
         for n in [3, 5, 10]:
             df[f'return_{n}d'] = df['close'].pct_change(n)
         
-        # 布林带
-        df['BB_mid'] = df['close'].rolling(20).mean()
-        df['BB_std'] = df['close'].rolling(20).std()
-        df['BB_upper'] = df['BB_mid'] + 2 * df['BB_std']
-        df['BB_lower'] = df['BB_mid'] - 2 * df['BB_std']
-        
-        # MACD直方图
-        ema12 = df['close'].ewm(span=12).mean()
-        ema26 = df['close'].ewm(span=26).mean()
-        df['DIF'] = ema12 - ema26
-        df['DEA'] = df['DIF'].ewm(span=9).mean()
-        df['MACD_hist'] = (df['DIF'] - df['DEA']) * 2
-        
-        # OBV
-        df['OBV'] = (np.sign(df['close'].diff()) * df['volume']).fillna(0).cumsum()
-        df['OBV_MA'] = df['OBV'].rolling(10).mean()
-        
         # 成交量均线
         df['volume_MA10'] = df['volume'].rolling(10).mean()
         
-        # 简化SAR（用最近5日最低价）
-        df['SAR'] = df['low'].rolling(5).min()
-        
-        # ADX（简化）
-        df['tr'] = np.maximum(
-            df['high'] - df['low'],
-            np.maximum(abs(df['high'] - df['close'].shift(1)), abs(df['low'] - df['close'].shift(1)))
-        )
-        df['ATR'] = df['tr'].rolling(14).mean()
-        df['ADX'] = (df['ATR'] / df['close'] * 100).fillna(0)
+        # 大盘多头标志（后续在外部设置）
+        df['market_bullish'] = True
         
         return df
     
