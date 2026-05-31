@@ -115,6 +115,7 @@ class ETFDecisionEngine:
             'prefetch_time': results.get('prefetch_time', datetime.now().isoformat()),
             'success_count': results.get('success', 0),
             'total_count': results.get('total', 0),
+            'codes': results.get('codes', []),
         }
     
     def _get_data_timestamp(self) -> str:
@@ -160,6 +161,8 @@ class ETFDecisionEngine:
         # 0. 预热实时数据 (14:25环节)
         prefetch_result = self._prefetch_realtime_data(simple=simple)
         data_timestamp = prefetch_result['prefetch_time']
+        # 预热成功的ETF代码列表（用于只加载这些ETF）
+        prefetch_codes = prefetch_result.get('codes', [])
         
         # 恢复日志级别（预热后输出）
         ETFLogger.set_output_level(original_level)
@@ -175,15 +178,15 @@ class ETFDecisionEngine:
         data_freshness = '✅ 正常'
         data_warning = ''
         
-        # 加载数据
+        # 加载数据（只加载预热过的ETF）
         from src.data.loader import DataLoader
         loader = DataLoader()
         if simple:
             loader._simple_mode = True
             from src.core.selector import Selector
             Selector._simple_mode = True
-        self._etf_data = loader.load(min_rows=100)
-        logger.info(f"加载 {len(self._etf_data)} 只ETF数据")
+        self._etf_data = loader.load(min_rows=100, codes=prefetch_codes)
+        logger.info(f"使用预热池: {len(prefetch_codes)} 只ETF")
         
         # 获取数据最新日期
         latest_data_date = None
@@ -212,7 +215,7 @@ class ETFDecisionEngine:
                     try:
                         self.fetcher.update_all(days=7)
                         # 重新加载数据
-                        self._etf_data = loader.load(min_rows=100)
+                        self._etf_data = loader.load(min_rows=100, codes=prefetch_codes)
                         # 重新检查数据新鲜度
                         latest_data_date_new = None
                         for code, df in self._etf_data.items():

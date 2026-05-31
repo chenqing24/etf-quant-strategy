@@ -71,12 +71,13 @@ class DataLoader:
         self.db_path = db_path or str(Path(DATA_DIR) / DB_NAME)
         self.data: Dict[str, pd.DataFrame] = {}
     
-    def load(self, min_rows: int = 300) -> Dict[str, pd.DataFrame]:
+    def load(self, min_rows: int = 300, codes: List[str] = None) -> Dict[str, pd.DataFrame]:
         """
-        加载所有ETF历史数据（从SQLite）
+        加载ETF历史数据（从SQLite）
         
         Args:
             min_rows: 最少行数要求，少于此行数的ETF会被过滤
+            codes: 可选，指定只加载这些ETF代码，默认加载全部
             
         Returns:
             {code: DataFrame}
@@ -88,7 +89,7 @@ class DataLoader:
             return self.data
         
         try:
-            self.data = self._load_from_sqlite(min_rows)
+            self.data = self._load_from_sqlite(min_rows, codes=codes)
             total_rows = sum(len(df) for df in self.data.values())
             logger.info(f"从SQLite加载 {len(self.data)} 只ETF, 共{total_rows}行")
         except Exception as e:
@@ -97,12 +98,13 @@ class DataLoader:
         
         return self.data
     
-    def _load_from_sqlite(self, min_rows: int = 300, db_path: str = None) -> Dict[str, pd.DataFrame]:
+    def _load_from_sqlite(self, min_rows: int = 300, db_path: str = None, codes: List[str] = None) -> Dict[str, pd.DataFrame]:
         """从SQLite加载数据
         
         Args:
             min_rows: 最小行数
             db_path: 可选的数据库路径（用于测试覆盖）
+            codes: 可选，指定只加载这些ETF代码
         """
         # 支持传入 db_path 或使用实例的 db_path
         effective_path = db_path if db_path is not None else self.db_path
@@ -121,14 +123,18 @@ class DataLoader:
         conn = sqlite3.connect(effective_path)
         
         try:
-            # 获取所有ETF代码
-            cur = conn.cursor()
-            cur.execute('SELECT DISTINCT code FROM daily ORDER BY code')
-            codes = [r[0] for r in cur.fetchall()]
+            # 获取ETF代码列表（如果有codes参数则只加载这些）
+            if codes:
+                target_codes = codes
+            else:
+                cur = conn.cursor()
+                cur.execute('SELECT DISTINCT code FROM daily ORDER BY code')
+                target_codes = [r[0] for r in cur.fetchall()]
             
             data = {}
-            for code in codes:
+            for code in target_codes:
                 # 检查列是否存在
+                cur = conn.cursor()
                 cur.execute('PRAGMA table_info(daily)')
                 cols = [r[1] for r in cur.fetchall()]
                 select_cols = ', '.join([c for c in cols if c != 'id'])

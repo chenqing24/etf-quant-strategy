@@ -166,6 +166,11 @@ class ETFDataPrefetcher:
             # 避免请求过快
             time.sleep(0.1)
         
+        # 添加成功预热的ETF代码列表
+        results['codes'] = [
+            d['code'] for d in results['details'] if d['status'] == 'success'
+        ]
+        
         return results
     
     def generate_report(self, results: Dict) -> str:
