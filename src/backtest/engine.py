@@ -190,7 +190,7 @@ class FactorBacktester:
             if len(positions) < self.config.max_positions:
                 # 获取候选ETF
                 candidates = self._get_candidates(
-                    current_prices, positions, 
+                    current_date, current_prices, positions, 
                     signal_func, score_func,
                     price_data, valid_factors
                 )
@@ -326,6 +326,7 @@ class FactorBacktester:
     
     def _get_candidates(
         self,
+        current_date: str,
         current_prices: Dict[str, Dict],
         positions: Dict,
         signal_func: Callable,
@@ -349,20 +350,20 @@ class FactorBacktester:
             if signal_func is not None:
                 df = price_data.get(code)
                 if df is not None and not df.empty:
-                    # 获取最近几行用于信号判断
-                    recent = df[df['date'] <= list(current_prices.keys())[0]].tail(5)
-                    if not recent.empty:
-                        signal = signal_func(recent)
-                        if signal.iloc[-1] if len(signal) > 0 else False:
+                    # 使用current_date直接筛选
+                    today_data = df[df['date'] == current_date]
+                    if not today_data.empty:
+                        signal = signal_func(today_data)
+                        if len(signal) > 0 and signal.iloc[-1]:
                             candidates.append((code, 1.0))
             
             # 评分模式（兼容旧接口）
             elif score_func is not None and valid_factors:
                 df = price_data.get(code)
                 if df is not None and not df.empty:
-                    recent = df[df['date'] <= list(current_prices.keys())[0]].tail(1)
-                    if not recent.empty:
-                        row = recent.iloc[-1]
+                    today_data = df[df['date'] == current_date]
+                    if not today_data.empty:
+                        row = today_data.iloc[-1]
                         score = self._calculate_score(row, valid_factors)
                         if score >= self.config.min_score:
                             candidates.append((code, score))
