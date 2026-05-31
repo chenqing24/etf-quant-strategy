@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 """
-ETF多因子挖掘 v6.0 - 标准化工具版
-==================================
+ETF多因子挖掘 v6.0 - 标准化工具版（含过拟合验证）
+==================================================
 使用标准化工具链：
 - DataLoader → 数据加载
 - IndicatorCalculator → 指标计算
 - FactorBacktester → 回测引擎
 
 ETF专用参数：止盈6%，止损4%，持仓3-20天
+过拟合验证：滚动窗口 + 蒙特卡洛 + 交叉验证
 """
 import sys
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+from itertools import combinations
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -44,6 +48,11 @@ STOP_LOSS = 0.04     # 止损4%
 MIN_HOLD_DAYS = 3    # 最小持仓3天
 MAX_HOLD_DAYS = 20   # 最大持仓20天
 
+# 过拟合检验参数
+ROLLING_WINDOW_DAYS = 180  # 滚动窗口大小
+ROLLING_STEP_DAYS = 60     # 滚动步长
+MONTE_CARLO_N = 500        # 蒙特卡洛次数
+
 
 # 13个因子定义
 FACTORS = {
@@ -66,15 +75,34 @@ FACTORS = {
 }
 
 
+@dataclass
+class OverfittingResult:
+    """过拟合检验结果"""
+    rolling_pass_rate: float = 0      # 滚动窗口通过率
+    rolling_windows: List[Dict] = field(default_factory=list)
+    monte_carlo_pvalue: float = 1    # 蒙特卡洛p值
+    monte_carlo_sim_returns: List[float] = field(default_factory=list)
+    cross_val_pass_rate: float = 0   # 交叉验证通过率
+    cross_val_results: List[Dict] = field(default_factory=list)
+    
+    def passed(self) -> bool:
+        """是否通过过拟合检验"""
+        return (
+            self.rolling_pass_rate >= 0.6 and
+            self.monte_carlo_pvalue < 0.05 and
+            self.cross_val_pass_rate >= 0.6
+        )
+
+
 class UnifiedPipeline:
-    """标准化挖掘流程"""
+    """标准化挖掘流程（含过拟合验证）"""
     
     def __init__(self):
         self.start_time = time.time()
         self.results = []
         
         logger.info("=" * 80)
-        logger.info("ETF多因子挖掘 v6.0 - 标准化工具版")
+        logger.info("ETF多因子挖掘 v6.0 - 标准化工具版（含过拟合验证）")
         logger.info(f"参数：止盈+{TAKE_PROFIT*100:.0f}%，止损-{STOP_LOSS*100:.0f}%，持仓{MIN_HOLD_DAYS}-{MAX_HOLD_DAYS}天")
         logger.info("=" * 80)
         
@@ -200,17 +228,19 @@ class UnifiedPipeline:
                 elif op == 'eq':
                     if not (val == config['threshold']):
                         return False
-                elif op == 'gt_ref':
-                    if not (val > row.get(config['ref'], 0)):
-                        return False
             
             return True
         
         return signal_fn
     
-    def backtest_factor(self, name: str, factor_names: List[str]) -> Optional[Dict]:
-        """回测单个因子或组合"""
+    def backtest_factor(self, factor_names: List[str], 
+                        train_end: str = None,
+                        test_start: str = None) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+        """回测单个因子或组合，返回训练/测试交易记录"""
         signal_fn = self._create_signal_fn(factor_names)
+        
+        train_end = train_end or self.train_end
+        test_start = test_start or self.test_start
         
         all_trades = []
         train_trades = []
@@ -249,28 +279,22 @@ class UnifiedPipeline:
                     min_hold_condition = hold_days >= MIN_HOLD_DAYS
                     
                     if exit_condition and min_hold_condition:
-                        reason = '止损' if pnl <= -STOP_LOSS else ('止盈' if pnl >= TAKE_PROFIT else '超时')
-                        
                         trade = {
                             'code': code,
                             'entry_date': position['entry_date'],
                             'exit_date': date_str,
                             'return': pnl,
                             'hold_days': hold_days,
-                            'exit_reason': reason
                         }
                         
-                        if position['entry_date'] < self.test_start:
+                        if position['entry_date'] < test_start:
                             train_trades.append(trade)
                         else:
                             test_trades.append(trade)
                         all_trades.append(trade)
                         position = None
         
-        if len(test_trades) < 3:
-            return None
-        
-        return self._calculate_metrics(name, factor_names, all_trades, train_trades, test_trades)
+        return all_trades, train_trades, test_trades
     
     def _calculate_metrics(self, name: str, factor_names: List[str], 
                           all_trades: List, train_trades: List, test_trades: List) -> Dict:
@@ -278,6 +302,9 @@ class UnifiedPipeline:
         all_returns = [t['return'] for t in all_trades]
         train_returns = [t['return'] for t in train_trades]
         test_returns = [t['return'] for t in test_trades]
+        
+        if not all_returns:
+            return None
         
         total = sum(all_returns)
         train = sum(train_returns)
@@ -299,13 +326,6 @@ class UnifiedPipeline:
         avg_hold = np.mean([t['hold_days'] for t in all_trades]) if all_trades else 0
         mean_return = np.mean(all_returns)
         
-        # 退出原因统计
-        exit_reasons = {}
-        for t in all_trades:
-            reason = t.get('exit_reason', 'unknown')
-            exit_reasons[reason] = exit_reasons.get(reason, 0) + 1
-        
-        from scipy import stats
         test_arr = np.array(test_returns)
         _, p_value = stats.ttest_1samp(test_arr, 0) if len(test_arr) > 1 else (0, 1)
         
@@ -323,11 +343,167 @@ class UnifiedPipeline:
             'avg_hold_days': avg_hold,
             'mean_return': mean_return,
             'p_value': p_value,
-            'exit_reasons': exit_reasons,
         }
     
+    def run_overfitting_check(self, factor_names: List[str]) -> OverfittingResult:
+        """运行过拟合检验"""
+        result = OverfittingResult()
+        
+        # 1. 滚动窗口验证
+        logger.info(f"    滚动窗口验证...")
+        result.rolling_windows = self._rolling_window_check(factor_names)
+        result.rolling_pass_rate = sum(1 for w in result.rolling_windows if w['return'] > 0) / len(result.rolling_windows) if result.rolling_windows else 0
+        
+        # 2. 蒙特卡洛模拟
+        logger.info(f"    蒙特卡洛模拟...")
+        result.monte_carlo_sim_returns = self._monte_carlo_sim(factor_names)
+        if result.monte_carlo_sim_returns:
+            arr = np.array(result.monte_carlo_sim_returns)
+            _, result.monte_carlo_pvalue = stats.ttest_1samp(arr, 0)
+        
+        # 3. 交叉验证
+        logger.info(f"    交叉验证...")
+        result.cross_val_results = self._cross_validation(factor_names)
+        result.cross_val_pass_rate = sum(1 for w in result.cross_val_results if w['return'] > 0) / len(result.cross_val_results) if result.cross_val_results else 0
+        
+        return result
+    
+    def _rolling_window_check(self, factor_names: List[str]) -> List[Dict]:
+        """滚动窗口验证"""
+        signal_fn = self._create_signal_fn(factor_names)
+        windows = []
+        
+        # 获取数据时间范围
+        all_dates = []
+        for code in TRADE_ETFS:
+            if code in self.price_data:
+                df = self.price_data[code]
+                dates = df['date'].tolist()
+                all_dates.extend(dates)
+        
+        if not all_dates:
+            return windows
+        
+        all_dates = sorted(set(all_dates))
+        
+        # 生成滚动窗口
+        window_count = 0
+        for start_idx in range(0, len(all_dates) - ROLLING_WINDOW_DAYS, ROLLING_STEP_DAYS):
+            end_idx = start_idx + ROLLING_WINDOW_DAYS
+            if end_idx >= len(all_dates):
+                break
+            
+            window_start = all_dates[start_idx]
+            window_end = all_dates[end_idx]
+            window_count += 1
+            
+            window_trades = []
+            for code in TRADE_ETFS:
+                if code not in self.price_data:
+                    continue
+                
+                df = self.price_data[code].copy()
+                df['date'] = pd.to_datetime(df['date'])
+                
+                # 筛选窗口内的数据
+                mask = (df['date'] >= window_start) & (df['date'] <= window_end)
+                window_df = df[mask].copy()
+                
+                if len(window_df) < 20:
+                    continue
+                
+                position = None
+                for _, row in window_df.iterrows():
+                    if pd.isna(row['close']) or row['close'] <= 0:
+                        continue
+                    
+                    if position is None and signal_fn(row):
+                        position = {'entry_price': row['close'], 'entry_date': row['date']}
+                    elif position is not None:
+                        hold_days = (row['date'] - position['entry_date']).days
+                        pnl = (row['close'] - position['entry_price']) / position['entry_price']
+                        
+                        exit_condition = (
+                            pnl <= -STOP_LOSS or 
+                            pnl >= TAKE_PROFIT or 
+                            hold_days >= MAX_HOLD_DAYS
+                        )
+                        
+                        if exit_condition and hold_days >= MIN_HOLD_DAYS:
+                            window_trades.append({'return': pnl, 'hold_days': hold_days})
+                            position = None
+            
+            total_return = sum(t['return'] for t in window_trades) if window_trades else 0
+            windows.append({
+                'window_start': window_start.strftime('%Y-%m-%d'),
+                'window_end': window_end.strftime('%Y-%m-%d'),
+                'return': total_return,
+                'trade_count': len(window_trades),
+            })
+        
+        return windows
+    
+    def _monte_carlo_sim(self, factor_names: List[str]) -> List[float]:
+        """蒙特卡洛模拟：生成与实际交易次数相同的随机交易序列"""
+        signal_fn = self._create_signal_fn(factor_names)
+        
+        # 首先运行一次获取实际交易次数
+        _, _, test_trades = self.backtest_factor(factor_names)
+        
+        if len(test_trades) < 5:
+            return []
+        
+        n_trades = len(test_trades)
+        trade_returns = [t['return'] for t in test_trades]
+        mean_return = np.mean(trade_returns)
+        
+        # 计算单笔收益的标准差
+        std_return = np.std(trade_returns)
+        
+        # 蒙特卡洛模拟：生成随机交易收益
+        sim_returns = []
+        for _ in range(MONTE_CARLO_N):
+            # 假设随机情况下收益服从相同分布
+            sim_trades = np.random.normal(0, std_return, n_trades)
+            sim_total = np.sum(sim_trades)
+            sim_returns.append(sim_total)
+        
+        return sim_returns
+    
+    def _cross_validation(self, factor_names: List[str]) -> List[Dict]:
+        """交叉验证：不同训练期表现一致性"""
+        signal_fn = self._create_signal_fn(factor_names)
+        results = []
+        
+        # 定义不同的训练期
+        validation_periods = [
+            {'train_start': '2022-01-01', 'train_end': '2024-12-31', 'name': '2022-2024'},
+            {'train_start': '2023-01-01', 'train_end': '2024-12-31', 'name': '2023-2024'},
+            {'train_start': '2024-01-01', 'train_end': '2024-12-31', 'name': '2024'},
+        ]
+        
+        for period in validation_periods:
+            _, train_trades, test_trades = self.backtest_factor(
+                factor_names,
+                train_end=period['train_end'],
+                test_start='2025-01-01'
+            )
+            
+            train_return = sum(t['return'] for t in train_trades)
+            test_return = sum(t['return'] for t in test_trades)
+            
+            results.append({
+                'period': period['name'],
+                'train_return': train_return,
+                'test_return': test_return,
+                'train_trades': len(train_trades),
+                'test_trades': len(test_trades),
+            })
+        
+        return results
+    
     def _pass_standards(self, m: dict) -> bool:
-        """ETF通过标准"""
+        """ETF核心指标通过标准"""
         return (
             m.get('test_return', 0) > 0 and
             m.get('mean_return', 0) > 0.005 and
@@ -337,16 +513,28 @@ class UnifiedPipeline:
         )
     
     def run(self):
-        """执行挖掘"""
-        from itertools import combinations
-        
+        """执行挖掘（含过拟合验证）"""
         # 单因子测试
         logger.info(f"\n[Step 3] 单因子测试（{len(FACTORS)}个）")
         for i, fname in enumerate(FACTORS.keys(), 1):
             logger.info(f"  [{i}/{len(FACTORS)}] {fname}")
-            result = self.backtest_factor(fname, [fname])
-            if result:
-                self.results.append(result)
+            all_trades, train_trades, test_trades = self.backtest_factor([fname])
+            
+            if len(test_trades) < 3:
+                continue
+            
+            metrics = self._calculate_metrics(fname, [fname], all_trades, train_trades, test_trades)
+            
+            if metrics and self._pass_standards(metrics):
+                # 运行过拟合检验
+                of_result = self.run_overfitting_check([fname])
+                metrics['overfitting'] = {
+                    'rolling_pass_rate': of_result.rolling_pass_rate,
+                    'monte_carlo_pvalue': of_result.monte_carlo_pvalue,
+                    'cross_val_pass_rate': of_result.cross_val_pass_rate,
+                    'passed': of_result.passed(),
+                }
+                self.results.append(metrics)
                 self._log_progress()
         
         # 组合测试
@@ -357,31 +545,47 @@ class UnifiedPipeline:
         for i, combo in enumerate(combos, 1):
             name = '+'.join(combo)
             logger.info(f"  [{i}/{len(combos)}] {name}")
-            result = self.backtest_factor(name, list(combo))
-            if result:
-                self.results.append(result)
+            
+            all_trades, train_trades, test_trades = self.backtest_factor(list(combo))
+            
+            if len(test_trades) < 3:
+                continue
+            
+            metrics = self._calculate_metrics(name, list(combo), all_trades, train_trades, test_trades)
+            
+            if metrics and self._pass_standards(metrics):
+                # 运行过拟合检验
+                of_result = self.run_overfitting_check(list(combo))
+                metrics['overfitting'] = {
+                    'rolling_pass_rate': of_result.rolling_pass_rate,
+                    'monte_carlo_pvalue': of_result.monte_carlo_pvalue,
+                    'cross_val_pass_rate': of_result.cross_val_pass_rate,
+                    'passed': of_result.passed(),
+                }
+                self.results.append(metrics)
                 self._log_progress()
         
         # 保存
         self._save()
         
         elapsed = time.time() - self.start_time
-        passed = sum(1 for r in self.results if self._pass_standards(r))
+        passed = sum(1 for r in self.results if r.get('overfitting', {}).get('passed', False))
+        core_passed = sum(1 for r in self.results if self._pass_standards(r))
         
         logger.info("")
         logger.info("=" * 80)
         logger.info("实验完成")
         logger.info("=" * 80)
         logger.info(f"总模型: {len(self.results)}")
-        logger.info(f"通过: {passed} ({passed/len(self.results)*100:.1f}%)")
+        logger.info(f"核心指标通过: {core_passed} ({core_passed/len(self.results)*100:.1f}%)")
+        logger.info(f"过拟合通过: {passed} ({passed/len(self.results)*100:.1f}%)")
         logger.info(f"耗时: {elapsed:.1f}秒 ({elapsed/60:.1f}分钟)")
     
     def _log_progress(self):
         """记录进度"""
         if len(self.results) % 20 == 0:
-            passed = sum(1 for r in self.results if self._pass_standards(r))
             elapsed = time.time() - self.start_time
-            logger.info(f"    进度: {len(self.results)}个 | 通过: {passed} | 耗时: {elapsed:.0f}秒")
+            logger.info(f"    进度: {len(self.results)}个 | 耗时: {elapsed:.0f}秒")
     
     def _save(self):
         """保存结果"""
@@ -391,21 +595,35 @@ class UnifiedPipeline:
         with open(output_dir / 'all_results.json', 'w') as f:
             json.dump(self.results, f, indent=2, default=str)
         
-        passed = [r for r in self.results if self._pass_standards(r)]
-        passed_sorted = sorted(passed, key=lambda x: x['mean_return'], reverse=True)
+        # 核心指标通过
+        core_passed = [r for r in self.results if self._pass_standards(r)]
+        core_passed_sorted = sorted(core_passed, key=lambda x: x['mean_return'], reverse=True)
         
         with open(output_dir / 'passed_results.json', 'w') as f:
-            json.dump(passed_sorted, f, indent=2, default=str)
+            json.dump(core_passed_sorted, f, indent=2, default=str)
+        
+        # 过拟合通过
+        overfitting_passed = [r for r in self.results if r.get('overfitting', {}).get('passed', False)]
+        overfitting_passed_sorted = sorted(overfitting_passed, key=lambda x: x['mean_return'], reverse=True)
+        
+        with open(output_dir / 'overfitting_passed.json', 'w') as f:
+            json.dump(overfitting_passed_sorted, f, indent=2, default=str)
         
         summary = {
             'total': len(self.results),
-            'passed': len(passed),
+            'core_passed': len(core_passed),
+            'overfitting_passed': len(overfitting_passed),
             'time': time.time() - self.start_time,
             'params': {
                 'take_profit': TAKE_PROFIT,
                 'stop_loss': STOP_LOSS,
                 'min_hold_days': MIN_HOLD_DAYS,
                 'max_hold_days': MAX_HOLD_DAYS,
+            },
+            'overfitting_params': {
+                'rolling_window_days': ROLLING_WINDOW_DAYS,
+                'rolling_step_days': ROLLING_STEP_DAYS,
+                'monte_carlo_n': MONTE_CARLO_N,
             }
         }
         with open(output_dir / 'summary.json', 'w') as f:
