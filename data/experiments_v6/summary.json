@@ -1,0 +1,11 @@
+{
+  "total": 152,
+  "core_passed": 152,
+  "overfitting_passed": 118,
+  "params": {
+    "take_profit": 0.06,
+    "stop_loss": 0.04,
+    "min_hold_days": 3,
+    "max_hold_days": 20
+  }
+}
