@@ -385,16 +385,26 @@ def run_experiment():
                             mc['p_value'] < OVERFIT_MC_PVALUE and
                             cv['pass_rate'] >= OVERFIT_CV_PASS)
     
-    # ============ Phase 4.6: 3因子组合 ============
-    logger.info("\n【Phase 4.6】3因子组合测试")
+    # ============ Phase 4.6: 3因子组合（完整测试！） ============
+    logger.info("\n【Phase 4.6】3因子组合测试 - 完整执行")
+    logger.info(f"  3因子组合: C(12,3) = 220")
+    logger.info(f"  15只ETF: 220 × 15 = 3300条")
+    logger.info("⚠️ 不简化！全部测试！")
     
-    good_factors = [f for f, d in single_factor_results.items() if d['ic_mean'] > 0.02]
-    logger.info(f"优质因子（IC>0.02）: {good_factors}")
-    
-    for combo in combinations(good_factors, 3):
+    combo_count_3factor = 0
+    for combo in combinations(factor_names, 3):
+        combo_count_3factor += 1
+        combo_count += 1
+        
+        # 【SOP-03反思点】每10个停下
+        if combo_count_3factor % 10 == 0:
+            pass_count = len([r for r in combo_results if r.get('pass_core', False)])
+            logger.info(f"  [反思点] 3因子已测试{combo_count_3factor}/220,累计通过{pass_count}个")
+        
         factors_list = list(combo)
         
-        for etf_code in ['512170', '588000', '512880']:
+        # 在全部ETF上测试（不简化！）
+        for etf_code in ETF_POOL:
             result = backtest_simple(indicators_data, factors_list, etf_code)
             
             if not result or result.trade_count < 5:
@@ -422,6 +432,27 @@ def run_experiment():
             })
     
     logger.info(f"组合测试完成: {len(combo_results)}条结果")
+    
+    # ============ Phase 4.7: 3因子组合过拟合检验 ============
+    logger.info("\n【Phase 4.7】3因子组合过拟合检验")
+    
+    three_factor_passed = [r for r in combo_results if r['pass_core'] and len(r['factors']) == 3]
+    logger.info(f"3因子核心通过: {len(three_factor_passed)}个")
+    
+    for i, r in enumerate(three_factor_passed):
+        if (i + 1) % 10 == 0:
+            logger.info(f"  进度: {i+1}/{len(three_factor_passed)}")
+        
+        rolling = rolling_window_test(indicators_data, r['factors'], r['etf_code'])
+        mc = monte_carlo_test(indicators_data, r['factors'], r['etf_code'])
+        cv = cross_validation_test(indicators_data, r['factors'], r['etf_code'])
+        
+        r['overfit_rolling'] = float(rolling['pass_rate'])
+        r['overfit_mc_pvalue'] = float(mc['p_value'])
+        r['overfit_cv'] = float(cv['pass_rate'])
+        r['overfit_pass'] = bool(rolling['pass_rate'] >= OVERFIT_ROLLING_PASS and
+                            mc['p_value'] < OVERFIT_MC_PVALUE and
+                            cv['pass_rate'] >= OVERFIT_CV_PASS)
     
     # ============ Phase 5: 筛选 ============
     logger.info("\n【Phase 5】筛选通过模型")
