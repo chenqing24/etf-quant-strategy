@@ -133,6 +133,41 @@
 | 3 | MC得分全是1.0无筛选作用 | 调整MC权重或阈值 | comprehensive |
 | 4 | 旧验证器对WalkForward测试不充分 | 新验证器应包含完整WF测试 | - |
 
+## 修复记录
+
+### 2026-06-01 修复内容
+
+| 文件 | 修改 | 旧值 | 新值 |
+|------|------|------|------|
+| walk_forward.py | min_windows | 3 | 6 |
+| cross_etf.py | min_train_etfs | 5 | 7 |
+| cross_etf.py | min_test_etfs | 3 | 5 |
+| cross_etf.py | walk_forward_config.min_windows | 未设置 | 6 |
+| comprehensive.py | pass_threshold | 0.5 | 0.6 |
+| comprehensive.py | weights.walk_forward | 0.30 | 0.40 |
+| comprehensive.py | weights.monte_carlo | 0.30 | 0.15 |
+| comprehensive.py | weights.cross_etf | 0.30 | 0.35 |
+
+### Git提交
+```
+53c82b2 fix: 增强过拟合验证器严格性
+```
+
+## 交付物
+
+| 文件 | 说明 |
+|------|------|
+| scripts/full_validation.py | 全面验证脚本 |
+| data/experiments_v8_sop/full_validation_results.json | 验证结果（4125条）|
+| memory/experiment_20260601.md | 实验日志 |
+| scripts/regression_test.py | 回归测试脚本（已修复）|
+
+## 待办
+
+1. [ ] 重新跑 full_validation.py 验证修复效果
+2. [ ] 将新验证器集成到 experiment_v8_sop.py
+3. [ ] 生成最终报告
+
 ## 经验教训
 
 ## 下一步
