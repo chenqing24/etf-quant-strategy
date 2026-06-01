@@ -229,6 +229,32 @@ requests.get(f"{TENCENT_BASE_URL}/q=sh510300", timeout=HTTP_TIMEOUT_SHORT)
 
 ## 六、Phase 5: 验证测试
 
+### 数据库变更检查清单
+
+每次涉及 `daily` 表或其他核心表结构变更时：
+
+```
+[ ] 修改 schema/*.sql（版本控制）
+[ ] 执行 scripts/init_database.py（迁移）
+[ ] 代码启动时验证列是否存在
+[ ] 单元测试覆盖
+```
+
+**教训**：schema与代码不一致会导致采集脚本全部失败（P0问题）
+
+### 工具更新同步检查清单
+
+每次新增/删除/合并脚本后，必须检查以下文档：
+
+```
+[ ] docs/TOOLS.md - 工具清单（工具名称、Usage、状态）
+[ ] docs/INDEX.md - 场景索引（脚本列表）
+[ ] docs/CHECK_REPORT.md - scripts目录一致性
+[ ] docs/MODULES.md - 模块依赖（接口变更）
+```
+
+**教训**：工具更新不同步文档，导致使用者找不到正确工具
+
 ### 测试覆盖率要求
 
 | 模块 | 覆盖率要求 |
