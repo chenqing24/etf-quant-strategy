@@ -32,6 +32,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.constants import DATA_DIR, DB_NAME
 
 
+# 工作日判断（A股周一至周五）
+WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+
+def is_trading_day(dt: datetime = None) -> bool:
+    """
+    判断是否为A股交易日（周一至周五）
+    
+    注意：节假日需要外部补充，这里只做基础判断
+    """
+    if dt is None:
+        dt = datetime.now()
+    return dt.weekday() < 5  # 0-4 是周一到周五
+
+
 class DataQualityMonitor:
     """数据质量监控器"""
     
@@ -45,7 +60,8 @@ class DataQualityMonitor:
     
     def __init__(self, db_path: str = None):
         self.db_path = db_path or os.path.join(DATA_DIR, DB_NAME)
-        self.alerts: List[Dict] = []
+        self.alerts: List[Dict] = []  # ERROR级别
+        self.warnings: List[Dict] = []  # WARNING级别
         self.report: Dict[str, Any] = {}
     
     def check_all(self) -> Dict[str, Any]:
@@ -93,34 +109,55 @@ class DataQualityMonitor:
                 }
             
             # 计算延迟天数
-            today = datetime.now().date()
+            now = datetime.now()
+            today = now.date()
             latest = datetime.strptime(latest_date, '%Y-%m-%d').date()
             delay_days = (today - latest).days
             
-            # 判断状态
+            # 判断是否为交易日
+            is_trade_day = is_trading_day(now)
+            
+            # 判断状态（考虑周末/节假日因素）
             if delay_days > self.THRESHOLDS['max_delay_days']:
+                # 重大延迟（>3天）任何时候都要告警
                 status = 'ERROR'
                 self.alerts.append({
                     'type': 'freshness',
                     'level': 'ERROR',
-                    'message': f'数据延迟 {delay_days} 天',
+                    'message': f'数据严重延迟 {delay_days} 天',
                     'detail': f'最新数据日期: {latest_date}'
                 })
-            elif delay_days > 1:
-                status = 'WARNING'
-                self.warnings.append({
-                    'type': 'freshness',
-                    'level': 'WARNING',
-                    'message': f'数据延迟 {delay_days} 天',
-                    'detail': f'最新数据日期: {latest_date}'
-                })
+            elif is_trade_day:
+                # 交易日：延迟>1天才告警
+                if delay_days > 1:
+                    status = 'WARNING'
+                    self.warnings.append({
+                        'type': 'freshness',
+                        'level': 'WARNING',
+                        'message': f'数据延迟 {delay_days} 天',
+                        'detail': f'最新数据日期: {latest_date}'
+                    })
+                else:
+                    status = 'OK'
             else:
-                status = 'OK'
+                # 非交易日（周末/节假日）：只显示状态，不告警
+                # 周末delay最多2天是正常的
+                if delay_days > 2:
+                    status = 'WARNING'
+                    self.warnings.append({
+                        'type': 'freshness',
+                        'level': 'WARNING',
+                        'message': f'数据延迟 {delay_days} 天（非交易日请忽略）',
+                        'detail': f'最新数据日期: {latest_date}'
+                    })
+                else:
+                    status = 'OK'
             
             return {
                 'status': status,
                 'latest_date': latest_date,
                 'delay_days': delay_days,
+                'is_trading_day': is_trading_day,
                 'message': f'数据延迟 {delay_days} 天' if delay_days > 0 else '数据最新'
             }
             
@@ -274,6 +311,7 @@ class DataQualityMonitor:
             "📊 数据质量监控报告",
             "=" * 50,
             f"时间: {r['timestamp']}",
+            f"类型: {'📈 交易日' if r['freshness'].get('is_trading_day', False) else '📅 非交易日'}",
             "",
             "【新鲜度】",
             f"  状态: {r['freshness'].get('status', 'N/A')}",
