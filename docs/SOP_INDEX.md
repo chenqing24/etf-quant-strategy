@@ -60,7 +60,12 @@
 [ ] 因子池定义清晰
 [ ] 每10个模型停下反思
 [ ] IC/IR分析完成
-[ ] 过拟合检验完成
+[ ] 过拟合检验完成（使用新验证器）
+    - WalkForwardEngine (min_windows=6)
+    - MonteCarloEngine
+    - CrossEtfValidator (min_test=5)
+    - ComprehensiveValidator (threshold=0.6)
+[ ] 实验笔记已归档
 ```
 
 ### SOP-04: 数据源接入

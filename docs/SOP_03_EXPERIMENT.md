@@ -143,11 +143,60 @@ IC解读:
 
 ### 4.3 过拟合检验
 
-| 方法 | 说明 |
-|------|------|
-| 滚动窗口验证 | 不同时间段是否有效 |
-| 蒙特卡洛检验 | 随机因子是否也能通过 |
-| 参数敏感性 | 参数微调是否导致结果大幅变化 |
+| 方法 | 说明 | 工具 |
+|------|------|------|
+| 滚动窗口验证 | WalkForwardEngine（min_windows=6） | `scripts/validators/` |
+| 蒙特卡洛检验 | MonteCarloEngine（p<0.05） | `scripts/validators/` |
+| 跨ETF泛化验证 | CrossEtfValidator（min_test=5） | `scripts/validators/` |
+| 综合评分 | ComprehensiveValidator（threshold=0.6） | `scripts/validators/` |
+
+**验证器使用示例**：
+
+```python
+from scripts.validators import ComprehensiveValidator, OVERFIT_VALIDATION_CONFIG
+
+# 创建验证器（使用增强配置）
+validator = ComprehensiveValidator(OVERFIT_VALIDATION_CONFIG)
+
+# 验证策略
+result = validator.validate(etf_data_dict, signal_func)
+
+# 检查结果
+if result['composite_score'] >= 0.6:
+    print("策略通过过拟合检验")
+else:
+    print("策略存在过拟合风险")
+```
+
+**验证器配置**（见 `scripts/validators/configs.py`）：
+
+| 参数 | 值 | 说明 |
+|------|:---:|------|
+| walk_forward.min_windows | 6 | 滚动窗口数 |
+| cross_etf.min_train_etfs | 7 | 训练集ETF数 |
+| cross_etf.min_test_etfs | 5 | 测试集ETF数 |
+| pass_threshold | 0.6 | 通过阈值 |
+| weights.walk_forward | 0.40 | WF权重 |
+| weights.monte_carlo | 0.15 | MC权重 |
+| weights.cross_etf | 0.35 | CE权重 |
+
+**旧验证器 vs 新验证器**：
+
+| 指标 | 旧验证器 | 新验证器 |
+|------|:-------:|:--------:|
+| WalkForward窗口 | 3 | **6** |
+| CrossEtf测试集 | 3 | **5** |
+| 通过阈值 | 0.5 | **0.6** |
+| 严格程度 | 宽松 | **更严格** |
+
+**决策矩阵**：
+
+| 综合分 | 结论 | 建议 |
+|:------:|------|------|
+| ≥0.7 | ✅强烈推荐 | 可考虑实盘 |
+| 0.6-0.7 | 🟡谨慎推荐 | 需进一步验证 |
+| 0.5-0.6 | ⚠️不推荐 | 需重大改进 |
+| <0.5 | ❌拒绝 | 策略无效 |
 
 ---
 

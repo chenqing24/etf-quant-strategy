@@ -331,7 +331,88 @@ python -m src.cli.main -m update_pool
 
 ---
 
-## 十、快速索引
+## 十、过拟合验证工具
+
+### 10.1 ComprehensiveValidator（综合验证）
+
+```python
+from scripts.validators import ComprehensiveValidator, OVERFIT_VALIDATION_CONFIG
+
+# 创建验证器
+validator = ComprehensiveValidator(OVERFIT_VALIDATION_CONFIG)
+
+# 准备数据：{etf_code: df}
+data = loader.load(min_rows=300)
+
+# 准备信号函数
+def my_signal(df):
+    return df['close'] > df['MA20']
+
+# 执行验证
+result = validator.validate(data, my_signal)
+
+# 检查结果
+print(f"综合评分: {result['composite_score']:.2f}")
+print(f"通过: {result['pass']}")
+```
+
+**返回结果**：
+```python
+{
+    'composite_score': 0.65,
+    'pass': True,
+    'walk_forward': {
+        'overall_pass_rate': 0.45,
+        'details': [...]
+    },
+    'monte_carlo': {
+        'significant_rate': 0.35,
+        'details': {...}
+    },
+    'cross_etf': {
+        'train_pass_rate': 0.5,
+        'test_pass_rate': 0.35,
+        'generalization_gap': 0.15
+    }
+}
+```
+
+### 10.2 单独使用各验证器
+
+```python
+from scripts.validators import (
+    WalkForwardEngine,
+    MonteCarloEngine,
+    CrossEtfValidator
+)
+
+# 滚动窗口验证
+wf = WalkForwardEngine()
+wf_result = wf.validate(df, signal_func)
+
+# 蒙特卡洛检验
+mc = MonteCarloEngine()
+mc_result = mc.validate(df, signal_func)
+
+# 跨ETF泛化验证
+ce = CrossEtfValidator()
+ce_result = ce.validate(etf_data_dict, signal_func)
+```
+
+**文件**: `scripts/validators/`
+
+### 10.3 快速验证脚本
+
+```bash
+# 全量验证4125个组合
+python scripts/full_validation.py
+
+# 输出: data/experiments_v8_sop/full_validation_results.json
+```
+
+---
+
+## 十一、快速索引
 
 | 场景 | 工具 |
 |------|------|
@@ -342,6 +423,7 @@ python -m src.cli.main -m update_pool
 | **运行回测** | `quick_run()` |
 | **风险控制** | `RiskManager` |
 | **每日决策** | `python -m src.cli.main -m daily` |
+| **过拟合验证** | `ComprehensiveValidator` |
 
 ---
 
