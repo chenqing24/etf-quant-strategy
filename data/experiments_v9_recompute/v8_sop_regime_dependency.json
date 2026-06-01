@@ -1,0 +1,368 @@
+{
+  "timestamp": "2026-06-02T07:50:32.588517",
+  "experiment": "v8_sop_regime_dependency",
+  "etf_pool": [
+    "510300",
+    "515650",
+    "515070",
+    "512400",
+    "512480",
+    "588000",
+    "520900",
+    "512880",
+    "512170",
+    "512660",
+    "512200",
+    "512800",
+    "512980",
+    "515050",
+    "515790"
+  ],
+  "n_etf": 15,
+  "total_regime_days": {
+    "trend": "299",
+    "volatile": "15580",
+    "unclear": "196"
+  },
+  "total_signal_by_regime": {
+    "trend": "38",
+    "volatile": "0",
+    "unclear": "0"
+  },
+  "total_trades_by_regime": {
+    "trend": {
+      "n": 14,
+      "wins": 7,
+      "total_pnl": -0.1429455807226402
+    },
+    "volatile": {
+      "n": 0,
+      "wins": 0,
+      "total_pnl": 0
+    },
+    "unclear": {
+      "n": 0,
+      "wins": 0,
+      "total_pnl": 0
+    }
+  },
+  "per_etf_results": [
+    {
+      "etf": "510300",
+      "total_days": 644,
+      "regime_days": {
+        "trend": "42",
+        "volatile": "594",
+        "unclear": "8"
+      },
+      "signal_by_regime": {
+        "trend": "3",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 2,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 2,
+          "n_wins": 1,
+          "win_rate": 0.5,
+          "total_pnl": -0.014453744147138396,
+          "avg_pnl": -0.007226872073569198,
+          "sharpe": -2.7730001367753045
+        }
+      }
+    },
+    {
+      "etf": "515650",
+      "total_days": 1588,
+      "regime_days": {
+        "trend": "13",
+        "volatile": "1571",
+        "unclear": "4"
+      },
+      "signal_by_regime": {
+        "trend": "2",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 0,
+      "regime_stats": {}
+    },
+    {
+      "etf": "515070",
+      "total_days": 1557,
+      "regime_days": {
+        "trend": "31",
+        "volatile": "1523",
+        "unclear": "3"
+      },
+      "signal_by_regime": {
+        "trend": "8",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 2,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 2,
+          "n_wins": 1,
+          "win_rate": 0.5,
+          "total_pnl": 0.026689146567267202,
+          "avg_pnl": 0.013344573283633601,
+          "sharpe": 1.57123191547461
+        }
+      }
+    },
+    {
+      "etf": "512400",
+      "total_days": 641,
+      "regime_days": {
+        "trend": "0",
+        "volatile": "641",
+        "unclear": "0"
+      },
+      "signal_by_regime": {
+        "trend": "0",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 0,
+      "regime_stats": {}
+    },
+    {
+      "etf": "512480",
+      "total_days": 641,
+      "regime_days": {
+        "trend": "8",
+        "volatile": "602",
+        "unclear": "31"
+      },
+      "signal_by_regime": {
+        "trend": "1",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 1,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 1,
+          "n_wins": 1,
+          "win_rate": 1.0,
+          "total_pnl": 0.0007173913043478286,
+          "avg_pnl": 0.0007173913043478286,
+          "sharpe": 0
+        }
+      }
+    },
+    {
+      "etf": "588000",
+      "total_days": 641,
+      "regime_days": {
+        "trend": "13",
+        "volatile": "612",
+        "unclear": "16"
+      },
+      "signal_by_regime": {
+        "trend": "0",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 0,
+      "regime_stats": {}
+    },
+    {
+      "etf": "520900",
+      "total_days": 457,
+      "regime_days": {
+        "trend": "17",
+        "volatile": "435",
+        "unclear": "5"
+      },
+      "signal_by_regime": {
+        "trend": "7",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 2,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 2,
+          "n_wins": 1,
+          "win_rate": 0.5,
+          "total_pnl": -0.002430490532826464,
+          "avg_pnl": -0.001215245266413232,
+          "sharpe": -0.5057074541978072
+        }
+      }
+    },
+    {
+      "etf": "512880",
+      "total_days": 2004,
+      "regime_days": {
+        "trend": "2",
+        "volatile": "1968",
+        "unclear": "34"
+      },
+      "signal_by_regime": {
+        "trend": "0",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 0,
+      "regime_stats": {}
+    },
+    {
+      "etf": "512170",
+      "total_days": 644,
+      "regime_days": {
+        "trend": "0",
+        "volatile": "636",
+        "unclear": "8"
+      },
+      "signal_by_regime": {
+        "trend": "0",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 0,
+      "regime_stats": {}
+    },
+    {
+      "etf": "512660",
+      "total_days": 2004,
+      "regime_days": {
+        "trend": "37",
+        "volatile": "1966",
+        "unclear": "1"
+      },
+      "signal_by_regime": {
+        "trend": "5",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 1,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 1,
+          "n_wins": 0,
+          "win_rate": 0.0,
+          "total_pnl": -0.05693273542600902,
+          "avg_pnl": -0.05693273542600902,
+          "sharpe": 0
+        }
+      }
+    },
+    {
+      "etf": "512200",
+      "total_days": 644,
+      "regime_days": {
+        "trend": "29",
+        "volatile": "600",
+        "unclear": "15"
+      },
+      "signal_by_regime": {
+        "trend": "2",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 2,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 2,
+          "n_wins": 0,
+          "win_rate": 0.0,
+          "total_pnl": -0.15453156625512704,
+          "avg_pnl": -0.07726578312756352,
+          "sharpe": -89.531393227855
+        }
+      }
+    },
+    {
+      "etf": "512800",
+      "total_days": 644,
+      "regime_days": {
+        "trend": "21",
+        "volatile": "614",
+        "unclear": "9"
+      },
+      "signal_by_regime": {
+        "trend": "4",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 2,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 2,
+          "n_wins": 2,
+          "win_rate": 1.0,
+          "total_pnl": 0.016324712759254064,
+          "avg_pnl": 0.008162356379627032,
+          "sharpe": 42.20414684816507
+        }
+      }
+    },
+    {
+      "etf": "512980",
+      "total_days": 2004,
+      "regime_days": {
+        "trend": "49",
+        "volatile": "1932",
+        "unclear": "23"
+      },
+      "signal_by_regime": {
+        "trend": "6",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 2,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 2,
+          "n_wins": 1,
+          "win_rate": 0.5,
+          "total_pnl": 0.04167170500759162,
+          "avg_pnl": 0.02083585250379581,
+          "sharpe": 8.536214776271784
+        }
+      }
+    },
+    {
+      "etf": "515050",
+      "total_days": 644,
+      "regime_days": {
+        "trend": "5",
+        "volatile": "636",
+        "unclear": "3"
+      },
+      "signal_by_regime": {
+        "trend": "0",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 0,
+      "regime_stats": {}
+    },
+    {
+      "etf": "515790",
+      "total_days": 1318,
+      "regime_days": {
+        "trend": "32",
+        "volatile": "1250",
+        "unclear": "36"
+      },
+      "signal_by_regime": {
+        "trend": "0",
+        "volatile": "0",
+        "unclear": "0"
+      },
+      "total_trades": 0,
+      "regime_stats": {}
+    }
+  ],
+  "summary": {
+    "trend_trade_pct": 1.0,
+    "trend_win_rate": 0.5,
+    "trend_total_pnl": -0.1429455807226402
+  }
+}
