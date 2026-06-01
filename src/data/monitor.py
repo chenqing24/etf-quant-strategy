@@ -50,9 +50,9 @@ def is_trading_day(dt: datetime = None) -> bool:
 class DataQualityMonitor:
     """数据质量监控器"""
     
-    # 告警阈值
+    # 告警阈值（分钟级）
     THRESHOLDS = {
-        'max_delay_days': 3,          # 数据延迟超过3天告警
+        'max_delay_minutes': 80,       # 数据延迟超过80分钟告警
         'min_active_etfs': 30,        # 活跃ETF少于30个告警
         'max_missing_pct': 0.15,      # 缺失超过15%告警
         'max_db_size_mb': 100,        # 数据库超过100MB提示
@@ -82,83 +82,122 @@ class DataQualityMonitor:
         return report
     
     def check_data_freshness(self) -> Dict[str, Any]:
-        """检查数据新鲜度"""
+        """检查数据新鲜度（分钟级）
+        
+        逻辑：
+        1. 获取上一个交易日（周末往前推）
+        2. 检查是否有所需的交易日数据
+        3. 如果有，计算入库时间与当前时间的延迟分钟数
+        4. 超过阈值告警
+        """
         if not Path(self.db_path).exists():
             return {
                 'status': 'ERROR',
                 'message': '数据库文件不存在',
                 'latest_date': None,
-                'delay_days': None
+                'delay_minutes': None
             }
         
         try:
+            now = datetime.now()
+            is_trade_day = is_trading_day(now)
+            
+            # 计算上一个交易日
+            weekday = now.weekday()
+            if weekday == 0:  # 周一
+                last_trading_day = (now - timedelta(days=3)).strftime('%Y-%m-%d')
+            elif weekday == 6:  # 周日
+                last_trading_day = (now - timedelta(days=2)).strftime('%Y-%m-%d')
+            else:
+                last_trading_day = (now - timedelta(days=1)).strftime('%Y-%m-%d')
+            
             conn = sqlite3.connect(self.db_path)
             
-            # 获取最新日期
-            cur = conn.execute('SELECT MAX(date) FROM daily')
-            latest_date = cur.fetchone()[0]
+            # 获取最新日期和对应的入库时间
+            cur = conn.execute('''
+                SELECT date, MAX(updated_at) as last_update
+                FROM daily
+                GROUP BY date
+                ORDER BY date DESC
+                LIMIT 1
+            ''')
+            row = cur.fetchone()
+            
+            # 获取上一交易日的记录数
+            cur2 = conn.execute(
+                'SELECT COUNT(*) FROM daily WHERE date = ?',
+                (last_trading_day,)
+            )
+            last_trading_day_count = cur2.fetchone()[0]
             
             conn.close()
             
-            if latest_date is None:
+            if row is None or row[0] is None:
                 return {
-                    'status': 'WARNING',
+                    'status': 'ERROR',
                     'message': '无数据',
                     'latest_date': None,
-                    'delay_days': None
+                    'delay_minutes': None
                 }
             
-            # 计算延迟天数
-            now = datetime.now()
-            today = now.date()
-            latest = datetime.strptime(latest_date, '%Y-%m-%d').date()
-            delay_days = (today - latest).days
+            latest_date = row[0]
+            last_update_str = row[1]
             
-            # 判断是否为交易日
-            is_trade_day = is_trading_day(now)
+            # 计算延迟分钟数
+            if last_update_str:
+                try:
+                    last_update = datetime.fromisoformat(last_update_str)
+                    delay_minutes = (now - last_update).total_seconds() / 60
+                except:
+                    delay_minutes = None
+            else:
+                delay_minutes = None
             
-            # 判断状态（考虑周末/节假日因素）
-            if delay_days > self.THRESHOLDS['max_delay_days']:
-                # 重大延迟（>3天）任何时候都要告警
+            # 判断状态
+            if not is_trade_day:
+                # 非交易日（周末）：OK，不需要告警
+                return {
+                    'status': 'OK',
+                    'message': '非交易日，数据正常',
+                    'latest_date': latest_date,
+                    'last_update': last_update_str,
+                    'delay_minutes': delay_minutes,
+                    'is_trading_day': False,
+                    'last_trading_day': last_trading_day,
+                    'last_trading_day_count': last_trading_day_count
+                }
+            
+            # 工作日 09:00 检查：必须有上一个交易日的数据
+            if latest_date < last_trading_day:
+                # 数据缺失：期望last_trading_day，但实际最新是latest_date
                 status = 'ERROR'
                 self.alerts.append({
                     'type': 'freshness',
                     'level': 'ERROR',
-                    'message': f'数据严重延迟 {delay_days} 天',
-                    'detail': f'最新数据日期: {latest_date}'
+                    'message': f'数据缺失: 期望{last_trading_day}，实际{latest_date}',
+                    'detail': f"延迟{(now - datetime.strptime(latest_date, '%Y-%m-%d')).days}天"
                 })
-            elif is_trade_day:
-                # 交易日：延迟>1天才告警
-                if delay_days > 1:
-                    status = 'WARNING'
-                    self.warnings.append({
-                        'type': 'freshness',
-                        'level': 'WARNING',
-                        'message': f'数据延迟 {delay_days} 天',
-                        'detail': f'最新数据日期: {latest_date}'
-                    })
-                else:
-                    status = 'OK'
+            elif delay_minutes is not None and delay_minutes > self.THRESHOLDS['max_delay_minutes']:
+                # 数据延迟超过80分钟
+                status = 'WARNING'
+                self.warnings.append({
+                    'type': 'freshness',
+                    'level': 'WARNING',
+                    'message': f'数据延迟 {delay_minutes:.0f} 分钟（阈值{self.THRESHOLDS["max_delay_minutes"]}分钟）',
+                    'detail': f'最新入库: {last_update_str}'
+                })
             else:
-                # 非交易日（周末/节假日）：只显示状态，不告警
-                # 周末delay最多2天是正常的
-                if delay_days > 2:
-                    status = 'WARNING'
-                    self.warnings.append({
-                        'type': 'freshness',
-                        'level': 'WARNING',
-                        'message': f'数据延迟 {delay_days} 天（非交易日请忽略）',
-                        'detail': f'最新数据日期: {latest_date}'
-                    })
-                else:
-                    status = 'OK'
+                # 数据正常
+                status = 'OK'
             
             return {
                 'status': status,
                 'latest_date': latest_date,
-                'delay_days': delay_days,
-                'is_trading_day': is_trading_day,
-                'message': f'数据延迟 {delay_days} 天' if delay_days > 0 else '数据最新'
+                'last_update': last_update_str,
+                'delay_minutes': delay_minutes,
+                'is_trading_day': True,
+                'last_trading_day': last_trading_day,
+                'last_trading_day_count': last_trading_day_count
             }
             
         except Exception as e:
@@ -166,7 +205,7 @@ class DataQualityMonitor:
                 'status': 'ERROR',
                 'message': str(e),
                 'latest_date': None,
-                'delay_days': None
+                'delay_minutes': None
             }
     
     def check_data_completeness(self) -> Dict[str, Any]:
@@ -305,18 +344,32 @@ class DataQualityMonitor:
         r = self.report
         alerts = r.get('alerts', [])
         warnings = r.get('warnings', [])
+        freshness = r.get('freshness', {})
+        
+        # 计算显示的延迟信息
+        delay_info = ""
+        if freshness.get('delay_minutes') is not None:
+            mins = freshness['delay_minutes']
+            if mins >= 60:
+                delay_info = f"{mins/60:.1f} 小时"
+            else:
+                delay_info = f"{mins:.0f} 分钟"
+        elif freshness.get('delay_days') is not None:
+            delay_info = f"{freshness['delay_days']} 天"
         
         lines = [
             "=" * 50,
             "📊 数据质量监控报告",
             "=" * 50,
             f"时间: {r['timestamp']}",
-            f"类型: {'📈 交易日' if r['freshness'].get('is_trading_day', False) else '📅 非交易日'}",
+            f"类型: {'📈 交易日' if freshness.get('is_trading_day', False) else '📅 非交易日'}",
             "",
             "【新鲜度】",
-            f"  状态: {r['freshness'].get('status', 'N/A')}",
-            f"  最新日期: {r['freshness'].get('latest_date', 'N/A')}",
-            f"  延迟天数: {r['freshness'].get('delay_days', 'N/A')}",
+            f"  状态: {freshness.get('status', 'N/A')}",
+            f"  最新日期: {freshness.get('latest_date', 'N/A')}",
+            f"  延迟: {delay_info if delay_info else 'N/A'}",
+            f"  入库时间: {freshness.get('last_update', 'N/A')}",
+            f"  上个交易日: {freshness.get('last_trading_day', 'N/A')} ({freshness.get('last_trading_day_count', 0)}条记录)",
             "",
             "【完整性】",
             f"  状态: {r['completeness'].get('status', 'N/A')}",

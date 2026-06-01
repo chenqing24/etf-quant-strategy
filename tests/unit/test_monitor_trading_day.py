@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """
-数据质量监控 - 交易日判断测试
+数据质量监控 - 分钟级交易日判断测试
 
-测试场景：
-1. 工作日延迟1天 → OK（正常）
-2. 工作日延迟2天 → WARNING
-3. 工作日延迟3天 → WARNING（延迟3天=ERROR阈值边界）
-4. 周末延迟1天 → OK（正常）
-5. 周末延迟2天 → OK
-6. 周末延迟3天 → WARNING
-7. 节假日判断需要外部补充
+测试场景（分钟级）：
+1. 周一09:00 → 上个交易日是周五
+2. 周五09:00 → 上个交易日是周四
+3. 周六/周日 → 非交易日
+4. 交易日数据缺失 → ERROR
+5. 非交易日 → OK
 """
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 from src.data.monitor import is_trading_day, WEEKDAY_NAMES
 
 
@@ -40,93 +38,65 @@ class TestTradingDay判断:
         assert WEEKDAY_NAMES[dt.weekday()] == 'Sunday'
 
 
-class TestFreshness判断:
-    """新鲜度告警逻辑测试"""
+class Test分钟级新鲜度判断:
+    """分钟级数据新鲜度判断测试"""
     
-    def test_工作日_延迟1天_OK(self):
-        """工作日延迟1天，正常"""
-        delay = 1
-        is_trade = True
-        max_delay = 3
+    def test_上周五数据_周一09点_OK(self):
+        """周一09:00有上周五数据，正常"""
+        # 模拟：周一09:00，数据库有上周五(05-29)数据
+        # 上个交易日应该是上周五
+        now = datetime(2026, 6, 1, 9, 0, 0)  # 周一
+        latest_date = '2026-05-29'  # 上周五
         
-        if delay > max_delay:
-            status = 'ERROR'
-        elif is_trade and delay > 1:
-            status = 'WARNING'
-        elif not is_trade and delay > 2:
+        weekday = now.weekday()
+        if weekday == 0:  # 周一
+            last_trading_day = (now - timedelta(days=3)).strftime('%Y-%m-%d')
+        else:
+            last_trading_day = (now - timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        assert last_trading_day == '2026-05-29'
+        assert latest_date == last_trading_day  # 数据存在
+    
+    def test_上周四数据_周一09点_ERROR(self):
+        """周一09:00只有上周四数据，缺失上周五 → ERROR"""
+        now = datetime(2026, 6, 1, 9, 0, 0)  # 周一
+        latest_date = '2026-05-28'  # 上周四
+        
+        weekday = now.weekday()
+        if weekday == 0:  # 周一
+            last_trading_day = (now - timedelta(days=3)).strftime('%Y-%m-%d')
+        else:
+            last_trading_day = (now - timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        assert last_trading_day == '2026-05-29'
+        assert latest_date < last_trading_day  # 数据缺失
+    
+    def test_周末_非交易日_OK(self):
+        """周末不告警"""
+        # 周六
+        saturday = datetime(2026, 5, 30, 9, 0, 0)
+        assert is_trading_day(saturday) == False
+        
+        # 周日
+        sunday = datetime(2026, 5, 31, 9, 0, 0)
+        assert is_trading_day(sunday) == False
+    
+    def test_延迟分钟数计算(self):
+        """延迟分钟数计算"""
+        now = datetime(2026, 6, 1, 10, 0, 0)
+        last_update = datetime(2026, 6, 1, 9, 0, 0)  # 1小时前
+        
+        delay_minutes = (now - last_update).total_seconds() / 60
+        assert delay_minutes == 60.0
+        
+        # 80分钟阈值测试
+        max_delay = 80
+        if delay_minutes > max_delay:
             status = 'WARNING'
         else:
             status = 'OK'
         
-        assert status == 'OK'
-    
-    def test_工作日_延迟2天_WARNING(self):
-        """工作日延迟2天，警告"""
-        delay = 2
-        is_trade = True
-        max_delay = 3
-        
-        if delay > max_delay:
-            status = 'ERROR'
-        elif is_trade and delay > 1:
-            status = 'WARNING'
-        elif not is_trade and delay > 2:
-            status = 'WARNING'
-        else:
-            status = 'OK'
-        
-        assert status == 'WARNING'
-    
-    def test_工作日_延迟4天_ERROR(self):
-        """工作日延迟4天，错误"""
-        delay = 4
-        is_trade = True
-        max_delay = 3
-        
-        if delay > max_delay:
-            status = 'ERROR'
-        elif is_trade and delay > 1:
-            status = 'WARNING'
-        elif not is_trade and delay > 2:
-            status = 'WARNING'
-        else:
-            status = 'OK'
-        
-        assert status == 'ERROR'
-    
-    def test_周末_延迟2天_OK(self):
-        """周末延迟2天，正常（周末正常情况）"""
-        delay = 2
-        is_trade = False
-        max_delay = 3
-        
-        if delay > max_delay:
-            status = 'ERROR'
-        elif is_trade and delay > 1:
-            status = 'WARNING'
-        elif not is_trade and delay > 2:
-            status = 'WARNING'
-        else:
-            status = 'OK'
-        
-        assert status == 'OK'
-    
-    def test_周末_延迟3天_WARNING(self):
-        """周末延迟3天，警告（超过正常周末范围）"""
-        delay = 3
-        is_trade = False
-        max_delay = 3
-        
-        if delay > max_delay:
-            status = 'ERROR'
-        elif is_trade and delay > 1:
-            status = 'WARNING'
-        elif not is_trade and delay > 2:
-            status = 'WARNING'
-        else:
-            status = 'OK'
-        
-        assert status == 'WARNING'
+        assert status == 'OK'  # 60 < 80
 
 
 if __name__ == '__main__':

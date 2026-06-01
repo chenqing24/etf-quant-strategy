@@ -67,7 +67,7 @@ class DataWriter:
                 close REAL, volume INTEGER, amount REAL,
                 source TEXT DEFAULT 'tencent',
                 created_at TEXT DEFAULT (datetime('now')),
-                updated_at TEXT,
+                updated_at TEXT DEFAULT (datetime('now')),
                 UNIQUE(code, date)
             )
         ''')
@@ -148,13 +148,16 @@ class DataWriter:
             ).fetchone()
             
             if existing:
-                # 已存在，跳过
-                continue
+                # 已存在，更新 updated_at
+                conn.execute(
+                    'UPDATE daily SET updated_at=? WHERE code=? AND date=?',
+                    (now, code, date_str)
+                )
             else:
                 # 插入新记录
                 conn.execute('''
-                    INSERT INTO daily (code, date, open, high, low, close, volume, amount, source, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO daily (code, date, open, high, low, close, volume, amount, source, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     code, date_str,
                     float(row.get('open', 0)),
@@ -163,7 +166,7 @@ class DataWriter:
                     float(row.get('close', 0)),
                     int(row.get('volume', 0)),
                     float(row.get('amount', 0)) if 'amount' in row and pd.notna(row.get('amount')) else None,
-                    source, now
+                    source, now, now
                 ))
                 count += 1
         

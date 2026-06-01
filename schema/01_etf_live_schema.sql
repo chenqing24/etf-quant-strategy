@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS daily (
     low REAL NOT NULL,
     close REAL NOT NULL,
     volume INTEGER NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     PRIMARY KEY (code, date)
 );
 
