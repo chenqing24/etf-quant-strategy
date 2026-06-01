@@ -1,0 +1,83 @@
+#!/bin/bash
+# Pre-commit hook: 检查代码规范
+# 1. 禁止绕过统一入口（业务代码）
+# 2. 禁止硬编码 URL
+# 3. 跨模块 import 路径有效性（Q-008 修复）
+# 4. TradeRecord 必填字段检查（Q-009）
+# 5. schema 变更提醒
+#
+# 豁免范围（Q-015）：
+# - scripts/maintenance/  运维工具（备份/迁移/初始化/修复）
+# - scripts/analysis/     一次性分析（待重构走 DataLoader，TODO）
+# - scripts/filter/       一次性筛选（待重构走 DataLoader，TODO）
+# 业务代码在 src/，必须走 DataLoader/DataWriter
+
+set -e
+
+echo "🔍 pre-commit 检查..."
+
+# 1. 检查 sqlite3.connect 绕过（仅业务代码）
+# 检查范围：src/ 下除 data/ 外的所有 .py（业务代码必须走 DataLoader/DataWriter）
+# 豁免：src/data/（数据层实现）、scripts/maintenance/、scripts/analysis/、scripts/filter/
+violations=$(git diff --cached --name-only | grep -E "^src/.*\.py$" | grep -vE "^src/data/" || true)
+if [ -n "$violations" ]; then
+    bypass=$(grep -l "sqlite3.connect" $violations 2>/dev/null || true)
+    if [ -n "$bypass" ]; then
+        echo "❌ 以下脚本绕过统一入口（直接 sqlite3.connect）:"
+        echo "$bypass"
+        echo "请改用 DataLoader/DataWriter"
+        exit 1
+    fi
+fi
+
+# 2. 检查硬编码 URL
+hardcoded=$(git diff --cached --name-only | grep -E "\.py$" | xargs grep -l "https://\(qt\.gtimg\|web\.ifzq\|hq\.sinajs\|push2\.eastmoney\)" 2>/dev/null || true)
+hardcoded=$(echo "$hardcoded" | grep -v "src/constants.py" | grep -v "src/data/fetcher.py" || true)
+if [ -n "$hardcoded" ]; then
+    echo "❌ 以下文件硬编码 API URL，请改用 src/constants.py:"
+    echo "$hardcoded"
+    exit 1
+fi
+
+# 3. 跨模块 import 路径有效性（Q-008）
+# 只检查 .py 文件中的 from scripts.X.Y import 语句
+py_files=$(git diff --cached --name-only | grep -E "\.py$" || true)
+if [ -n "$py_files" ]; then
+    imports=$(echo "$py_files" | xargs grep -hE "^[[:space:]]*from[[:space:]]+scripts\.[a-zA-Z0-9_]+" 2>/dev/null | grep -oE "from[[:space:]]+scripts\.[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*" | sed 's/from[[:space:]]*//' | sort -u || true)
+    if [ -n "$imports" ]; then
+        bad_imports=""
+        for imp in $imports; do
+            # 跳过非真实路径（如 docs/CHANGELOG 中可能的 "from"）
+            # 把 from scripts.a.b.c 转成 scripts/a/b/c.py
+            rel_path=$(echo "$imp" | sed 's/\./\//g').py
+            if [ ! -f "$rel_path" ] && [ ! -d "$(echo "$imp" | sed 's/\./\//g')" ]; then
+                bad_imports="$bad_imports\n  $imp → $rel_path 不存在"
+            fi
+        done
+        if [ -n "$bad_imports" ]; then
+            echo "❌ 跨模块 import 路径错误（Q-008）:"
+            echo -e "$bad_imports"
+            echo "请检查 scripts/ 目录结构"
+            exit 1
+        fi
+    fi
+fi
+
+# 4. TradeRecord 必填字段检查（Q-009）
+# 当 src/trade/tracker.py 变更时，提醒字段
+if git diff --cached --name-only | grep -q "src/trade/tracker.py"; then
+    echo "⚠️  src/trade/tracker.py 已变更"
+    echo "请确认 TradeRecord 包含必填字段: model, strategy, evaluation, snapshot_ref"
+    echo "参考 docs/TRADE_RECORD_SPEC.md"
+fi
+
+# 5. schema 变更提醒
+schema_changes=$(git diff --cached --name-only | grep -E "schema/.*\.sql$" || true)
+if [ -n "$schema_changes" ]; then
+    echo "⚠️  检测到 schema 变更:"
+    echo "$schema_changes"
+    echo "请确认 schema/migrations/ 目录有对应迁移文件"
+fi
+
+echo "✅ pre-commit 检查通过"
+exit 0
