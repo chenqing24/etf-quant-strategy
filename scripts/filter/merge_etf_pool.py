@@ -1,5 +1,34 @@
 #!/usr/bin/env python3
-"""合并流动性Top60与现有ETF池，生成无重复的新列表"""
+"""
+合并流动性Top60与现有ETF池，生成无重复的新列表
+
+用途：
+    - 合并多个 ETF 池
+    - 去重处理
+    - 生成最终 ETF 池
+
+被谁调用：
+    - 无（独立工具，手动执行）
+    - ETF 池合并时使用
+
+功能说明：
+    - 读取流动性 Top60 ETF 代码
+    - 获取数据库中已存在的 ETF
+    - 合并并去重
+    - 输出最终列表
+
+使用方式：
+    python scripts/filter/merge_etf_pool.py
+
+依赖：
+    - sqlite3
+    - json
+
+注意事项：
+    - 已豁免 pre-commit 检查（筛选脚本）
+    - 输出到 etf_data_live/merged_etf_pool.json
+    - 配合其他筛选脚本使用
+"""
 import sqlite3
 import json
 

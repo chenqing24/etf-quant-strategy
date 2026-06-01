@@ -1,9 +1,37 @@
 #!/usr/bin/env python3
-"""腾讯ETF数据采集器 - 统一数据层版本
+"""
+腾讯ETF数据采集器 - 统一数据层版本
 
-重构说明（v3.0 Phase 2）：
-- 写入使用 DataWriter（统一数据入口）
-- CSV 作为外部备份，不参与业务逻辑
+用途：
+    - 从腾讯 API 获取 ETF 实时行情
+    - 获取历史 K 线数据
+    - 支持批量采集
+
+被谁调用：
+    - src/cli/decision.py（决策引擎获取实时行情）
+    - scripts/data/fetch_today.py（今日数据采集）
+    - 内部模块，供其他数据层模块使用
+
+功能说明：
+    - 重构说明（v3.0 Phase 2）：写入使用 DataWriter（统一数据入口）
+    - CSV 作为外部备份，不参与业务逻辑
+    - 使用腾讯 API（qt.gtimg.cn / ifzq.gtimg.cn）
+
+使用方式：
+    from src.data.fetcher import TencentETFetcher
+    
+    fetcher = TencentETFetcher()
+    data = fetcher.fetch_realtime(['159611', '510300'])
+    history = fetcher.fetch_history('159611', days=365)
+
+依赖：
+    - src.constants (TENCENT_BASE_URL, HTTP_TIMEOUT_SHORT, DB_NAME, DATA_DIR)
+    - requests
+
+注意事项：
+    - API 限速 2-5 秒/请求
+    - 使用 WAL 模式支持并发
+    - 历史数据通过 DataWriter 写入数据库
 """
 import json
 import os

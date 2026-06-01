@@ -2,11 +2,36 @@
 """
 ETF池加载器
 
-从池文件动态加载ETF列表，支持：
-1. 从配置文件加载
-2. 转换为腾讯格式（sh/sz前缀）
-3. 验证列表合法性
-4. 回退到硬编码（文件不存在时）
+用途：
+    - 从池文件动态加载 ETF 列表
+    - 支持从配置文件加载（top500_target_pool.txt）
+    - 转换为腾讯格式（sh/sz 前缀）
+    - 验证列表合法性
+
+被谁调用：
+    - src/cli/decision.py（决策引擎加载 ETF 池）
+    - scripts/filter/ 系列脚本（筛选 ETF）
+    - 其他需要 ETF 列表的模块
+
+功能说明：
+    - 支持配置优先，文件不存在时回退到硬编码
+    - 硬编码兜底列表（当池文件不存在时使用）
+    - 默认池文件路径：etf_data_live/top500_target_pool.txt
+
+使用方式：
+    from src.data.etf_pool_loader import ETFListLoader
+    
+    loader = ETFListLoader()
+    codes = loader.load()
+
+依赖：
+    - pathlib (Path)
+    - logging
+
+注意事项：
+    - 返回的代码带 sh/sz 前缀（如 'sh510300'）
+    - 文件不存在时使用硬编码兜底
+    - 支持自定义池文件路径
 """
 import os
 import re

@@ -2,24 +2,46 @@
 """
 SQLite定期备份脚本
 
-功能：
-- 每日备份（收盘后自动执行）
-- 每周备份（周五保留）
-- 手动备份（重大变更前）
-- 自动清理过期备份
+用途：
+    - 每日备份（收盘后自动执行）
+    - 每周备份（周五保留）
+    - 手动备份（重大变更前）
+    - 自动清理过期备份
+
+被谁调用：
+    - QwenPaw cron 定时任务（每日 16:30 工作日）
+    - 也可手动调用：`python scripts/maintenance/backup_sqlite.py --type daily`
+
+功能说明：
+    - 备份 etf_data_live/etf.db 和 data/etf_factors.db
+    - 支持增量备份和完整备份
+    - 自动清理过期备份（默认保留 7 天）
+    - 恢复功能支持从备份文件还原
 
 使用方式：
     # 每日备份
-    python scripts/backup_sqlite.py --type daily
+    python scripts/maintenance/backup_sqlite.py --type daily
     
     # 每周备份
-    python scripts/backup_sqlite.py --type weekly
+    python scripts/maintenance/backup_sqlite.py --type weekly
     
     # 手动备份
-    python scripts/backup_sqlite.py --type manual
+    python scripts/maintenance/backup_sqlite.py --type manual
+    
+    # 查看备份列表
+    python scripts/maintenance/backup_sqlite.py --list
     
     # 恢复
-    python scripts/backup_sqlite.py --restore backup_20260529.db
+    python scripts/maintenance/backup_sqlite.py --restore backup_20260529.db
+
+依赖：
+    - sqlite3
+    - pathlib
+
+注意事项：
+    - 备份文件保存在 etf_backups/ 目录
+    - 已豁免 pre-commit 检查（运维工具）
+    - 路径注入使用 3 层（与其他 maintenance 脚本一致）
 """
 import os
 import sys

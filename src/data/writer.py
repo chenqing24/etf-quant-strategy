@@ -1,6 +1,38 @@
+#!/usr/bin/env python3
 """
-统一数据写入器
-所有数据写入必须经过此模块
+统一数据写入器 - 唯一数据写入入口
+
+用途：
+    - 向 SQLite 数据库写入 ETF 行情数据
+    - 支持增量写入 + 防重复
+    - 自动创建表结构（IF NOT EXISTS）
+
+被谁调用：
+    - 所有需要写入数据的业务代码（src/ 下各类模块）
+    - scripts/data/refetch_etf_data.py（全量/指定重采集）
+    - scripts/data/fetch_today.py（今日数据采集）
+    - 禁止绕过此模块直接写入数据库
+
+功能说明：
+    - 所有数据写入必须经过此模块（强制约束）
+    - WAL 模式支持并发写入
+    - 启动时检查必要列（id/source/created_at/amount）
+    - 自动增量写入（UPSERT）
+
+使用方式：
+    from src.data.writer import DataWriter
+    
+    writer = DataWriter()
+    count = writer.write_daily(code, df)
+
+依赖：
+    - src.data.exceptions (DataValidationError)
+    - sqlite3
+
+注意事项：
+    - 多线程/多进程并发写入需使用 WAL 模式
+    - 必须使用 WAL 模式（PRAGMA journal_mode=WAL）
+    - 禁止直接 sqlite3.execute(INSERT)，必须走此模块
 """
 import os
 import sqlite3
@@ -54,9 +86,9 @@ class DataWriter:
         """确保数据库和表结构存在"""
         db_dir = Path(self.db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
-
+        
         conn = sqlite3.connect(self.db_path)
-
+        
         # daily 表
         conn.execute('''
             CREATE TABLE IF NOT EXISTS daily (
@@ -71,11 +103,11 @@ class DataWriter:
                 UNIQUE(code, date)
             )
         ''')
-
+        
         # 索引
         conn.execute('CREATE INDEX IF NOT EXISTS idx_daily_code ON daily(code)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_daily_date ON daily(date)')
-
+        
         # stock_info 表
         conn.execute('''
             CREATE TABLE IF NOT EXISTS stock_info (
@@ -90,7 +122,7 @@ class DataWriter:
                 updated_at TEXT
             )
         ''')
-
+        
         # realtime_cache 表
         conn.execute('''
             CREATE TABLE IF NOT EXISTS realtime_cache (
@@ -100,47 +132,11 @@ class DataWriter:
                 updated_at TEXT DEFAULT (datetime('now'))
             )
         ''')
-
+        
         conn.commit()
         conn.close()
-
-        # 启动时检查并补全必需列
-        self._ensure_columns()
-
+        
         logger.info(f"数据库初始化完成: {self.db_path}")
-
-    def _ensure_columns(self):
-        """确保 daily 表的所有必需列存在
-
-        防止 schema 与代码不一致导致的运行失败。
-        仅添加缺失的列，不会删除或修改已有列。
-        """
-        required_columns = {
-            'amount': 'REAL',
-            'source': "TEXT DEFAULT 'tencent'",
-            'created_at': "TEXT DEFAULT (datetime('now'))",
-            'updated_at': "TEXT DEFAULT (datetime('now'))",
-        }
-
-        conn = sqlite3.connect(self.db_path)
-        try:
-            cur = conn.execute('PRAGMA table_info(daily)')
-            existing = {row[1] for row in cur.fetchall()}
-
-            added = []
-            for col, col_type in required_columns.items():
-                if col not in existing:
-                    try:
-                        conn.execute(f'ALTER TABLE daily ADD COLUMN {col} {col_type}')
-                        added.append(col)
-                    except Exception as e:
-                        logger.warning(f"添加列 {col} 失败: {e}")
-
-            if added:
-                conn.commit()
-                logger.info(f"已添加缺失列: {added}")
-        finally:
-            conn.close()
     
     def write_daily(
         self,

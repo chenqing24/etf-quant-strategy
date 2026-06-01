@@ -2,11 +2,20 @@
 """
 数据质量监控模块
 
-功能：
-- 检查数据新鲜度
-- 检查数据完整性
-- 检查存储健康度
-- 生成监控报告
+用途：
+    - 检查数据新鲜度（分钟级告警，阈值80分钟）
+    - 检查数据完整性（交易日<50条=ERROR，缺失>20%=WARNING）
+    - 检查存储健康度
+    - 生成监控报告并发送到钉钉
+
+被谁调用：
+    - QwenPaw cron 定时任务（每日 09:00 工作日）
+    - 入口：`python -m src.data.monitor`
+
+功能说明：
+    - 替代已删除的 scripts/daily_data_check.py（功能重复）
+    - 是数据质量监控的唯一入口
+    - 包含分钟级新鲜度检查 + 完整性检查
 
 使用方式：
     # 检查并输出报告
@@ -17,6 +26,16 @@
     
     # 发送到钉钉
     python -m src.data.monitor --dingtalk
+
+依赖：
+    - src.constants (DATA_DIR, DB_NAME)
+    - src.notify.notifier (钉钉告警)
+    - sqlite3 (数据查询)
+
+注意事项：
+    - 数据新鲜度阈值：80分钟（80分钟内无更新=告警）
+    - 完整性阈值：50条（<50条=ERROR），缺失>20%（WARNING）
+    - 仅工作日运行（周一至周五）
 """
 import os
 import sys

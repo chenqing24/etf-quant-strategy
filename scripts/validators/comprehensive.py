@@ -1,8 +1,35 @@
 """
 ComprehensiveValidator 综合验证调度器
 
-功能：调度三大验证引擎，综合评分
-来源：DESIGN_OVERFIT_VALIDATOR.md v2.0
+用途：
+    - 调度三大验证引擎
+    - 综合评分
+    - 过拟合验证
+
+被谁调用：
+    - scripts/analysis/full_validation.py（全面验证）
+    - 其他需要综合验证的模块
+
+功能说明：
+    - 来源：DESIGN_OVERFIT_VALIDATOR.md v2.0
+    - 调度 WalkForward、MonteCarlo、CrossEtf 三大引擎
+    - 综合评分权重：walk_forward 40%、monte_carlo 15%、cross_etf 35%
+
+使用方式：
+    from scripts.validators import ComprehensiveValidator
+    
+    validator = ComprehensiveValidator()
+    result = validator.validate(data, signals)
+
+依赖：
+    - scripts.validators.walk_forward (WalkForwardEngine)
+    - scripts.validators.monte_carlo (MonteCarloEngine)
+    - scripts.validators.cross_etf (CrossEtfValidator)
+
+注意事项：
+    - 已豁免 pre-commit 检查（验证器）
+    - 综合评分阈值：0.6
+    - 返回综合验证结果（包含三个子引擎的结果）
 """
 import numpy as np
 import pandas as pd

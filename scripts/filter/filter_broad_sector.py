@@ -1,5 +1,31 @@
 #!/usr/bin/env python3
-"""ETF筛选 - 仅保留宽基指数 + 行业ETF"""
+"""
+ETF筛选脚本 - 仅保留宽基指数 + 行业ETF
+
+用途：
+    - 按类型筛选 ETF
+    - 生成仅包含宽基指数和行业ETF的池
+
+被谁调用：
+    - 无（独立工具，手动执行）
+    - ETF 池优化时使用
+
+功能说明：
+    - 读取 etf_data_live/etf_selection_analysis.json
+    - 仅保留宽基指数和行业ETF
+    - 排除其他类型（货币基金、债券等）
+
+使用方式：
+    python scripts/filter/filter_broad_sector.py
+
+依赖：
+    - json
+
+注意事项：
+    - 已豁免 pre-commit 检查（筛选脚本）
+    - 输入文件：etf_data_live/etf_selection_analysis.json
+    - 作为前置步骤，配合其他筛选脚本使用
+"""
 import json
 
 # 读取分析结果

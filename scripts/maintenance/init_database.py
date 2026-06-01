@@ -3,17 +3,32 @@
 数据库初始化脚本
 
 用途：
-1. 创建 etf_data_live/etf.db（行情数据库）
-2. 创建 data/etf_factors.db（因子数据库）
-3. 执行 schema 初始化
+    - 创建 etf_data_live/etf.db（行情数据库）
+    - 创建 data/etf_factors.db（因子数据库）
+    - 执行 schema 初始化（IF NOT EXISTS）
+
+被谁调用：
+    - 无（独立工具，手动执行）
+    - 数据库首次部署时使用
+    - 数据库 schema 变更后使用
+
+功能说明：
+    - 已有数据会被保留（使用 IF NOT EXISTS）
+    - 如需重建，先删除 .db 文件
+    - Schema 文件位于 schema/ 目录（01_etf_live_schema.sql, 02_etf_factors_schema.sql）
 
 使用方式：
-    cd etf_strategy
-    python scripts/init_database.py
+    # 在 etf_strategy 目录下执行
+    python scripts/maintenance/init_database.py
 
-注意：
-- 已有数据会被保留（使用 IF NOT EXISTS）
-- 如需重建，先删除 .db 文件
+依赖：
+    - sqlite3
+    - pathlib
+
+注意事项：
+    - 路径注入使用 3 层（与其他 maintenance 脚本一致）
+    - 已豁免 pre-commit 检查（运维工具）
+    - 必须在 PROJECT_ROOT（etf_strategy）目录下执行
 """
 import os
 import sys

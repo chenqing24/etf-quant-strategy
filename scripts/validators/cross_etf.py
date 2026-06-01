@@ -1,8 +1,34 @@
 """
-CrossEtf跨ETF泛化验证引擎
+CrossEtf跨ETF泛化验证引擎 - 验证策略在不同ETF上的泛化能力
 
-功能：跨ETF泛化能力验证
-来源：DESIGN_OVERFIT_VALIDATOR.md v2.0
+用途：
+    - 验证策略是否具备跨ETF泛化能力
+    - 训练集和测试集使用不同的ETF
+    - 确保策略不是针对特定ETF过拟合
+
+被谁调用：
+    - scripts/validators/comprehensive.py（综合验证调度器）
+    - 其他需要跨ETF验证的模块
+
+功能说明：
+    - 来源：DESIGN_OVERFIT_VALIDATOR.md v2.0
+    - 训练集：7 个 ETF
+    - 测试集：5 个 ETF（与训练集不重叠）
+    - 最大泛化差距：20%（训练/测试通过率差距）
+
+使用方式：
+    from scripts.validators import CrossEtfValidator
+    
+    validator = CrossEtfValidator()
+    result = validator.validate(data_dict, signals_dict)
+
+依赖：
+    - scripts.validators.walk_forward (WalkForwardEngine)
+
+注意事项：
+    - 已豁免 pre-commit 检查（验证器）
+    - min_train_etfs 从 5 改为 7，确保统计意义
+    - min_test_etfs 从 3 改为 5，确保泛化验证有效
 """
 import numpy as np
 import pandas as pd

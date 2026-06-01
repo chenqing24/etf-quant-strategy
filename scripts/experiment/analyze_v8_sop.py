@@ -1,4 +1,31 @@
-import json
+#!/usr/bin/env python3
+"""
+v8_sop 实验结果分析脚本
+
+用途：
+    - 分析 v8_sop 实验结果
+    - 生成 ETF 分布统计
+    - 分析因子出现频率
+
+被谁调用：
+    - 无（独立工具，手动执行）
+    - 实验复盘时使用
+
+功能说明：
+    - 读取 data/experiments_v8_sop/results_sop.json
+    - 统计核心通过模型的 ETF 分布
+    - 分析因子出现频率
+
+使用方式：
+    python scripts/experiment/analyze_v8_sop.py
+
+依赖：
+    - json
+
+注意事项：
+    - 已豁免 pre-commit 检查（分析脚本）
+    - 仅用于数据分析，不执行交易
+"""
 
 with open('data/experiments_v8_sop/results_sop.json') as f:
     data = json.load(f)

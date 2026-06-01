@@ -2,13 +2,35 @@
 """
 ETF多因子挖掘实验 v8.0
 
-核心改进（基于v2-v7教训）:
-1. 单笔收益目标: >1.0%（原>0.5%）
-2. 止盈/止损: 10%/5%（原6%/4%）
-3. 持仓周期: 5-30天（原3-20天）
-4. 过拟合标准: 滚动70%/MC p<0.01/交叉70%
+用途：
+    - 执行多因子挖掘实验
+    - 生成因子组合
+    - 评估策略表现
 
-数据范围: 最近3年（训练2年，实测1年）
+被谁调用：
+    - 无（独立工具，手动执行）
+    - 实验研究时使用
+
+功能说明：
+    - 核心改进（基于 v2-v7 教训）：
+    - 1. 单笔收益目标: >1.0%（原 >0.5%）
+    - 2. 止盈/止损: 10%/5%（原 6%/4%）
+    - 3. 持仓周期: 5-30天（原 3-20天）
+    - 4. 过拟合标准: 滚动 70%/MC p<0.01/交叉 70%
+    - 数据范围: 最近 3 年（训练 2 年，实测 1 年）
+
+使用方式：
+    python scripts/experiment/experiment_v8.py
+
+依赖：
+    - src.data.loader (DataLoader)
+    - src.indicators.wrapper (IndicatorCalculator)
+    - src.backtest.engine (FactorBacktester)
+
+注意事项：
+    - 已豁免 pre-commit 检查（实验脚本）
+    - 与 experiment_v8_sop.py 的区别：此版本未完整执行 SOP
+    - 结果保存到 data/experiments_v8/ 目录
 """
 import json
 import logging

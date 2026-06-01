@@ -1,5 +1,41 @@
 #!/usr/bin/env python3
-"""交易追踪与记录"""
+"""
+交易追踪与记录模块
+
+用途：
+    - 记录买入/卖出交易
+    - 追踪持仓状态
+    - 计算收益和绩效
+    - 管理止损止盈
+
+被谁调用：
+    - src/cli/decision.py（决策引擎执行交易时调用）
+    - src/risk/manager.py（风控检查时调用）
+    - 其他需要交易记录的模块
+
+功能说明：
+    - TradeRecord 数据类定义交易记录格式
+    - TradeTracker 类管理交易状态
+    - 自动计算持仓天数和收益
+    - 支持止损止盈触发
+
+使用方式：
+    from src.trade.tracker import TradeTracker
+    
+    tracker = TradeTracker()
+    tracker.record_buy(code, price, quantity)
+    tracker.check_stop_loss()
+    tracker.check_take_profit()
+
+依赖：
+    - src.constants (TRADES_FILE, TENCENT_QT_URL, HTTP_TIMEOUT_SHORT)
+    - requests（获取实时价格）
+
+注意事项：
+    - 交易记录保存到 etf_data_live/etf_trades.json
+    - 持仓记录保存到 etf_data_live/etf_positions.json
+    - 符合 TRADE_RECORD_SPEC.md 规范
+"""
 import csv
 import json
 import os

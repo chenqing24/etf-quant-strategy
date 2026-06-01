@@ -1,11 +1,34 @@
 #!/usr/bin/env python3
 """
-全面验证: 用新验证器测试所有4125个组合
+全面验证脚本 - 用新验证器测试所有4125个组合
 
-Phase 1: 快速筛选（WalkForward only）
-Phase 2: 深度验证（核心通过模型）
+用途：
+    - 使用过拟合验证器测试所有因子组合
+    - 筛选出通过验证的模型
+    - 生成验证报告
 
-执行时间: ~2小时（4125 × 2秒筛选 + 90 × 30秒深度）
+被谁调用：
+    - 无（独立工具，手动执行）
+    - 实验验证时使用
+    - 模型筛选时使用
+
+功能说明：
+    - Phase 1: 快速筛选（WalkForward only）
+    - Phase 2: 深度验证（核心通过模型）
+    - 执行时间: ~2小时（4125 × 2秒筛选 + 90 × 30秒深度）
+
+使用方式：
+    python scripts/analysis/full_validation.py
+
+依赖：
+    - src.data.loader (DataLoader)
+    - src.indicators.wrapper (IndicatorCalculator)
+    - scripts.validators (ComprehensiveValidator)
+
+注意事项：
+    - 已豁免 pre-commit 检查（分析脚本）
+    - 执行时间较长，建议在后台运行
+    - 结果保存到实验数据目录
 """
 import json
 import sys

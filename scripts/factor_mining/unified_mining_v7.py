@@ -1,16 +1,39 @@
 #!/usr/bin/env python3
 """
 ETF多因子挖掘 v7.0 - 完整评价体系版
-====================================
-【三个一致性】
-1. 工具调用一致：DataLoader + IndicatorCalculator + RelativeCalculator + FactorBacktester
-2. 执行流程一致：单因子测试 → 组合测试 → 过拟合验证 → 完整评价
-3. 评价标准一致：43个指标 + 8大维度 + 硬性门槛
 
-【核心改进（相对v6.0）】
-- 大盘因子量化：引入相对收益率、相对MACD、相对强弱等8个相对指标
-- 完整评价体系：43个指标覆盖8大维度
-- 相对收益基准：相对于大盘和ETF池的超额收益
+用途：
+    - 多因子挖掘实验（v7 版本）
+    - 生成因子组合
+    - 评估策略表现
+
+被谁调用：
+    - 无（独立工具，手动执行）
+    - 实验研究时使用
+
+功能说明：
+    【三个一致性】
+    1. 工具调用一致：DataLoader + IndicatorCalculator + RelativeCalculator + FactorBacktester
+    2. 执行流程一致：单因子测试 → 组合测试 → 过拟合验证 → 完整评价
+    3. 评价标准一致：43个指标 + 8大维度 + 硬性门槛
+
+    【核心改进（相对 v6.0）】
+    - 大盘因子量化：引入相对收益率、相对 MACD、相对强弱等 8 个相对指标
+    - 完整评价体系：43 个指标覆盖 8 大维度
+    - 相对收益基准：相对于大盘和 ETF 池的超额收益
+
+使用方式：
+    python scripts/factor_mining/unified_mining_v7.py
+
+依赖：
+    - src.data.loader (DataLoader)
+    - src.indicators.wrapper (IndicatorCalculator)
+    - src.backtest.engine (FactorBacktester)
+
+注意事项：
+    - 已豁免 pre-commit 检查（因子挖掘脚本）
+    - 与 v8 版本的区别：此版本未完整执行 SOP
+    - 结果保存到 data/experiments_v7/ 目录
 """
 import sys
 import json

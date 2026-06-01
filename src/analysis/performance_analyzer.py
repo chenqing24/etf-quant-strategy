@@ -1,5 +1,35 @@
 #!/usr/bin/env python3
-"""绩效分析 - 对比预期vs实际"""
+"""
+绩效分析模块 - 对比预期vs实际
+
+用途：
+    - 分析交易记录
+    - 计算收益和胜率
+    - 生成绩效报告
+
+被谁调用：
+    - src/cli/decision.py（决策引擎生成绩效报告）
+    - 其他需要绩效分析的模块
+
+功能说明：
+    - 对比预期收益和实际收益
+    - 计算胜率和平均收益
+    - 生成夏普比率等指标
+
+使用方式：
+    from src.analysis.performance_analyzer import PerformanceAnalyzer
+    
+    analyzer = PerformanceAnalyzer()
+    report = analyzer.analyze_trades()
+
+依赖：
+    - json
+    - pandas
+
+注意事项：
+    - 数据来源：etf_data_live/etf_trades.json
+    - 输出目录：etf_data_live/etf_reports
+"""
 import json
 import pandas as pd
 from datetime import datetime

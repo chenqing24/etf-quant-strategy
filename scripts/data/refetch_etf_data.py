@@ -2,31 +2,50 @@
 """
 ETF数据重采集脚本
 
-合并自:
-- fill_missing_etf_history.py (补全特定ETF)
-- supplement_history_data.py (批量补全历史)
+用途：
+    - 从腾讯 API 重新采集 ETF 历史数据
+    - 补充缺失的历史数据
+    - 修复数据质量问题
 
-功能:
-1. 支持全量采集（从etf_names表读取所有ETF）
-2. 支持指定股票列表重采集
-3. 支持指定时间段（默认最近3年=1095天）
-4. 使用统一采集入口DataWriter
+被谁调用：
+    - 无（独立工具，手动执行或定时任务）
+    - 数据修复时使用
+    - 数据不完整时使用
 
-Usage:
+功能说明：
+    - 合并自 fill_missing_etf_history.py 和 supplement_history_data.py
+    - 支持全量采集（从 etf_names 表读取所有 ETF）
+    - 支持指定股票列表重采集
+    - 支持指定时间段（默认最近 3 年 = 1095 天）
+    - 使用统一采集入口 DataWriter
+    - 并发 + 限速（workers=10, delay=0.3秒）
+    - WAL 模式支持并发
+
+使用方式：
     # 全量采集（默认最近3年）
-    python scripts/refetch_etf_data.py
-
+    python scripts/data/refetch_etf_data.py
+    
     # 指定股票列表
-    python scripts/refetch_etf_data.py --codes 510300,159919,512480
-
+    python scripts/data/refetch_etf_data.py --codes 510300,159919,512480
+    
     # 指定日期范围
-    python scripts/refetch_etf_data.py --start 2023-01-01 --end 2026-01-01
-
+    python scripts/data/refetch_etf_data.py --start 2023-01-01 --end 2026-01-01
+    
     # 指定股票+日期范围
-    python scripts/refetch_etf_data.py --codes 510300,159919 --days 365
-
+    python scripts/data/refetch_etf_data.py --codes 510300,159919 --days 365
+    
     # 从配置文件读取ETF列表
-    python scripts/refetch_etf_data.py --from-config
+    python scripts/data/refetch_etf_data.py --from-config
+
+依赖：
+    - src.data.writer (DataWriter)
+    - src.data.loader (DataLoader)
+    - requests
+
+注意事项：
+    - API 限速 2-5 秒/请求
+    - 并发数 10，不要超过
+    - 已豁免 pre-commit 检查（数据采集工具）
 """
 
 import argparse

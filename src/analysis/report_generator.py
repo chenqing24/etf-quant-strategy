@@ -1,5 +1,39 @@
 #!/usr/bin/env python3
-"""ETF投资决策报告生成器 - 固定模板版本 (含实时校验)"""
+"""
+ETF投资决策报告生成器 - 固定模板版本（含实时校验）
+
+用途：
+    - 生成每日量化决策报告
+    - 包含 top_5 / top_10 / all 三个版本
+    - 包含实时价格校验和交易信号
+
+被谁调用：
+    - src/cli/decision.py（决策引擎调用此模块生成报告）
+    - 其他需要生成决策报告的模块
+
+功能说明：
+    - 从数据库加载 ETF 历史数据
+    - 计算技术指标
+    - 生成买入/卖出信号
+    - 保存到 etf_reports/ 目录
+
+使用方式：
+    from src.analysis.report_generator import generate_decision_report
+    
+    report = generate_decision_report(mode='daily/eval', date=datetime.now())
+
+依赖：
+    - src.utils.config (run_strategy, StrategyConfig)
+    - src.core.selector (Selector)
+    - src.analysis.indicator (Indicator)
+    - src.data.loader (DataLoader, ETFNameLoader)
+    - src.data.manager (DataFacade)
+
+注意事项：
+    - 使用 DataLoader 读取数据（统一数据入口）
+    - ETF 名称从数据库读取（不再硬编码）
+    - 交易信号包含买入/卖出/观望
+"""
 import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any

@@ -1,11 +1,32 @@
 #!/usr/bin/env python3
 """
-ETF池筛选 - 流动性Top500版本
-筛选流程：
-1. 流动性筛选：按成交额排序，取Top500
-2. 类型排除：排除货币基金、债券基金、QDII海外、商品ETF
-3. 主题筛选：仅保留宽基指数+行业ETF
-4. 去重：同主题保留规模最大的
+ETF池筛选脚本 - 流动性Top500版本
+
+用途：
+    - 按流动性筛选 ETF
+    - 生成 Top500 ETF 池
+
+被谁调用：
+    - 无（独立工具，手动执行）
+    - ETF 池初始化时使用
+
+功能说明：
+    筛选流程：
+    1. 流动性筛选：按成交额排序，取 Top500
+    2. 类型排除：排除货币基金、债券基金、QDII海外、商品ETF
+    3. 主题筛选：仅保留宽基指数+行业ETF
+    4. 去重：同主题保留规模最大的
+
+使用方式：
+    python scripts/filter/filter_top500_etf.py
+
+依赖：
+    - requests（AKTools HTTP API）
+
+注意事项：
+    - 已豁免 pre-commit 检查（筛选脚本）
+    - 使用 AKTools API 获取实时行情
+    - 与 filter_top500_target.py 的区别：此版本仅按流动性筛选
 """
 import sqlite3
 import json

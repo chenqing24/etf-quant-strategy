@@ -1,13 +1,36 @@
 """
-MonteCarlo条件蒙特卡洛检验引擎
+MonteCarlo条件蒙特卡洛检验引擎 - 统计显著性验证
 
-功能：统计显著性验证
-来源：DESIGN_OVERFIT_VALIDATOR.md v2.0
+用途：
+    - 验证策略的统计显著性
+    - 使用蒙特卡洛模拟生成随机信号
+    - 对比真实信号和随机信号的收益
 
-关键改进：
-1. 条件随机信号（匹配市场状态）
-2. 交易成本调整
-3. 分状态计算后加权平均
+被谁调用：
+    - scripts/validators/comprehensive.py（综合验证调度器）
+    - 其他需要统计显著性验证的模块
+
+功能说明：
+    - 来源：DESIGN_OVERFIT_VALIDATOR.md v2.0
+    - 条件随机信号（匹配市场状态）
+    - 交易成本调整
+    - 分状态计算后加权平均
+
+使用方式：
+    from scripts.validators import MonteCarloEngine
+    
+    validator = MonteCarloEngine()
+    result = validator.validate(data, signals)
+
+依赖：
+    - numpy
+    - pandas
+
+注意事项：
+    - 已豁免 pre-commit 检查（验证器）
+    - 默认模拟次数：1000
+    - 交易成本：双边 0.2%
+    - 置信水平：0.05（p < 0.05 表示显著）
 """
 import numpy as np
 import pandas as pd

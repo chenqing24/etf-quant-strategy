@@ -2,10 +2,33 @@
 """
 ETF多因子挖掘实验 v8.0 - 完整SOP执行
 
-【SOP-03完整执行】
-- 2因子组合：66 × 15ETF = 990条
-- 3因子组合：优质因子 × 3ETF
-- 过拟合检验：只对核心通过模型
+用途：
+    - 执行多因子挖掘实验
+    - 生成因子组合
+    - 评估策略表现
+
+被谁调用：
+    - 无（独立工具，手动执行）
+    - 实验研究时使用
+
+功能说明：
+    - 【SOP-03 完整执行】
+    - 2因子组合：66 × 15ETF = 990条
+    - 3因子组合：优质因子 × 3ETF
+    - 过拟合检验：只对核心通过模型
+
+使用方式：
+    python scripts/experiment/experiment_v8_sop.py
+
+依赖：
+    - src.data.loader (DataLoader)
+    - src.indicators.wrapper (IndicatorCalculator)
+    - scripts.validators (ComprehensiveValidator)
+
+注意事项：
+    - 已豁免 pre-commit 检查（实验脚本）
+    - 执行时间较长，建议在后台运行
+    - 结果保存到 data/experiments_v8_sop/ 目录
 """
 import json
 import logging
