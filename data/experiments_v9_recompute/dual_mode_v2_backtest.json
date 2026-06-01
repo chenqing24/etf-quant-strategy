@@ -1,0 +1,562 @@
+{
+  "timestamp": "2026-06-02T05:05:53.622281",
+  "strategy": "dual_mode_v2",
+  "config": {
+    "entry": "震荡市突破区间上沿 → 开仓 20%",
+    "add_20_to_40": "回踩不破上沿 → 加到 40%",
+    "add_40_to_60": "趋势持续 + ADX 上升 → 加到 60%",
+    "sl": "-5% (突破假突破多，严格止损)",
+    "sp": "+12%",
+    "tail_exit_adx": "ADX 峰值回落 30% → 减半仓",
+    "tail_exit_ma": "MA5 死叉 MA20 → 清仓"
+  },
+  "summary_v2": {
+    "n_etf": 14,
+    "is_avg_return": 0.008097382374796847,
+    "is_avg_sharpe": 59.34634974161049,
+    "oos_avg_return": 0.009881694390712235,
+    "oos_avg_sharpe": 186.20403162192298,
+    "n_trades_is": 21,
+    "n_trades_oos": 25
+  },
+  "summary_baseline": {
+    "oos_avg_return": 0.08227484850959321,
+    "oos_avg_sharpe": 4.451598293214246
+  },
+  "detail_v2": [
+    {
+      "etf": "510300",
+      "is": {
+        "total_return": 0.01313820106515879,
+        "sharpe": 14.951399874634184,
+        "win_rate": 0.5,
+        "max_drawdown": 0.0,
+        "n_trades": 2,
+        "avg_trade": 0.06569100532579394
+      },
+      "oos": {
+        "total_return": 0.0060139704626736385,
+        "sharpe": 3.3571905557769806,
+        "win_rate": 0.4,
+        "max_drawdown": -0.047625970090518444,
+        "n_trades": 5,
+        "avg_trade": 0.01202794092534728
+      }
+    },
+    {
+      "etf": "515650",
+      "is": {
+        "total_return": 0.019293828148320258,
+        "sharpe": 22.11616556977118,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 3,
+        "avg_trade": 0.06431276049440086
+      },
+      "oos": {
+        "total_return": -0.0020867924528301996,
+        "sharpe": 0.0,
+        "win_rate": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": -0.020867924528301995
+      }
+    },
+    {
+      "etf": "515070",
+      "is": {
+        "total_return": 0.026308828452975934,
+        "sharpe": 287.0051654521157,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 2,
+        "avg_trade": 0.13154414226487965
+      },
+      "oos": {
+        "total_return": 0.016463157720317156,
+        "sharpe": 25.17923509071906,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 2,
+        "avg_trade": 0.08231578860158578
+      }
+    },
+    {
+      "etf": "512400",
+      "is": {
+        "total_return": 0,
+        "sharpe": 0,
+        "win_rate": 0,
+        "max_drawdown": 0,
+        "n_trades": 0,
+        "avg_trade": 0
+      },
+      "oos": {
+        "total_return": 0.027134941393328366,
+        "sharpe": 921.8477405681324,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 2,
+        "avg_trade": 0.13567470696664183
+      }
+    },
+    {
+      "etf": "512480",
+      "is": {
+        "total_return": -0.0017222482435597201,
+        "sharpe": 0.0,
+        "win_rate": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": -0.0172224824355972
+      },
+      "oos": {
+        "total_return": 0.024868218517900352,
+        "sharpe": 323.7668810373901,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 2,
+        "avg_trade": 0.12434109258950177
+      }
+    },
+    {
+      "etf": "588000",
+      "is": {
+        "total_return": 0,
+        "sharpe": 0,
+        "win_rate": 0,
+        "max_drawdown": 0,
+        "n_trades": 0,
+        "avg_trade": 0
+      },
+      "oos": {
+        "total_return": 0.004465314401622715,
+        "sharpe": 0.0,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": 0.04465314401622714
+      }
+    },
+    {
+      "etf": "512880",
+      "is": {
+        "total_return": -0.0040617886178861825,
+        "sharpe": 0.0,
+        "win_rate": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": -0.04061788617886183
+      },
+      "oos": {
+        "total_return": 0,
+        "sharpe": 0,
+        "win_rate": 0,
+        "max_drawdown": 0,
+        "n_trades": 0,
+        "avg_trade": 0
+      }
+    },
+    {
+      "etf": "512170",
+      "is": {
+        "total_return": 0.018718918918918918,
+        "sharpe": 0.0,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": 0.18718918918918917
+      },
+      "oos": {
+        "total_return": -0.0004793296089385477,
+        "sharpe": 0.0,
+        "win_rate": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": -0.004793296089385477
+      }
+    },
+    {
+      "etf": "512660",
+      "is": {
+        "total_return": -0.005308695652173918,
+        "sharpe": 0.0,
+        "win_rate": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": -0.05308695652173918
+      },
+      "oos": {
+        "total_return": 0,
+        "sharpe": 0,
+        "win_rate": 0,
+        "max_drawdown": 0,
+        "n_trades": 0,
+        "avg_trade": 0
+      }
+    },
+    {
+      "etf": "512200",
+      "is": {
+        "total_return": -0.0065930013458950195,
+        "sharpe": 0.0,
+        "win_rate": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": -0.06593001345895019
+      },
+      "oos": {
+        "total_return": 0.0029950039315308954,
+        "sharpe": 10.661233498014349,
+        "win_rate": 0.5,
+        "max_drawdown": -0.007322687957418303,
+        "n_trades": 2,
+        "avg_trade": 0.014975019657654475
+      }
+    },
+    {
+      "etf": "512800",
+      "is": {
+        "total_return": 0.00328258706467662,
+        "sharpe": 0.0,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": 0.032825870646766196
+      },
+      "oos": {
+        "total_return": -0.0019287234042553204,
+        "sharpe": 0.0,
+        "win_rate": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": -0.019287234042553204
+      }
+    },
+    {
+      "etf": "512980",
+      "is": {
+        "total_return": 0.022571165791203388,
+        "sharpe": 7.359577702072411,
+        "win_rate": 0.5,
+        "max_drawdown": -0.0616107055961069,
+        "n_trades": 4,
+        "avg_trade": 0.056427914478008476
+      },
+      "oos": {
+        "total_return": 0.012113003452243956,
+        "sharpe": 0.0,
+        "win_rate": 1.0,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "avg_trade": 0.12113003452243956
+      }
+    },
+    {
+      "etf": "515050",
+      "is": {
+        "total_return": 0.011309195955705335,
+        "sharpe": 12.734955265544746,
+        "win_rate": 0.5,
+        "max_drawdown": -0.013940298507462754,
+        "n_trades": 2,
+        "avg_trade": 0.05654597977852667
+      },
+      "oos": {
+        "total_return": 0.0071623576762167105,
+        "sharpe": 6.137725530313739,
+        "win_rate": 0.5,
+        "max_drawdown": 0.0,
+        "n_trades": 2,
+        "avg_trade": 0.03581178838108355
+      }
+    },
+    {
+      "etf": "515790",
+      "is": {
+        "total_return": 0.016426361709711457,
+        "sharpe": 11.910834585524727,
+        "win_rate": 0.5,
+        "max_drawdown": 0.0,
+        "n_trades": 2,
+        "avg_trade": 0.08213180854855727
+      },
+      "oos": {
+        "total_return": 0.04162259938016157,
+        "sharpe": 12.478215073114336,
+        "win_rate": 0.6,
+        "max_drawdown": -0.05708474576271184,
+        "n_trades": 5,
+        "avg_trade": 0.08324519876032313
+      }
+    }
+  ],
+  "detail_baseline": [
+    {
+      "etf": "510300",
+      "is": {
+        "total_return": 0.025951247545367817,
+        "sharpe": 1.096898351193441,
+        "win_rate": 0.3333333333333333,
+        "max_drawdown": -0.11230000326298398,
+        "n_trades": 6,
+        "avg_trade": 0.007208679873713286
+      },
+      "oos": {
+        "total_return": 0.049740293592555954,
+        "sharpe": 14.28151214167419,
+        "win_rate": 0.75,
+        "max_drawdown": -0.018283924843423845,
+        "n_trades": 4,
+        "avg_trade": 0.020725122330231646
+      }
+    },
+    {
+      "etf": "515650",
+      "is": {
+        "total_return": -0.07560075170954442,
+        "sharpe": -22.88440771209519,
+        "win_rate": 0.0,
+        "max_drawdown": -0.10015001867563061,
+        "n_trades": 6,
+        "avg_trade": -0.021000208808206786
+      },
+      "oos": {
+        "total_return": -0.07594062331649747,
+        "sharpe": -25.633890429672746,
+        "win_rate": 0.2,
+        "max_drawdown": -0.10636435055814637,
+        "n_trades": 5,
+        "avg_trade": -0.025313541105499153
+      }
+    },
+    {
+      "etf": "515070",
+      "is": {
+        "total_return": 0.16677117646974776,
+        "sharpe": 5.043953995303454,
+        "win_rate": 0.6,
+        "max_drawdown": -0.12554546168821035,
+        "n_trades": 10,
+        "avg_trade": 0.0277951960782913
+      },
+      "oos": {
+        "total_return": 0.19009610115084713,
+        "sharpe": 9.365852919322599,
+        "win_rate": 0.7142857142857143,
+        "max_drawdown": -0.055122721489347534,
+        "n_trades": 7,
+        "avg_trade": 0.04526097646448741
+      }
+    },
+    {
+      "etf": "512400",
+      "is": {
+        "total_return": 0.03497824430981348,
+        "sharpe": 1.2486061849845935,
+        "win_rate": 0.5714285714285714,
+        "max_drawdown": -0.17483068012305658,
+        "n_trades": 7,
+        "avg_trade": 0.008328153407098443
+      },
+      "oos": {
+        "total_return": 0.08947673664816494,
+        "sharpe": 2.894706777202795,
+        "win_rate": 0.45454545454545453,
+        "max_drawdown": -0.13382731898592065,
+        "n_trades": 11,
+        "avg_trade": 0.013557081310328022
+      }
+    },
+    {
+      "etf": "512480",
+      "is": {
+        "total_return": -0.034609534822254484,
+        "sharpe": -4.2322909805853195,
+        "win_rate": 0.5,
+        "max_drawdown": -0.11502913492063499,
+        "n_trades": 4,
+        "avg_trade": -0.014420639509272703
+      },
+      "oos": {
+        "total_return": 0.15749213166969572,
+        "sharpe": 15.2462909142997,
+        "win_rate": 0.75,
+        "max_drawdown": -0.027934401220442343,
+        "n_trades": 4,
+        "avg_trade": 0.06562172152903988
+      }
+    },
+    {
+      "etf": "588000",
+      "is": {
+        "total_return": 0.09569370496507387,
+        "sharpe": 5.824336688722133,
+        "win_rate": 0.5,
+        "max_drawdown": -0.1019999999999999,
+        "n_trades": 4,
+        "avg_trade": 0.03987237706878078
+      },
+      "oos": {
+        "total_return": 0.2164472828350531,
+        "sharpe": 14.952329568311244,
+        "win_rate": 0.8333333333333334,
+        "max_drawdown": -0.022648967551622316,
+        "n_trades": 6,
+        "avg_trade": 0.060124245231959195
+      }
+    },
+    {
+      "etf": "512880",
+      "is": {
+        "total_return": 0.13718380661844762,
+        "sharpe": 4.681242635983789,
+        "win_rate": 0.4444444444444444,
+        "max_drawdown": -0.09911604323127936,
+        "n_trades": 9,
+        "avg_trade": 0.02540440863304585
+      },
+      "oos": {
+        "total_return": -0.02043829714947756,
+        "sharpe": -1.8007447428232202,
+        "win_rate": 0.625,
+        "max_drawdown": -0.11095410998751018,
+        "n_trades": 8,
+        "avg_trade": -0.004257978572807825
+      }
+    },
+    {
+      "etf": "512170",
+      "is": {
+        "total_return": -0.07362673796791432,
+        "sharpe": -17.892234167525274,
+        "win_rate": 0.3333333333333333,
+        "max_drawdown": -0.12049223237724825,
+        "n_trades": 3,
+        "avg_trade": -0.04090374331550795
+      },
+      "oos": {
+        "total_return": 0.06487642539886472,
+        "sharpe": 8.546039585398697,
+        "win_rate": 0.6,
+        "max_drawdown": -0.045683754547922936,
+        "n_trades": 5,
+        "avg_trade": 0.021625475132954913
+      }
+    },
+    {
+      "etf": "512660",
+      "is": {
+        "total_return": 0.01737051011187618,
+        "sharpe": 0.7056846186967959,
+        "win_rate": 0.5,
+        "max_drawdown": -0.12200000000000005,
+        "n_trades": 8,
+        "avg_trade": 0.003618856273307538
+      },
+      "oos": {
+        "total_return": 0.061255538348278224,
+        "sharpe": 2.698897554319107,
+        "win_rate": 0.5714285714285714,
+        "max_drawdown": -0.10842092746730086,
+        "n_trades": 7,
+        "avg_trade": 0.014584651987685295
+      }
+    },
+    {
+      "etf": "512200",
+      "is": {
+        "total_return": 0.06468459433897389,
+        "sharpe": 2.105127476154546,
+        "win_rate": 0.5,
+        "max_drawdown": -0.12114641375222285,
+        "n_trades": 6,
+        "avg_trade": 0.017967942871937193
+      },
+      "oos": {
+        "total_return": -0.0421811972324798,
+        "sharpe": -6.094627534912954,
+        "win_rate": 0.3333333333333333,
+        "max_drawdown": -0.09201263508849696,
+        "n_trades": 6,
+        "avg_trade": -0.011716999231244385
+      }
+    },
+    {
+      "etf": "512800",
+      "is": {
+        "total_return": -0.017923666301874825,
+        "sharpe": -2.406307576199532,
+        "win_rate": 0.5714285714285714,
+        "max_drawdown": -0.07373756398389152,
+        "n_trades": 7,
+        "avg_trade": -0.004267539595684482
+      },
+      "oos": {
+        "total_return": 0.05466168445399201,
+        "sharpe": 9.506836013417292,
+        "win_rate": 0.6,
+        "max_drawdown": -0.014165450121654457,
+        "n_trades": 5,
+        "avg_trade": 0.01822056148466401
+      }
+    },
+    {
+      "etf": "512980",
+      "is": {
+        "total_return": 0.07495667403878817,
+        "sharpe": 3.243120862646069,
+        "win_rate": 0.6666666666666666,
+        "max_drawdown": -0.15348954619565225,
+        "n_trades": 9,
+        "avg_trade": 0.013880865562738551
+      },
+      "oos": {
+        "total_return": 0.0968352951588432,
+        "sharpe": 4.14724225548636,
+        "win_rate": 0.5555555555555556,
+        "max_drawdown": -0.08228059236165237,
+        "n_trades": 9,
+        "avg_trade": 0.01793246206645245
+      }
+    },
+    {
+      "etf": "515050",
+      "is": {
+        "total_return": 0.03922647389267628,
+        "sharpe": 7.13441587062486,
+        "win_rate": 0.5,
+        "max_drawdown": -0.03420842559523804,
+        "n_trades": 4,
+        "avg_trade": 0.01634436412194845
+      },
+      "oos": {
+        "total_return": 0.1924453906123896,
+        "sharpe": 7.265188396696663,
+        "win_rate": 0.8,
+        "max_drawdown": -0.1070420168067226,
+        "n_trades": 10,
+        "avg_trade": 0.03207423176873161
+      }
+    },
+    {
+      "etf": "515790",
+      "is": {
+        "total_return": -0.06573439015334269,
+        "sharpe": -3.1020304294348504,
+        "win_rate": 0.25,
+        "max_drawdown": -0.14362428479842324,
+        "n_trades": 8,
+        "avg_trade": -0.013694664615279727
+      },
+      "oos": {
+        "total_return": 0.11708111696407522,
+        "sharpe": 6.946742686279722,
+        "win_rate": 0.625,
+        "max_drawdown": -0.053207729468599,
+        "n_trades": 8,
+        "avg_trade": 0.02439189936751567
+      }
+    }
+  ]
+}
