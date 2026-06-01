@@ -99,14 +99,14 @@ class ETFDecisionEngine:
     
     def _prefetch_realtime_data(self, simple: bool = False) -> dict:
         """预热实时数据 (14:25环节)
-        
+
         Args:
             simple: 是否简版模式（禁用进度条）
         Returns:
             预热结果
         """
-        from scripts.prefetch_data import ETFDataPrefetcher
-        
+        from scripts.data.prefetch_data import ETFDataPrefetcher
+
         prefetcher = ETFDataPrefetcher(self.data_dir)
         results = prefetcher.prefetch_all(simple=simple)
         
