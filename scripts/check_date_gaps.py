@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""检测合成数据 - 检查时间间隔是否正常"""
-import pandas as pd
-import sqlite3
-from datetime import datetime, timedelta
+"""检测日期缺口 - 检查时间间隔是否正常"""
+import sys
+import os
+from datetime import datetime
+
+# 添加项目路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.data.loader import DataLoader
+
 
 def check_date_gaps(df, name):
     """检查日期间隔是否正常（应该是工作日，即1-3天）"""
@@ -15,35 +21,32 @@ def check_date_gaps(df, name):
             gaps.append((df.iloc[i-1]['date'], df.iloc[i]['date'], gap))
     return gaps
 
-conn = sqlite3.connect('etf_data_live/etf.db')
 
-print('=' * 70)
-print('真实数据 510300 日期检查')
-print('=' * 70)
-df_real = pd.read_sql('SELECT * FROM daily WHERE code="510300" ORDER BY date', conn)
-gaps = check_date_gaps(df_real, '510300')
-print(f'异常间隔（>7天）数量: {len(gaps)}')
-if gaps[:5]:
-    for g in gaps[:5]:
-        print(f'  {g[0]} -> {g[1]}: {g[2]}天')
+def main():
+    loader = DataLoader()
+    codes = loader.get_etf_list()
 
-print()
-print('=' * 70)
-print('合成数据 159611 日期检查')
-print('=' * 70)
-df_fake = pd.read_csv('../etf_data_50/159611.csv')
-gaps = check_date_gaps(df_fake, '159611')
-print(f'异常间隔（>7天）数量: {len(gaps)}')
-if gaps[:5]:
-    for g in gaps[:5]:
-        print(f'  {g[0]} -> {g[1]}: {g[2]}天')
+    print('=' * 70)
+    print('日期缺口检测')
+    print('=' * 70)
 
-conn.close()
+    has_gaps = []
+    for code in codes:
+        df = loader.load_single(code, min_rows=10)
+        if df is not None and len(df) >= 2:
+            gaps = check_date_gaps(df, code)
+            if gaps:
+                has_gaps.append((code, gaps))
 
-# 检查2022年4月的数据是否真实存在
-print()
-print('=' * 70)
-print('验证：2022年4月159611的真实行情')
-print('=' * 70)
-print('真实情况下，ETF 159611在2022年4月是否存在？')
-print('需要从历史数据源验证...')
+    if has_gaps:
+        print(f'\n发现 {len(has_gaps)} 只ETF有日期缺口:')
+        for code, gaps in has_gaps[:10]:
+            print(f'  {code}:')
+            for start, end, gap in gaps:
+                print(f'    {start} → {end}: {gap}天')
+    else:
+        print('\n✅ 所有ETF日期连续')
+
+
+if __name__ == '__main__':
+    main()

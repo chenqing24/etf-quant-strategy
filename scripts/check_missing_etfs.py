@@ -1,35 +1,56 @@
 #!/usr/bin/env python3
-"""补充缺失ETF到SQLite"""
-import sqlite3
-import pandas as pd
-import glob
+"""检查缺失的ETF - 对比配置池和数据库"""
+import sys
 import os
+from typing import List
 
-DB_PATH = 'etf_data_live/etf.db'
-CSV_DIR = '../etf_data_50'
+# 添加项目路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-conn = sqlite3.connect(DB_PATH)
-cur = conn.cursor()
+from src.data.loader import DataLoader
 
-# 获取已存在的code
-existing = set(r[0] for r in cur.execute('SELECT DISTINCT code FROM daily').fetchall())
 
-# 获取CSV目录的code
-csv_codes = set(f.split('/')[-1].replace('.csv','') for f in glob.glob(f'{CSV_DIR}/*.csv'))
+def get_etf_pool() -> List[str]:
+    """获取配置的ETF池"""
+    try:
+        from src.config.etf_pools import ETF_POOLS
+        codes = []
+        for pool in ETF_POOLS.values():
+            codes.extend(pool)
+        return list(set(codes))
+    except Exception as e:
+        print(f'读取配置失败: {e}')
+        return []
 
-# 找出缺失的
-missing = csv_codes - existing
-print(f'缺失ETF数量: {len(missing)}')
 
-# 统计这些缺失ETF的数据情况
-total_rows = 0
-for code in sorted(missing):
-    csv_file = f'{CSV_DIR}/{code}.csv'
-    if os.path.exists(csv_file):
-        df = pd.read_csv(csv_file)
-        total_rows += len(df)
+def main():
+    loader = DataLoader()
+    pool = get_etf_pool()
+    db_codes = set(loader.get_etf_list())
 
-print(f'缺失数据总行数: {total_rows}')
-print(f'补充后预计总行数: {cur.execute("SELECT COUNT(*) FROM daily").fetchone()[0] + total_rows}')
+    if not pool:
+        print('配置池为空，无法检查')
+        return
 
-conn.close()
+    print(f'配置ETF池: {len(pool)}只')
+    print(f'数据库ETF: {len(db_codes)}只')
+
+    # 找出缺失
+    missing = [c for c in pool if c not in db_codes]
+    extra = [c for c in db_codes if c not in pool]
+
+    print(f'\n缺失: {len(missing)}只')
+    for code in missing[:20]:
+        print(f'  - {code}')
+
+    if extra:
+        print(f'\n数据库有但配置无: {len(extra)}只')
+        for code in extra[:20]:
+            print(f'  + {code}')
+
+    if not missing:
+        print('\n✅ 所有配置ETF都已在数据库')
+
+
+if __name__ == '__main__':
+    main()
