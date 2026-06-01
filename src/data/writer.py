@@ -134,16 +134,18 @@ class DataWriter:
             raise DataValidationError(f"数据校验失败: {len(errors)} 个错误", errors)
         
         # 增量写入
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
+        # 启用 WAL 模式，提高并发性能
+        conn.execute('PRAGMA journal_mode=WAL')
         count = 0
         now = datetime.now().isoformat()
         
         for _, row in df.iterrows():
             date_str = str(row['date'])
             
-            # 检查是否已存在
+            # 检查是否已存在（使用复合主键检查，不依赖id列）
             existing = conn.execute(
-                'SELECT id FROM daily WHERE code=? AND date=?',
+                'SELECT 1 FROM daily WHERE code=? AND date=?',
                 (code, date_str)
             ).fetchone()
             
