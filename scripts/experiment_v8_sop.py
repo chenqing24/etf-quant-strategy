@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.data.loader import DataLoader
 from src.indicators.wrapper import IndicatorCalculator
+from scripts.validators import ComprehensiveValidator
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -164,6 +165,7 @@ def backtest_simple(indicators_data, factors, etf_code):
 
 
 def compute_ic_ir(indicators_data, factor_name):
+    """计算IC/IR指标"""
     ic_values = []
     
     for code, df in indicators_data.items():
@@ -176,6 +178,38 @@ def compute_ic_ir(indicators_data, factor_name):
             ic = signal[valid].corr(future_returns[valid])
             if not np.isnan(ic):
                 ic_values.append(ic)
+
+
+def new_overfit_validator(indicators_data, factors, etf_code):
+    """
+    【新增】使用ComprehensiveValidator进行过拟合验证
+    
+    替代旧的rolling_window_test + monte_carlo_test + cross_validation_test
+    """
+    df = indicators_data[etf_code].copy()
+    
+    # 创建信号函数
+    def signal_func(df, fs=factors):
+        signals = [get_signal(df, f) for f in fs]
+        combo_signal = signals[0]
+        for s in signals[1:]:
+            combo_signal = combo_signal & s
+        return combo_signal
+    
+    # 使用新验证器
+    validator = ComprehensiveValidator()
+    result = validator.validate({etf_code: df}, signal_func)
+    
+    return {
+        'composite_score': float(result.composite_score),
+        'pass': bool(result.pass_),
+        'wf_score': float(result.walk_forward_score),
+        'mc_score': float(result.monte_carlo_score),
+        'ce_score': float(result.cross_etf_score),
+        'wf_details': result.walk_forward_details,
+        'mc_details': result.monte_carlo_details,
+        'ce_details': result.cross_etf_details,
+    }
     
     if len(ic_values) == 0:
         return {'ic_mean': 0, 'ic_std': 0, 'ir': 0}
@@ -364,8 +398,8 @@ def run_experiment():
     
     logger.info(f"快速筛选完成: {len(combo_results)}条结果")
     
-    # ============ Phase 4.5: 过拟合检验 ============
-    logger.info("\n【Phase 4.5】过拟合检验（核心通过模型）")
+    # ============ Phase 4.5: 过拟合检验（使用新验证器） ============
+    logger.info("\n【Phase 4.5】过拟合检验 - 使用ComprehensiveValidator")
     
     passed_core = [r for r in combo_results if r['pass_core']]
     logger.info(f"核心通过: {len(passed_core)}个")
@@ -374,16 +408,15 @@ def run_experiment():
         if (i + 1) % 5 == 0:
             logger.info(f"  进度: {i+1}/{len(passed_core)}")
         
-        rolling = rolling_window_test(indicators_data, r['factors'], r['etf_code'])
-        mc = monte_carlo_test(indicators_data, r['factors'], r['etf_code'])
-        cv = cross_validation_test(indicators_data, r['factors'], r['etf_code'])
+        # 【替换】使用新的ComprehensiveValidator
+        new_result = new_overfit_validator(indicators_data, r['factors'], r['etf_code'])
         
-        r['overfit_rolling'] = float(rolling['pass_rate'])
-        r['overfit_mc_pvalue'] = float(mc['p_value'])
-        r['overfit_cv'] = float(cv['pass_rate'])
-        r['overfit_pass'] = bool(rolling['pass_rate'] >= OVERFIT_ROLLING_PASS and
-                            mc['p_value'] < OVERFIT_MC_PVALUE and
-                            cv['pass_rate'] >= OVERFIT_CV_PASS)
+        r['overfit_rolling'] = new_result['wf_score']
+        r['overfit_mc_pvalue'] = 1.0 - new_result['mc_score']  # 转换为p-value形式
+        r['overfit_cv'] = new_result['ce_score']
+        r['overfit_composite'] = new_result['composite_score']
+        r['overfit_pass_new'] = new_result['pass']
+        r['overfit_pass'] = new_result['pass']  # 统一使用新验证器结果
     
     # ============ Phase 4.6: 3因子组合（完整测试！） ============
     logger.info("\n【Phase 4.6】3因子组合测试 - 完整执行")
@@ -433,8 +466,8 @@ def run_experiment():
     
     logger.info(f"组合测试完成: {len(combo_results)}条结果")
     
-    # ============ Phase 4.7: 3因子组合过拟合检验 ============
-    logger.info("\n【Phase 4.7】3因子组合过拟合检验")
+    # ============ Phase 4.7: 3因子组合过拟合检验（使用新验证器） ============
+    logger.info("\n【Phase 4.7】3因子组合过拟合检验 - 使用ComprehensiveValidator")
     
     three_factor_passed = [r for r in combo_results if r['pass_core'] and len(r['factors']) == 3]
     logger.info(f"3因子核心通过: {len(three_factor_passed)}个")
@@ -443,16 +476,15 @@ def run_experiment():
         if (i + 1) % 10 == 0:
             logger.info(f"  进度: {i+1}/{len(three_factor_passed)}")
         
-        rolling = rolling_window_test(indicators_data, r['factors'], r['etf_code'])
-        mc = monte_carlo_test(indicators_data, r['factors'], r['etf_code'])
-        cv = cross_validation_test(indicators_data, r['factors'], r['etf_code'])
+        # 【替换】使用新的ComprehensiveValidator
+        new_result = new_overfit_validator(indicators_data, r['factors'], r['etf_code'])
         
-        r['overfit_rolling'] = float(rolling['pass_rate'])
-        r['overfit_mc_pvalue'] = float(mc['p_value'])
-        r['overfit_cv'] = float(cv['pass_rate'])
-        r['overfit_pass'] = bool(rolling['pass_rate'] >= OVERFIT_ROLLING_PASS and
-                            mc['p_value'] < OVERFIT_MC_PVALUE and
-                            cv['pass_rate'] >= OVERFIT_CV_PASS)
+        r['overfit_rolling'] = new_result['wf_score']
+        r['overfit_mc_pvalue'] = 1.0 - new_result['mc_score']  # 转换为p-value形式
+        r['overfit_cv'] = new_result['ce_score']
+        r['overfit_composite'] = new_result['composite_score']
+        r['overfit_pass_new'] = new_result['pass']
+        r['overfit_pass'] = new_result['pass']  # 统一使用新验证器结果
     
     # ============ Phase 5: 筛选 ============
     logger.info("\n【Phase 5】筛选通过模型")
