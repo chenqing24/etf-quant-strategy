@@ -1,11 +1,11 @@
 {
-  "159919": {
-    "name": "沪深300ETF嘉实",
-    "price": 5.132,
-    "yclose": 5.143,
-    "pct": -0.21,
-    "code_raw": "159919",
+  "159611": {
+    "name": "电力ETF广发",
+    "price": 1.248,
+    "yclose": 1.241,
+    "pct": 0.56,
+    "code_raw": "159611",
     "data_source": "tencent"
   },
-  "_cache_time": 1780238045.328328
+  "_cache_time": 1780294618.854769
 }

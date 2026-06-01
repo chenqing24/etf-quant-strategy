@@ -125,7 +125,7 @@ class TestMigrateData(TestCase):
         export_path = Path(self.test_dir) / 'export.json'
         
         # 运行迁移脚本的导出逻辑
-        from scripts.migrate_data import export_database
+        from scripts.maintenance.migrate_data import export_database
         
         result = export_database(db_path, export_path, ['test_table'])
         self.assertTrue(result)
@@ -145,7 +145,7 @@ class TestMigrateData(TestCase):
         conn.close()
         
         # 导入
-        from scripts.migrate_data import import_database
+        from scripts.maintenance.migrate_data import import_database
         
         result = import_database(db_path, export_path, ['test_table'])
         self.assertTrue(result)
@@ -184,7 +184,7 @@ class TestExportSchema(TestCase):
             # 导出
             output_path = Path(self.test_dir) / 'export.sql'
             
-            from scripts.export_schema import export_db_schema
+            from scripts.maintenance.export_schema import export_db_schema
             
             result = export_db_schema(tmp_db, output_path)
             self.assertTrue(result)

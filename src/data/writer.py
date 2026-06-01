@@ -54,9 +54,9 @@ class DataWriter:
         """确保数据库和表结构存在"""
         db_dir = Path(self.db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
-        
+
         conn = sqlite3.connect(self.db_path)
-        
+
         # daily 表
         conn.execute('''
             CREATE TABLE IF NOT EXISTS daily (
@@ -71,11 +71,11 @@ class DataWriter:
                 UNIQUE(code, date)
             )
         ''')
-        
+
         # 索引
         conn.execute('CREATE INDEX IF NOT EXISTS idx_daily_code ON daily(code)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_daily_date ON daily(date)')
-        
+
         # stock_info 表
         conn.execute('''
             CREATE TABLE IF NOT EXISTS stock_info (
@@ -90,7 +90,7 @@ class DataWriter:
                 updated_at TEXT
             )
         ''')
-        
+
         # realtime_cache 表
         conn.execute('''
             CREATE TABLE IF NOT EXISTS realtime_cache (
@@ -100,11 +100,47 @@ class DataWriter:
                 updated_at TEXT DEFAULT (datetime('now'))
             )
         ''')
-        
+
         conn.commit()
         conn.close()
-        
+
+        # 启动时检查并补全必需列
+        self._ensure_columns()
+
         logger.info(f"数据库初始化完成: {self.db_path}")
+
+    def _ensure_columns(self):
+        """确保 daily 表的所有必需列存在
+
+        防止 schema 与代码不一致导致的运行失败。
+        仅添加缺失的列，不会删除或修改已有列。
+        """
+        required_columns = {
+            'amount': 'REAL',
+            'source': "TEXT DEFAULT 'tencent'",
+            'created_at': "TEXT DEFAULT (datetime('now'))",
+            'updated_at': "TEXT DEFAULT (datetime('now'))",
+        }
+
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cur = conn.execute('PRAGMA table_info(daily)')
+            existing = {row[1] for row in cur.fetchall()}
+
+            added = []
+            for col, col_type in required_columns.items():
+                if col not in existing:
+                    try:
+                        conn.execute(f'ALTER TABLE daily ADD COLUMN {col} {col_type}')
+                        added.append(col)
+                    except Exception as e:
+                        logger.warning(f"添加列 {col} 失败: {e}")
+
+            if added:
+                conn.commit()
+                logger.info(f"已添加缺失列: {added}")
+        finally:
+            conn.close()
     
     def write_daily(
         self,

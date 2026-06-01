@@ -1,7 +1,7 @@
 # 模块说明
 
 > 描述每个模块的职责、接口和依赖关系
-> 生成时间: 2026-05-28 | 参考: INTERFACE_CONTRACT.md
+> 更新时间: 2026-06-01 | v3.0 架构整理后
 
 ---
 
@@ -364,6 +364,60 @@ def send_message(content: str, at_mobiles: List[str] = None):
 ### 7.3 接口约束
 - 禁止跨层直接调用（如CLI不能直接调DataSourceRouter）
 - 必须通过统一入口
+
+---
+
+## 八、新增模块说明（v3.0 后）
+
+### 8.1 DataWriter (src/data/writer.py)
+**职责**：统一数据写入入口
+- 所有 SQLite 写入必须经过此模块
+- 启动时自动检查并补全必需列
+- 启用 WAL 模式提升并发性能
+- 增量更新 + 防重复写入
+
+**主要方法**：
+- `write_daily(code, df, source)` - 写入日线数据
+- `write_daily_batch(records)` - 批量写入
+- `_ensure_columns()` - 启动时检查列
+
+### 8.2 DataLoader (src/data/loader.py)
+**职责**：统一数据读取入口
+- 只从 SQLite 读取
+- 与 DataWriter 配合使用
+
+**主要方法**：
+- `load(min_rows, codes)` - 加载多只ETF
+- `load_single(code, min_rows)` - 加载单只
+- `get_etf_list()` - 获取所有ETF
+- `get_latest_date(code)` - 最新日期
+- `get_date_range(code)` - 日期范围
+- `get_record_count(code)` - 记录数
+
+### 8.3 DataMonitor (src/data/monitor.py)
+**职责**：数据质量监控
+- 新鲜度检查（分钟级，阈值80分钟）
+- 完整性检查（交易日，阈值50条/20%缺失）
+- 存储健康检查
+- 钉钉通知
+
+### 8.4 Validators (scripts/validators/)
+**职责**：过拟合验证
+- WalkForwardEngine - 滚动窗口
+- MonteCarloEngine - 统计显著性
+- CrossEtfValidator - 跨ETF泛化
+- ComprehensiveValidator - 综合评分
+
+### 8.5 脚本工具（2026-06-01 分类）
+```
+scripts/data/         数据采集（3个）
+scripts/analysis/     分析（14个）
+scripts/filter/       筛选（5个）
+scripts/experiment/   实验（3个）
+scripts/maintenance/  维护（12个）
+scripts/validators/   验证器（4个）
+scripts/factor_mining/ 因子挖掘（2个）
+```
 
 ---
 

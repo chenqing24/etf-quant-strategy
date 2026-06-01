@@ -25,8 +25,12 @@ logger = get_logger()
 
 class ETFDecisionEngine:
     """ETF量化决策引擎"""
-    
-    def __init__(self, 
+
+    # Q-010: 当前激活的决策模型
+    ACTIVE_MODEL = 'v8_sop'
+    MODEL_INFO_PATH = 'data/experiments_v8_sop/results_sop.json'
+
+    def __init__(self,
                  data_dir: str = 'etf_data_live',
                  capital: float = 20000,
                  webhook_url: str = None):
@@ -99,14 +103,14 @@ class ETFDecisionEngine:
     
     def _prefetch_realtime_data(self, simple: bool = False) -> dict:
         """预热实时数据 (14:25环节)
-        
+
         Args:
             simple: 是否简版模式（禁用进度条）
         Returns:
             预热结果
         """
-        from scripts.prefetch_data import ETFDataPrefetcher
-        
+        from scripts.data.prefetch_data import ETFDataPrefetcher
+
         prefetcher = ETFDataPrefetcher(self.data_dir)
         results = prefetcher.prefetch_all(simple=simple)
         
@@ -118,6 +122,40 @@ class ETFDecisionEngine:
             'codes': results.get('codes', []),
         }
     
+    def _log_active_model(self):
+        """Q-010: 输出当前激活的决策模型信息"""
+        import json
+        from pathlib import Path
+
+        info_path = Path(self.MODEL_INFO_PATH)
+        if not info_path.exists():
+            logger.info(f"  模型: {self.ACTIVE_MODEL} (实验数据未找到)")
+            return
+
+        try:
+            with open(info_path) as f:
+                data = json.load(f)
+            info = data.get('experiment_info', {})
+            top_models = data.get('top_models', [])
+
+            logger.info(f"  模型: {self.ACTIVE_MODEL}")
+            logger.info(f"  训练期: {info.get('train_period', 'N/A')}")
+            logger.info(f"  测试期: {info.get('test_period', 'N/A')}")
+            logger.info(f"  ETF池: {len(info.get('etf_pool', []))} 只")
+
+            # 统计过拟合验证结果
+            passed_core = data.get('passed_core', 0)
+            passed_all = data.get('passed_all', 0)
+            logger.info(f"  过拟合验证: 通过核心 {passed_core} / 通过全部 {passed_all}")
+
+            if top_models:
+                best = top_models[0]
+                logger.info(f"  最佳模型: {best.get('etf_code', 'N/A')} "
+                            f"({', '.join(best.get('factors', []))}) "
+                            f"夏普={best.get('sharpe', 0):.2f}")
+        except Exception as e:
+            logger.warning(f"  模型信息读取失败: {e}")
+
     def _get_data_timestamp(self) -> str:
         """获取数据时间戳
         
@@ -145,7 +183,7 @@ class ETFDecisionEngine:
     
     def run_full_evaluation(self, silent: bool = False, simple: bool = False):
         """完整策略评估
-        
+
         Args:
             silent: 是否静默模式（不发送钉钉，由cron的agent响应代替）
             simple: 是否简版输出（钉钉APP专用，禁用进度条）
@@ -153,7 +191,7 @@ class ETFDecisionEngine:
         # 保存原始日志级别
         from src.utils.logger import ETFLogger, OutputLevel
         original_level = ETFLogger.get_output_level()
-        
+
         # 简版模式：暂时禁用日志输出
         if simple:
             ETFLogger.set_output_level(OutputLevel.SILENT)
@@ -166,11 +204,14 @@ class ETFDecisionEngine:
         
         # 恢复日志级别（预热后输出）
         ETFLogger.set_output_level(original_level)
-        
+
         logger.info("=" * 60)
         logger.info("🔄 完整策略评估")
         logger.info("=" * 60)
         logger.info(f"  数据更新时间: {data_timestamp}")
+
+        # Q-010: 集成 v8_sop 实验模型
+        self._log_active_model()
         logger.info("=" * 60)
         
         # 0. 检查数据新鲜度，如果过期则尝试更新

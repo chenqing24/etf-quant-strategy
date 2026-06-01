@@ -309,7 +309,7 @@ class TestBackupManager(unittest.TestCase):
     
     def test_backup_and_restore(self):
         """测试备份和恢复"""
-        from scripts.backup_sqlite import SQLiteBackupManager
+        from scripts.maintenance.backup_sqlite import SQLiteBackupManager
         import time
         
         manager = SQLiteBackupManager(
@@ -331,7 +331,7 @@ class TestBackupManager(unittest.TestCase):
     
     def test_list_backups(self):
         """测试列出备份"""
-        from scripts.backup_sqlite import SQLiteBackupManager
+        from scripts.maintenance.backup_sqlite import SQLiteBackupManager
         import time
         
         manager = SQLiteBackupManager(
