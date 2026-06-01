@@ -15,7 +15,7 @@
 | **运行回测实验** | `quick_run()` | `src/strategy/store.py` |
 | **风控检查** | `RiskManager` | `src/risk/manager.py` |
 | **每日决策** | CLI | `python -m src.cli.main -m daily` |
-| **数据质量检查** | `scripts/daily_data_check.py` | `scripts/` |
+| **数据质量检查** | `python -m src.data.monitor` | `src/data/monitor.py` |
 | **修复数据问题** | `scripts/repair_data.py` | `scripts/` |
 | **补充历史数据** | AKTools + DataWriter | 见下方工作流 |
 | **获取ETF池** | `ETFListLoader.load()` | `src/data/etf_pool_loader.py` |
@@ -98,7 +98,7 @@ r = requests.get(
 | `scripts/refetch_etf_data.py` | ETF数据重采集（全量/指定列表/指定时间段） |
 | `scripts/prefetch_data.py` | 批量预获取 |
 | `scripts/migrate_csv_to_sqlite.py` | CSV迁移 |
-| `scripts/daily_data_check.py` | 数据检查 |
+| `python -m src.data.monitor` | 数据质量监控（分钟级告警+完整性检查） |
 | `scripts/repair_data.py` | 数据修复 |
 
 ---
