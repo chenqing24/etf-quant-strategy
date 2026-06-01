@@ -16,7 +16,75 @@
       "price_deviation": 0.0,
       "rsi_14": 50.0,
       "day_change_pct": 0.0,
-      "score": 0
+      "score": 0,
+      "model": {
+        "name": "ETF量化决策v8_sop",
+        "experiment": "data/experiments_v8_sop",
+        "snapshot_file": "etf_data_live/decision_snapshot.json"
+      },
+      "strategy": {
+        "train_period": {
+          "start": "2022-01-01",
+          "end": "2024-12-31"
+        },
+        "selection": {
+          "score_threshold": 6,
+          "top_n": 30
+        },
+        "position": {
+          "hold_count": 2,
+          "weights": [
+            0.5,
+            0.5
+          ]
+        },
+        "rebalance": {
+          "rebalance_days": 10
+        },
+        "risk_control": {
+          "stop_loss": -0.1,
+          "stop_gain": 0.15,
+          "max_hold_days": 15
+        },
+        "trailing_stop": {
+          "enabled": false,
+          "threshold": 0.1,
+          "stop": 0.08
+        },
+        "market_filter": {
+          "ma_period": 60,
+          "enabled": true
+        }
+      },
+      "evaluation": {
+        "single_factor_count": 12,
+        "total_combinations": 4125,
+        "avg_sharpe": 1.408,
+        "avg_return": 0.3491
+      },
+      "snapshot_ref": {
+        "snapshot_time": "2026-06-01T13:37:35.143772",
+        "top_model_example": {
+          "factors": [
+            "T4_ADX趋势",
+            "M4_KDJ金叉",
+            "B1_布林上轨突破"
+          ],
+          "etf_code": "512200",
+          "trade_count": 19,
+          "total_return": 0.35418369617129963,
+          "avg_profit": 0.016597333736688615,
+          "sharpe": 8.10948692851744,
+          "win_rate": 0.7368421052631579,
+          "single_trade": 0.016597333736688615,
+          "pass_core": true,
+          "overfit_rolling": 0.5,
+          "overfit_mc_pvalue": 1.0,
+          "overfit_cv": 1.0,
+          "overfit_pass": false
+        },
+        "today_recommendations_count": 10
+      }
     }
   ],
   "positions": [],
