@@ -50,14 +50,16 @@ class DataQualityMonitor:
     
     def check_all(self) -> Dict[str, Any]:
         """执行所有检查"""
-        self.alerts = []
+        self.alerts = []  # ERROR级别
+        self.warnings = []  # WARNING级别
         
         report = {
             'timestamp': datetime.now().isoformat(),
             'freshness': self.check_data_freshness(),
             'completeness': self.check_data_completeness(),
             'storage': self.check_storage_health(),
-            'alerts': []
+            'alerts': self.alerts,    # ERROR only
+            'warnings': self.warnings  # WARNING only
         }
         
         self.report = report
@@ -106,7 +108,7 @@ class DataQualityMonitor:
                 })
             elif delay_days > 1:
                 status = 'WARNING'
-                self.alerts.append({
+                self.warnings.append({
                     'type': 'freshness',
                     'level': 'WARNING',
                     'message': f'数据延迟 {delay_days} 天',
@@ -175,7 +177,7 @@ class DataQualityMonitor:
                 })
             elif missing_count > 0:
                 status = 'WARNING'
-                self.alerts.append({
+                self.warnings.append({
                     'type': 'completeness',
                     'level': 'WARNING',
                     'message': f'缺失 {missing_count} 只ETF ({missing_pct:.1%})',
@@ -237,7 +239,7 @@ class DataQualityMonitor:
             # 判断状态
             if db_size_mb > self.THRESHOLDS['max_db_size_mb']:
                 status = 'WARNING'
-                self.alerts.append({
+                self.warnings.append({
                     'type': 'storage',
                     'level': 'WARNING',
                     'message': f'数据库较大 ({db_size_mb:.1f} MB)',
@@ -265,6 +267,7 @@ class DataQualityMonitor:
         
         r = self.report
         alerts = r.get('alerts', [])
+        warnings = r.get('warnings', [])
         
         lines = [
             "=" * 50,
@@ -292,12 +295,19 @@ class DataQualityMonitor:
         if alerts:
             lines.append("【告警】")
             for a in alerts:
-                level_icon = "🔴" if a['level'] == 'ERROR' else "⚠️"
-                lines.append(f"  {level_icon} {a['message']}")
+                lines.append(f"  🔴 {a['message']}")
                 if a.get('detail'):
                     lines.append(f"      {a['detail']}")
         else:
             lines.append("【告警】无")
+        
+        if warnings:
+            lines.append("")
+            lines.append("【警告】")
+            for w in warnings:
+                lines.append(f"  ⚠️ {w['message']}")
+                if w.get('detail'):
+                    lines.append(f"      {w['detail']}")
         
         lines.append("=" * 50)
         
@@ -321,8 +331,8 @@ def main():
     else:
         print(monitor.format_report())
     
-    # 告警时发送到钉钉
-    if args.dingtalk and report.get('alerts'):
+    # 告警或警告时发送到钉钉
+    if args.dingtalk and (report.get('alerts') or report.get('warnings')):
         try:
             from src.notify.dingtalk import DingTalkSender
             sender = DingTalkSender(mode='qwenpaw')
