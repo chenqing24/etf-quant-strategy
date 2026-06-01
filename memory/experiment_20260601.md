@@ -113,9 +113,29 @@
 
 ## 下一步
 
-1. [ ] 将ComprehensiveValidator集成到experiment_v8_sop.py
-2. [ ] 替换旧过拟合检验逻辑
-3. [ ] 重新跑实验验证集成效果
+1. [x] 将ComprehensiveValidator集成到experiment_v8_sop.py
+2. [x] 替换旧过拟合检验逻辑
+3. [x] 验证集成效果（测试通过）
+
+### 集成内容
+
+| 文件 | 修改 |
+|------|------|
+| experiment_v8_sop.py | 导入ComprehensiveValidator |
+| | 新增new_overfit_validator()函数 |
+| | Phase 4.5/4.7使用新验证器 |
+
+### Git提交
+
+| 提交 | 说明 |
+|------|------|
+| bb4447c | feat: 集成ComprehensiveValidator到experiment_v8_sop.py |
+
+## 结束时间
+2026-06-01 05:50:00
+
+## 总耗时
+约50分钟
 
 ## 结束时间
 2026-06-01 05:35:00
