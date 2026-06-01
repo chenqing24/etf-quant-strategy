@@ -32,7 +32,6 @@ Usage:
 import argparse
 import json
 import time
-import sqlite3
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -44,9 +43,10 @@ import pandas as pd
 import requests
 
 # 添加项目路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.data.writer import DataWriter
+from src.constants import TENCENT_BASE_URL, HTTP_TIMEOUT_SHORT
 
 # 配置
 logging.basicConfig(
@@ -55,7 +55,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TENcent_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
 REQUEST_DELAY = 0.3  # 秒
 MAX_WORKERS = 10  # 并发数
 
@@ -68,23 +67,11 @@ def get_prefix(code: str) -> str:
 
 
 def get_all_etf_codes() -> List[str]:
-    """从daily表读取所有ETF代码"""
-    base_dir = Path(__file__).parent.parent
-    db_path = base_dir / "etf_data_live" / "etf.db"
-    
-    conn = sqlite3.connect(str(db_path))
-    cur = conn.cursor()
-    # 优先从etf_names表读取，fallback到daily表
-    cur.execute('SELECT code FROM etf_names WHERE category = "ETF"')
-    codes = [row[0] for row in cur.fetchall()]
-    
-    if not codes:
-        # fallback: 从daily表读取
-        cur.execute('SELECT DISTINCT code FROM daily')
-        codes = [row[0] for row in cur.fetchall()]
-    
-    conn.close()
-    
+    """从数据库读取所有ETF代码（使用 DataLoader）"""
+    from src.data.loader import DataLoader
+    loader = DataLoader()
+    codes = loader.get_etf_list()
+
     logger.info(f"读取到 {len(codes)} 只ETF")
     return codes
 
@@ -103,51 +90,32 @@ def get_core_etf_codes() -> List[str]:
 
 
 def get_existing_range(code: str, db_path: str) -> tuple:
-    """获取SQLite中现有数据的日期范围"""
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute('SELECT MIN(date), MAX(date) FROM daily WHERE code = ?', (code,))
-    result = cur.fetchone()
-    conn.close()
-    return result[0], result[1]
+    """获取SQLite中现有数据的日期范围（使用 DataLoader）"""
+    from src.data.loader import DataLoader
+    loader = DataLoader()
+    range_info = loader.get_date_range(code)
+    return range_info.get('min'), range_info.get('max')
 
 
 def fetch_historical_from_tencent(code: str, days: int) -> List[Dict]:
     """
-    从腾讯API获取历史K线数据
-    
+    从腾讯API获取历史K线数据（委托给 TencentETFetcher）
+
     Args:
         code: ETF代码（无前缀）
         days: 获取天数
-    
+
     Returns:
-        list: [{date, open, high, low, close, volume}, ...]
+        list: [date, open, close, high, low, volume] 格式的列表
     """
+    from src.data.fetcher import TencentETFetcher
     prefix = get_prefix(code)
     full_code = f"{prefix}{code}"
-    url = TENcent_URL
-    params = {
-        '_var': 'kline_dayqfq',
-        'param': f'{full_code},day,,,{days},qfq'
-    }
-    
-    try:
-        r = requests.get(url, params=params, timeout=15)
-        text = r.text.replace('kline_dayqfq=', '', 1)
-        data = json.loads(text)
-        
-        etf_data = data.get('data', {}).get(full_code, {})
-        
-        # 优先取复权数据
-        for field in ['qfqday', 'day']:
-            records = etf_data.get(field)
-            if records:
-                return records
-        
+    df = TencentETFetcher().fetch_etf(full_code, days=days)
+    if df is None or df.empty:
         return []
-    except Exception as e:
-        logger.warning(f"请求失败: {code}, error: {e}")
-        return []
+    # 转换为列表格式（兼容下游 records_to_dataframe）
+    return df[['date', 'open', 'close', 'high', 'low', 'volume']].values.tolist()
 
 
 def records_to_dataframe(records: list) -> pd.DataFrame:
