@@ -194,14 +194,66 @@ data = r.json()['data']['sh510300']['qfqday']
 
 ### 3.3 脚本工具
 
+**目录结构**（2026-06-01 分类整理）：
+
+```
+scripts/
+├── data/          # 数据采集 (3个)
+│   ├── fetch_today.py
+│   ├── prefetch_data.py
+│   └── refetch_etf_data.py  ⭐ ETF重采集（支持全量/指定列表/指定时间段）
+├── analysis/      # 分析脚本 (14个)
+│   ├── analyze_*.py
+│   ├── full_validation.py
+│   ├── regression_test.py
+│   └── ...
+├── filter/        # ETF筛选 (5个)
+│   ├── filter_top500_*.py
+│   └── merge_etf_pool.py
+├── experiment/    # 实验脚本 (3个)
+│   ├── experiment_v8.py
+│   ├── experiment_v8_sop.py
+│   └── analyze_v8_sop.py
+├── factor_mining/ # 因子挖掘 (2个)
+│   ├── unified_mining_v7.py
+│   └── unified_mining_v8.py
+├── maintenance/   # 维护脚本 (12个)
+│   ├── backup_sqlite.py
+│   ├── check_*.py
+│   ├── repair_data.py
+│   ├── migrate_*.py
+│   └── update_etf_names.py
+└── validators/    # 验证器 (4个)
+    ├── comprehensive.py
+    ├── cross_etf.py
+    ├── monte_carlo.py
+    └── walk_forward.py
+```
+
+**测试脚本**（`tests/integration/`）：
+
+```
+tests/integration/
+├── test_datasources.py
+├── test_sina_hourly_api.py
+├── verify_datasources.py
+└── verify_all_datasources.py
+```
+
+**常用脚本列表**：
+
 | 脚本 | 用途 | 状态 |
 |------|------|------|
-| `scripts/refetch_etf_data.py` | ETF数据重采集（支持全量/指定列表/指定时间段） | ✅ 可用 |
-| `scripts/prefetch_data.py` | 批量预获取历史数据 | ✅ 可用 |
-| `scripts/fetch_today.py` | 获取今日数据 | ✅ 可用 |
-| `scripts/migrate_csv_to_sqlite.py` | CSV迁移SQLite | ✅ 可用 |
-| `scripts/daily_data_check.py` | 每日数据检查 | ✅ 可用 |
-| `scripts/repair_data.py` | 数据修复 | ✅ 可用 |
+| `scripts/data/refetch_etf_data.py` | ETF数据重采集 | ✅ 可用 |
+| `scripts/data/fetch_today.py` | 获取今日数据 | ✅ 可用 |
+| `scripts/data/prefetch_data.py` | 批量预获取历史数据 | ✅ 可用 |
+| `scripts/maintenance/backup_sqlite.py` | 数据库备份 | ✅ 可用 |
+| `scripts/maintenance/daily_data_check.py` | 每日数据检查 | ✅ 可用 |
+| `scripts/maintenance/repair_data.py` | 数据修复 | ✅ 可用 |
+| `scripts/maintenance/migrate_csv_to_sqlite.py` | CSV迁移SQLite | ✅ 可用 |
+| `scripts/maintenance/init_database.py` | 数据库初始化 | ✅ 可用 |
+| `scripts/maintenance/check_date_gaps.py` | 日期缺口检查 | ✅ 可用 |
+| `scripts/maintenance/check_missing_etfs.py` | 缺失ETF检查 | ✅ 可用 |
 
 ---
 
