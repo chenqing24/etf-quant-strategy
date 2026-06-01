@@ -196,9 +196,9 @@ data = r.json()['data']['sh510300']['qfqday']
 
 | 脚本 | 用途 | 状态 |
 |------|------|------|
+| `scripts/refetch_etf_data.py` | ETF数据重采集（支持全量/指定列表/指定时间段） | ✅ 可用 |
 | `scripts/prefetch_data.py` | 批量预获取历史数据 | ✅ 可用 |
 | `scripts/fetch_today.py` | 获取今日数据 | ✅ 可用 |
-| `scripts/supplement_history_data.py` | 补全历史数据 | ✅ 可用 |
 | `scripts/migrate_csv_to_sqlite.py` | CSV迁移SQLite | ✅ 可用 |
 | `scripts/daily_data_check.py` | 每日数据检查 | ✅ 可用 |
 | `scripts/repair_data.py` | 数据修复 | ✅ 可用 |
@@ -324,10 +324,11 @@ python -m src.cli.main -m update_pool
 | 脚本 | 用途 | 状态 |
 |------|------|------|
 | `scripts/filter_top500*.py` | ETF筛选 | 一次性 |
-| `scripts/fill_missing_etf_history.py` | 补数据 | 一次性 |
 | `scripts/update_etf_names.py` | 更新名称 | 一次性 |
 | `scripts/backup_sqlite.py` | 备份数据库 | 一次性 |
 | `scripts/deduplicate_etf.py` | ETF去重 | 一次性 |
+
+> 注: `refetch_etf_data.py` 已合并上述补数功能，支持全量/指定列表/指定时间段
 
 ---
 

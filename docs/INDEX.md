@@ -95,8 +95,8 @@ r = requests.get(
 
 | 脚本 | 用途 |
 |------|------|
+| `scripts/refetch_etf_data.py` | ETF数据重采集（全量/指定列表/指定时间段） |
 | `scripts/prefetch_data.py` | 批量预获取 |
-| `scripts/supplement_history_data.py` | 补全历史 |
 | `scripts/migrate_csv_to_sqlite.py` | CSV迁移 |
 | `scripts/daily_data_check.py` | 数据检查 |
 | `scripts/repair_data.py` | 数据修复 |

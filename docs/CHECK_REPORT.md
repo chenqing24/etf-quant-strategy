@@ -82,9 +82,9 @@ scripts/
 ├── daily_data_check.py        ✅
 ├── migrate_csv_to_sqlite.py   ✅
 ├── prefetch_data.py           ✅
+├── refetch_etf_data.py        ✅ (合并自 supplement_history_data.py + fill_missing_etf_history.py)
 ├── repair_data.py             ✅
-├── supplement_history_data.py ✅
-└── test_sina_hourly_api.py    ✅ (额外)
+└── test_sina_hourly_api.py    ✅
 ```
 
 ### 3.4 模块文件 (✅ 一致)
