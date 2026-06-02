@@ -105,14 +105,23 @@ class ReportBuilder:
             # RSI状态
             if indicators:
                 rsi = indicators.get('rsi_14', 0)
+                adx = indicators.get('adx_14', 0)
                 if rsi:
                     if rsi > 75:
-                        status = "🔥过热"
+                        rsi_status = "🔥过热"
                     elif rsi > 30:
-                        status = "✅正常"
+                        rsi_status = "✅正常"
                     else:
-                        status = "💤超卖"
-                    lines.append(ln(f"RSI14: **{rsi:.1f}** {status}"))
+                        rsi_status = "💤超卖"
+                    lines.append(ln(f"RSI14: **{rsi:.1f}** {rsi_status}"))
+                if adx:
+                    if adx > 25:
+                        adx_status = "📈强趋势"
+                    elif adx > 20:
+                        adx_status = "📊中趋势"
+                    else:
+                        adx_status = "⚖️弱趋势"
+                    lines.append(ln(f"ADX14: **{adx:.1f}** {adx_status}"))
             
             # 分隔线 + 风控
             lines.append("")  # 空行

@@ -403,6 +403,7 @@ class ETFDecisionEngine:
                     'ma120': latest.get('ma120', 0),
                     'rsi_14': latest.get('rsi_14', 0),
                     'vol_ratio': latest.get('vol_ratio', 0),
+                    'adx_14': latest.get('adx_14', 0),  # v9 双模式
                 }
             except Exception as e:
                 logger.warn(f"  ⚠ 数据处理失败: {e}")
