@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-02T07:50:32.588517",
+  "timestamp": "2026-06-02T08:09:39.855418",
   "experiment": "v8_sop_regime_dependency",
   "etf_pool": [
     "510300",
@@ -20,20 +20,20 @@
   ],
   "n_etf": 15,
   "total_regime_days": {
-    "trend": "299",
-    "volatile": "15580",
-    "unclear": "196"
+    "trend": "399",
+    "volatile": "21088",
+    "unclear": "214"
   },
   "total_signal_by_regime": {
-    "trend": "38",
+    "trend": "56",
     "volatile": "0",
     "unclear": "0"
   },
   "total_trades_by_regime": {
     "trend": {
-      "n": 14,
-      "wins": 7,
-      "total_pnl": -0.1429455807226402
+      "n": 17,
+      "wins": 8,
+      "total_pnl": 0.016194102938576004
     },
     "volatile": {
       "n": 0,
@@ -49,28 +49,19 @@
   "per_etf_results": [
     {
       "etf": "510300",
-      "total_days": 644,
+      "total_days": 2739,
       "regime_days": {
-        "trend": "42",
-        "volatile": "594",
-        "unclear": "8"
+        "trend": "1",
+        "volatile": "2728",
+        "unclear": "10"
       },
       "signal_by_regime": {
-        "trend": "3",
+        "trend": "0",
         "volatile": "0",
         "unclear": "0"
       },
-      "total_trades": 2,
-      "regime_stats": {
-        "trend": {
-          "n_trades": 2,
-          "n_wins": 1,
-          "win_rate": 0.5,
-          "total_pnl": -0.014453744147138396,
-          "avg_pnl": -0.007226872073569198,
-          "sharpe": -2.7730001367753045
-        }
-      }
+      "total_trades": 0,
+      "regime_stats": {}
     },
     {
       "etf": "515650",
@@ -115,11 +106,11 @@
     },
     {
       "etf": "512400",
-      "total_days": 641,
+      "total_days": 1452,
       "regime_days": {
-        "trend": "0",
-        "volatile": "641",
-        "unclear": "0"
+        "trend": "4",
+        "volatile": "1431",
+        "unclear": "17"
       },
       "signal_by_regime": {
         "trend": "0",
@@ -131,14 +122,14 @@
     },
     {
       "etf": "512480",
-      "total_days": 641,
+      "total_days": 1023,
       "regime_days": {
-        "trend": "8",
-        "volatile": "602",
-        "unclear": "31"
+        "trend": "14",
+        "volatile": "973",
+        "unclear": "36"
       },
       "signal_by_regime": {
-        "trend": "1",
+        "trend": "2",
         "volatile": "0",
         "unclear": "0"
       },
@@ -148,27 +139,36 @@
           "n_trades": 1,
           "n_wins": 1,
           "win_rate": 1.0,
-          "total_pnl": 0.0007173913043478286,
-          "avg_pnl": 0.0007173913043478286,
+          "total_pnl": 0.15437651821862355,
+          "avg_pnl": 0.15437651821862355,
           "sharpe": 0
         }
       }
     },
     {
       "etf": "588000",
-      "total_days": 641,
+      "total_days": 675,
       "regime_days": {
-        "trend": "13",
-        "volatile": "612",
-        "unclear": "16"
+        "trend": "87",
+        "volatile": "580",
+        "unclear": "8"
       },
       "signal_by_regime": {
-        "trend": "0",
+        "trend": "8",
         "volatile": "0",
         "unclear": "0"
       },
-      "total_trades": 0,
-      "regime_stats": {}
+      "total_trades": 4,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 4,
+          "n_wins": 1,
+          "win_rate": 0.25,
+          "total_pnl": -0.008933715362950151,
+          "avg_pnl": -0.0022334288407375377,
+          "sharpe": -0.3027100134894512
+        }
+      }
     },
     {
       "etf": "520900",
@@ -213,19 +213,28 @@
     },
     {
       "etf": "512170",
-      "total_days": 644,
+      "total_days": 1023,
       "regime_days": {
-        "trend": "0",
-        "volatile": "636",
-        "unclear": "8"
+        "trend": "78",
+        "volatile": "934",
+        "unclear": "11"
       },
       "signal_by_regime": {
-        "trend": "0",
+        "trend": "12",
         "volatile": "0",
         "unclear": "0"
       },
-      "total_trades": 0,
-      "regime_stats": {}
+      "total_trades": 4,
+      "regime_stats": {
+        "trend": {
+          "n_trades": 4,
+          "n_wins": 3,
+          "win_rate": 0.75,
+          "total_pnl": -0.05621262713379475,
+          "avg_pnl": -0.014053156783448687,
+          "sharpe": -6.655261181224698
+        }
+      }
     },
     {
       "etf": "512660",
@@ -254,51 +263,42 @@
     },
     {
       "etf": "512200",
-      "total_days": 644,
+      "total_days": 1439,
       "regime_days": {
-        "trend": "29",
-        "volatile": "600",
-        "unclear": "15"
+        "trend": "0",
+        "volatile": "1432",
+        "unclear": "7"
       },
       "signal_by_regime": {
-        "trend": "2",
+        "trend": "0",
         "volatile": "0",
         "unclear": "0"
       },
-      "total_trades": 2,
-      "regime_stats": {
-        "trend": {
-          "n_trades": 2,
-          "n_wins": 0,
-          "win_rate": 0.0,
-          "total_pnl": -0.15453156625512704,
-          "avg_pnl": -0.07726578312756352,
-          "sharpe": -89.531393227855
-        }
-      }
+      "total_trades": 0,
+      "regime_stats": {}
     },
     {
       "etf": "512800",
-      "total_days": 644,
+      "total_days": 1476,
       "regime_days": {
-        "trend": "21",
-        "volatile": "614",
-        "unclear": "9"
+        "trend": "23",
+        "volatile": "1445",
+        "unclear": "8"
       },
       "signal_by_regime": {
-        "trend": "4",
+        "trend": "5",
         "volatile": "0",
         "unclear": "0"
       },
-      "total_trades": 2,
+      "total_trades": 1,
       "regime_stats": {
         "trend": {
-          "n_trades": 2,
-          "n_wins": 2,
-          "win_rate": 1.0,
-          "total_pnl": 0.016324712759254064,
-          "avg_pnl": 0.008162356379627032,
-          "sharpe": 42.20414684816507
+          "n_trades": 1,
+          "n_wins": 0,
+          "win_rate": 0.0,
+          "total_pnl": -0.082033698399326,
+          "avg_pnl": -0.082033698399326,
+          "sharpe": 0
         }
       }
     },
@@ -329,14 +329,14 @@
     },
     {
       "etf": "515050",
-      "total_days": 644,
+      "total_days": 942,
       "regime_days": {
-        "trend": "5",
-        "volatile": "636",
-        "unclear": "3"
+        "trend": "11",
+        "volatile": "920",
+        "unclear": "11"
       },
       "signal_by_regime": {
-        "trend": "0",
+        "trend": "1",
         "volatile": "0",
         "unclear": "0"
       },
@@ -362,7 +362,7 @@
   ],
   "summary": {
     "trend_trade_pct": 1.0,
-    "trend_win_rate": 0.5,
-    "trend_total_pnl": -0.1429455807226402
+    "trend_win_rate": 0.47058823529411764,
+    "trend_total_pnl": 0.016194102938576004
   }
 }
