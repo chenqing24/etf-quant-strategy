@@ -372,7 +372,18 @@ ETFDecisionEngine
   ├── Selector.evaluate()  # 7因子评分
   ├── ScenarioAdapter.for_mobile().build_and_send()
   └── TradeTracker.record_*()
+
+# v9 双模式（v1.2）
+# - 趋势市：有信号（评分≥6）= 执行买入
+# - 震荡市：无信号 = 空仓观望
 ```
+
+**v9 双模式标记**（TODO-004~006 完成）:
+| 字段 | 说明 | 文件 |
+|------|------|------|
+| `market_mode` | 趋势市/震荡市 | `decision.py` |
+| `adx_14` | ADX趋势强度 | `indicator.py` |
+| `ADX14: xx 📈强趋势` | 趋势状态显示 | `report_builder.py` |
 
 ---
 
