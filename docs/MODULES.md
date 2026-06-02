@@ -320,18 +320,58 @@ def send_message(content: str, at_mobiles: List[str] = None):
 
 ### 5.1 decision_cli
 
-**文件**: `src/decision_cli.py`
+**文件**: `src/cli/decision.py`
 
 **职责**: 命令行入口，分发命令到各模块
 
+**核心决策流程**（TODO-004 双模式）:
+
 ```python
-# 模式
--m daily     # 每日决策
--m eval      # 完整评估
--m trade     # 记录交易
--m history   # 查看历史
--m perf      # 绩效分析
--m update_pool  # 更新ETF池
+class ETFDecisionEngine:
+    """ETF量化决策引擎"""
+    
+    def run_full_evaluation(self):
+        """完整策略评估（14:30定时任务）"""
+        # Step 1: 预热实时数据
+        self._prefetch_realtime_data()
+        
+        # Step 2: 加载历史数据（DataLoader）
+        loader = DataLoader()
+        self._etf_data = loader.load(min_rows=100)
+        
+        # Step 3: 遍历ETF，7因子打分（Selector.evaluate）
+        signals = []
+        for code, df in self._etf_data.items():
+            score, reasons = Selector().evaluate(df, latest_date)
+            if score >= 6:  # 阈值
+                signals.append({'code': code, 'score': score, 'reasons': reasons})
+        
+        # Step 4: 判断市场模式（V9_BACKLOG 决策）
+        # 有信号 = 趋势市，执行买入
+        # 无信号 = 震荡市，空仓观望
+        if signals:
+            market_mode = "趋势市"
+            execute_trades(signals)
+        else:
+            market_mode = "震荡市"
+            # 不触发新买入
+        
+        # Step 5: 钉钉通知（ScenarioAdapter）
+        adapter = ScenarioAdapter.for_mobile()
+        adapter.build_and_send(results)  # 标注 market_mode
+```
+
+**阈值常量**:
+- 评分阈值: `score >= 6` (7因子加权)
+- 最小数据行: `min_rows=100`
+
+**依赖关系**:
+```python
+ETFDecisionEngine
+  ├── DataLoader.load()
+  ├── Selector.evaluate()  # 7因子评分
+  ├── ScenarioAdapter.for_mobile().build_and_send()
+  └── TradeTracker.record_*()
 ```
 
 ---

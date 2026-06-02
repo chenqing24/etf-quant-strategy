@@ -425,11 +425,15 @@ class ETFDecisionEngine:
                 data_warning = line.strip()
         
         # 构建结果数据（供ScenarioAdapter使用）
+        # 判断市场模式：有信号=趋势市，无信号=震荡市
+        market_mode = "趋势市" if action == "买入" else "震荡市"
+        
         results = {
             'action': action,
             'code': new_code,
             'name': new_name,
             'price': new_price,
+            'market_mode': market_mode,  # v9 双模式标注
             'realtime': realtime,
             'indicators': indicators,
             'data_timestamp': data_timestamp,

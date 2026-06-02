@@ -36,6 +36,7 @@ class ReportBuilder:
                 'action': '买入'|'卖出'|'观望',
                 'code': '510300',
                 'price': 3.856,
+                'market_mode': '趋势市'|'震荡市',  # v9 双模式
                 'realtime': {'price': 3.860, 'change_pct': 1.5},
                 'indicators': {'rsi_14': 72},
                 'pnl': 5.2,
@@ -48,6 +49,7 @@ class ReportBuilder:
         action = results.get('action', '观望')
         code = results.get('code', '')
         price = results.get('price', 0)
+        market_mode = results.get('market_mode', '震荡市')  # 默认震荡市
         realtime = results.get('realtime', {})
         indicators = results.get('indicators', {})
         pnl = results.get('pnl', 0)
@@ -60,8 +62,13 @@ class ReportBuilder:
         # 钉钉换行规则：行尾加2个空格
         def ln(text): return text + "  " if text else text
         
+        # 市场模式标签（v9 双模式）
+        mode_emoji = "📈" if market_mode == "趋势市" else "📊"
+        mode_desc = "趋势市" if market_mode == "趋势市" else "震荡市(空仓)"
+        
         lines = [
-            ln(f"## 📈 ETF量化决策 {msg_time}"),
+            ln(f"## {mode_emoji} ETF量化决策 {msg_time}"),
+            ln(f"**{mode_desc}**"),
             "",
         ]
         
