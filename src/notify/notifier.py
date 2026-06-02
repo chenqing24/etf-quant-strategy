@@ -42,7 +42,10 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TradeSignal:
-    """交易信号"""
+    """交易信号（SOP-06 v2.0: 信号快照）
+    
+    钉钉通知包含此信号完整信息，用户可复制参数记录交易
+    """
     date: str
     code: str
     action: str  # 'buy' or 'sell'
@@ -50,6 +53,14 @@ class TradeSignal:
     reason: str
     score: int = 0
     pnl: float = 0  # 盈亏比例
+    
+    # ── 信号快照（SOP-06 v2.0）──────────────────────────────────
+    signal_time: str = ""       # 信号发出时间 (YYYY-MM-DD HH:MM)
+    signal_price: float = 0.0  # 信号发出时的价格
+    signal_rsi: float = 0.0     # RSI(14)
+    signal_adx: float = 0.0     # ADX(14)
+    signal_score: int = 0       # 信号评分
+    # ─────────────────────────────────────────────────────────────
 
 
 class SignalNotifier:

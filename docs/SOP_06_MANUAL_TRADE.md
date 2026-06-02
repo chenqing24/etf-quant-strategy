@@ -1,11 +1,13 @@
 # SOP-06: 用户手动交易记录
 
-**版本**：v1.0  
+**版本**：v2.0  
 **作者**：福猫管家  
 **创建日期**：2026-06-02  
+**更新日期**：2026-06-02（v2.0 增强）  
 **参考来源**：
-- Investopedia: "Why Traders Need a Trade Journal"
-- Bogleheads: Investment Journal Guidelines
+- [mransbro/tradingjournal](https://github.com/mransbro/tradingjournal) — 基础交易字段
+- [leionion/ai-trading-journal-audit-tool](https://github.com/leionion/ai-trading-journal-audit-tool) — NormalizedTrade schema、session_analyzer.py
+- [DawnSyndrome/automated-trading-journal](https://github.com/DawnSyndrome/automated-trading-journal) — 情绪追踪
 
 ---
 
@@ -46,6 +48,8 @@
 | `signal_price` | float | 信号发出时的价格（买入时填写） | `1.240` |
 | `actual_pnl` | float | 实际盈亏（卖出时填写） | `-128.0` |
 | `notes` | str | 备注 | `盘中突发下跌` |
+| `emotion` | str | 交易情绪 | `calm` |
+| `session` | str | 交易时段 | `D` |
 
 ### 自动填充字段（系统完成）
 
@@ -57,6 +61,39 @@
 | `day_change_pct` | 当日涨跌幅 | 腾讯API |
 | `amount` | 成交金额 | 自动计算 |
 
+### 信号快照字段（来源：参考 leionion/ai-trading-journal-audit-tool）
+
+| 字段 | 说明 | 示例 |
+|------|------|------|
+| `signal_time` | 信号发出时间 (YYYY-MM-DD HH:MM) | `2026-06-02 10:30` |
+| `signal_price` | 信号发出时的价格 | `1.197` |
+| `signal_rsi` | 信号时的RSI(14) | `50.6` |
+| `signal_adx` | 信号时的ADX(14) | `32.3` |
+| `signal_score` | 信号评分 | `6` |
+
+### 情绪字段（来源：参考 DawnSyndrome/automated-trading-journal）
+
+| 选项 | 说明 | 场景 |
+|------|------|------|
+| `calm` | 冷静 - 按计划执行 | ✅ 最佳状态 |
+| `euphoria` | 亢奋 - 追涨杀跌 | ❌ 风险信号 |
+| `fear` | 恐惧 - 恐慌止损 | ❌ 风险信号 |
+| `fomo` | FOMO - 怕错过行情 | ❌ 风险信号 |
+| `regret` | 后悔 - 犹豫后买入 | ❌ 风险信号 |
+
+### 时段字段（来源：参考 leionion/ai-trading-journal-audit-tool/session_analyzer.py）
+
+| 选项 | 时间范围 | 说明 |
+|------|----------|------|
+| `A` | 00:00-04:00 UTC | 亚洲尾盘 |
+| `B` | 04:00-08:00 UTC | 欧洲早盘 |
+| `C` | 08:00-12:00 UTC | 欧洲午盘 |
+| `D` | 12:00-16:00 UTC | 美洲早盘 |
+| `E` | 16:00-20:00 UTC | 美洲午盘 |
+| `F` | 20:00-24:00 UTC | 美洲尾盘 |
+
+**注意**：时段可不指定，系统自动从 `trade_time` 推断。
+
 ---
 
 ## 4. 录入方式
@@ -64,23 +101,31 @@
 ### 4.1 命令行方式
 
 ```bash
-# 买入记录
-python -m src.decision_cli -m trade \
+# 买入记录（SOP-06 v2.0）
+python -m src.cli.decision -m trade \
   --action buy \
-  --code 159611 \
-  --name 159611 \
-  --price 1.251 \
-  --quantity 4700 \
-  --reason "手动买入"
+  --code 515050 \
+  --name "通信ETF华夏" \
+  --price 1.197 \
+  --quantity 2600 \
+  --reason "MA20突破" \
+  --trade_time "2026-06-02 10:40" \
+  --signal_time "2026-06-02 10:30" \
+  --signal_price 1.197 \
+  --signal_rsi 50.6 \
+  --signal_adx 32.3 \
+  --signal_score 6 \
+  --emotion calm \
+  --session D
 ```
 
 ```bash
 # 卖出记录
-python -m src.decision_cli -m trade \
+python -m src.cli.decision -m trade \
   --action sell \
-  --code 159611 \
+  --code 515050 \
   --price 1.200 \
-  --quantity 4700 \
+  --quantity 2600 \
   --actual_pnl -239.0 \
   --reason "止损"
 ```
@@ -96,7 +141,14 @@ python -m src.decision_cli -m trade \
 | `--quantity` | ✅ | 成交数量 |
 | `--reason` | ❌ | 交易原因 |
 | `--actual_pnl` | ❌ | 实际盈亏（仅卖出时） |
-| `--notes` | ❌ | 备注 |
+| `--trade_time` | ❌ | 实际成交时间（自动推断 session） |
+| `--signal_time` | ❌ | 信号发出时间 |
+| `--signal_price` | ❌ | 信号价格 |
+| `--signal_rsi` | ❌ | 信号RSI(14) |
+| `--signal_adx` | ❌ | 信号ADX(14) |
+| `--signal_score` | ❌ | 信号评分 |
+| `--emotion` | ❌ | 交易情绪（calm/euphoria/fear/fomo/regret） |
+| `--session` | ❌ | 交易时段（A/B/C/D/E/F，自动推断） |
 
 ---
 
@@ -106,10 +158,10 @@ python -m src.decision_cli -m trade \
 
 ```bash
 # 查看最近记录
-python -m src.decision_cli -m history --date 2026-06
+python -m src.cli.decision -m history --date 2026-06
 
 # 导出CSV
-python -m src.decision_cli -m export --filepath trades_backup.csv
+python -m src.cli.decision -m export --filepath trades_backup.csv
 ```
 
 ### 5.2 验证清单
@@ -118,6 +170,8 @@ python -m src.decision_cli -m export --filepath trades_backup.csv
 - [ ] 买入后 `positions` 显示持仓
 - [ ] 卖出后 `positions` 移除该ETF
 - [ ] 金额计算正确（price * quantity）
+- [ ] signal_* 字段正确填充
+- [ ] emotion/session 字段正确
 
 ---
 
@@ -132,7 +186,7 @@ curl -X POST "https://oapi.dingtalk.com/robot/send" \
   -d '{
     "msgtype": "text",
     "text": {
-      "content": "📝 手动买入记录\nETF: 159611\n价格: 1.251\n数量: 4700\n金额: 5881.7"
+      "content": "📝 手动买入记录\nETF: 515050 通信ETF华夏\n价格: 1.197\n数量: 2600\n金额: 3112.2\n情绪: calm\n时段: D"
     }
   }'
 ```
@@ -144,18 +198,19 @@ curl -X POST "https://oapi.dingtalk.com/robot/send" \
 ### 周度复盘（每周一）
 
 ```bash
-python -m src.decision_cli -m eval --days 7
+python -m src.cli.decision -m eval --days 7
 ```
 
 检查项：
 - [ ] 本周交易笔数
 - [ ] 胜率
 - [ ] 总盈亏
+- [ ] 情绪分布（FOMO/regret 占比）
 
 ### 月度复盘（每月1日）
 
 ```bash
-python -m src.decision_cli -m eval --days 30
+python -m src.cli.decision -m eval --days 30
 ```
 
 检查项：
@@ -164,6 +219,7 @@ python -m src.decision_cli -m eval --days 30
 - [ ] 盈亏比
 - [ ] 最大单笔亏损
 - [ ] 持仓天数分布
+- [ ] 时段分布（是否在美洲时段 E/F 亏损最多）
 
 ---
 
@@ -184,6 +240,10 @@ python -m src.decision_cli -m eval --days 30
 
 **A**：不一定。如果分批卖出，每次卖出记录独立累积，系统会自动计算剩余持仓。
 
+### Q4: 时段推断不准确怎么办？
+
+**A**：手动指定 `--session D`，不依赖自动推断。
+
 ---
 
 ## 9. 相关文档
@@ -201,3 +261,4 @@ python -m src.decision_cli -m eval --days 30
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
 | v1.0 | 2026-06-02 | 初始版本 |
+| v2.0 | 2026-06-02 | 增加信号快照、情绪、时段字段 |

@@ -102,7 +102,9 @@ class ReportBuilder:
                 if abs(deviation) > 5:
                     lines.append(ln(f"⚠️ 偏离信号 {deviation:+.1f}%"))
             
-            # RSI状态
+            # RSI + ADX状态
+            rsi = 0
+            adx = 0
             if indicators:
                 rsi = indicators.get('rsi_14', 0)
                 adx = indicators.get('adx_14', 0)
@@ -123,10 +125,26 @@ class ReportBuilder:
                         adx_status = "⚖️弱趋势"
                     lines.append(ln(f"ADX14: **{adx:.1f}** {adx_status}"))
             
+            # ── SOP-06 v2.0: 手动记录参数块 ───────────────────────
+            score = indicators.get('score', 6) if indicators else 6
+            lines.append("")
+            lines.append("---")
+            lines.append(ln("📝 手动记录参数:"))
+            lines.append(ln(f"```"))
+            lines.append(ln(f"--code {code} --name {name} \\"))
+            lines.append(ln(f"--price 实际成交价 --quantity 数量 \\"))
+            lines.append(ln(f"--trade_time \"YYYY-MM-DD HH:MM\" \\"))
+            lines.append(ln(f"--signal_time \"{msg_time}\" \\"))
+            lines.append(ln(f"--signal_price {price:.3f} \\"))
+            lines.append(ln(f"--signal_rsi {rsi:.1f} \\"))
+            lines.append(ln(f"--signal_adx {adx:.1f} \\"))
+            lines.append(ln(f"--signal_score {score} \\"))
+            lines.append(ln(f"--emotion calm --session D"))
+            lines.append(ln(f"```"))
+            # ────────────────────────────────────────────────────
+            
             # 分隔线 + 风控
-            lines.append("")  # 空行
-            lines.append("---")  # 分隔线
-            lines.append("")  # 空行
+            lines.append("")
             lines.append(ln(f"🛡️ 止损: **{price*0.94:.3f}** (-6%)"))
             lines.append(ln(f"🎯 止盈: **{price*1.10:.3f}** (+10%)"))
             
