@@ -471,19 +471,41 @@ class ETFDecisionEngine:
             'report': report,
         }
     
-    def execute_trade(self, code: str, action: str, price: float, quantity: int):
-        """执行交易"""
+    def execute_trade(self, code: str, action: str, price: float, quantity: int,
+                 reason: str = "", actual_pnl: float = 0, name: str = None):
+        """执行交易（SOP-06: 用户手动交易记录）
+        
+        Args:
+            code:         ETF代码
+            action:       'buy' 或 'sell'
+            price:        成交价格
+            quantity:     成交数量
+            reason:       交易原因（默认空字符串）
+            actual_pnl:   实际盈亏（仅卖出时填写）
+            name:         ETF名称（可选，不填则自动查找）
+        """
         from src.utils.industry import INDUSTRY_MAPPING
         
-        name = INDUSTRY_MAPPING.get(code, code)
+        # 自动获取名称
+        if name is None:
+            name = INDUSTRY_MAPPING.get(code, code)
         
         if action == 'buy':
-            self.tracker.record_buy(code, name, price, quantity, '策略推荐')
-            logger.info(f"✓ 已记录买入: {code} {name}")
+            self.tracker.record_buy(
+                code=code,
+                name=name,
+                price=price,
+                quantity=quantity,
+                reason=reason or '手动买入',
+            )
+            logger.info(f"✓ 已记录买入: {code} {name} {price}×{quantity}")
         else:
-            pnl = (price - 1.0) * quantity  # TODO: 准确计算
-            self.tracker.record_sell(code, price, pnl)
-            logger.info(f"✓ 已记录卖出: {code} {name}")
+            self.tracker.record_sell(
+                code=code,
+                price=price,
+                actual_pnl=actual_pnl,
+            )
+            logger.info(f"✓ 已记录卖出: {code} {name} {price}×{quantity} 盈亏:{actual_pnl:+.2f}")
     
     def input_actual_result(self, code: str):
         """要求用户输入实际结果"""
@@ -536,8 +558,11 @@ def main():
                        help='本金')
     parser.add_argument('--code', type=str, help='ETF代码')
     parser.add_argument('--action', type=str, choices=['buy', 'sell'], help='交易动作')
+    parser.add_argument('--name', type=str, help='ETF名称（可选）')
     parser.add_argument('--price', type=float, help='价格')
     parser.add_argument('--quantity', type=int, help='数量')
+    parser.add_argument('--reason', type=str, help='交易原因')
+    parser.add_argument('--actual_pnl', type=float, default=0, help='实际盈亏（仅卖出时）')
     parser.add_argument('--webhook', type=str, help='钉钉Webhook URL')
     parser.add_argument('--silent', action='store_true', help='静默模式（不发送钉钉，由cron响应代替）')
     parser.add_argument('--simple', action='store_true', help='简版输出（钉钉APP专用）')
@@ -579,7 +604,10 @@ def main():
         engine.run_full_evaluation(silent=args.silent, simple=args.simple)
     elif args.mode == 'trade':
         if args.code and args.action and args.price and args.quantity:
-            engine.execute_trade(args.code, args.action, args.price, args.quantity)
+            engine.execute_trade(
+                args.code, args.action, args.price, args.quantity,
+                reason=args.reason, actual_pnl=args.actual_pnl, name=args.name
+            )
         else:
             logger.error("错误: 需要指定 --code --action --price --quantity")
     elif args.mode == 'history':
