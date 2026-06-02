@@ -179,10 +179,15 @@ class TradeTracker:
     def _fetch_tencent_realtime(self, code: str) -> Dict:
         """腾讯API直接获取实时数据（RSI由指标模块计算）"""
         # ETF代码前缀处理
+        # 上海ETF: 5开头（510xxx, 588xxx）
+        # 深圳ETF: 1开头（159xxx）
         if code.startswith(('sh', 'sz')):
             prefix = code
         elif code.isdigit():
-            prefix = f'sh{code}' if code.startswith(('5', '1', '11')) else f'sz{code}'
+            if code.startswith('5') or code.startswith('11'):
+                prefix = f'sh{code}'
+            else:
+                prefix = f'sz{code}'
         else:
             prefix = code
         
@@ -445,8 +450,84 @@ class TradeTracker:
         return positions
     
     def get_holdings(self) -> List[Position]:
-        """获取当前持仓"""
-        return self.load_positions()
+        """获取当前持仓（从positions文件 + 交易记录重建）"""
+        # 优先从positions文件读取
+        positions = self.load_positions()
+        
+        # 如果positions为空，从交易记录重建
+        if not positions:
+            positions = self._rebuild_positions_from_trades()
+        
+        # 更新当前价格和盈亏
+        from datetime import datetime
+        today = datetime.now().date()
+        
+        updated = []
+        for pos in positions:
+            # 获取实时价格
+            rt = self._fetch_realtime_data(pos.code)
+            current_price = rt.get('price', pos.entry_price)
+            
+            # 计算持仓天数和盈亏
+            entry_date = datetime.strptime(pos.entry_date, '%Y-%m-%d').date()
+            hold_days = (today - entry_date).days
+            
+            if pos.entry_price > 0:
+                pnl_pct = (current_price - pos.entry_price) / pos.entry_price * 100
+            else:
+                pnl_pct = 0
+            
+            pos.current_price = current_price
+            pos.pnl_pct = pnl_pct
+            pos.hold_days = hold_days
+            updated.append(pos)
+        
+        return updated
+    
+    def _rebuild_positions_from_trades(self) -> List[Position]:
+        """从交易记录重建持仓状态"""
+        positions = []
+        trades = self.load_trades()
+        
+        # 按代码分组，获取每只ETF的买入记录
+        buy_records = {}  # code -> (date, name, price, quantity)
+        sell_records = {}  # code -> [(date, quantity), ...]
+        
+        for trade in trades:
+            if trade.action == 'buy':
+                buy_records[trade.code] = {
+                    'date': trade.date,
+                    'name': trade.name,
+                    'price': trade.price,
+                    'quantity': trade.quantity,
+                }
+            elif trade.action == 'sell':
+                if trade.code not in sell_records:
+                    sell_records[trade.code] = []
+                sell_records[trade.code].append({
+                    'date': trade.date,
+                    'quantity': trade.quantity,
+                })
+        
+        # 计算当前持仓
+        for code, buy_info in buy_records.items():
+            total_bought = buy_info['quantity']
+            total_sold = sum(s['quantity'] for s in sell_records.get(code, []))
+            remaining = total_bought - total_sold
+            
+            if remaining > 0:
+                positions.append(Position(
+                    code=code,
+                    name=buy_info['name'],
+                    entry_date=buy_info['date'],
+                    entry_price=buy_info['price'],
+                    quantity=remaining,
+                    current_price=buy_info['price'],
+                    pnl_pct=0,
+                    hold_days=0,
+                ))
+        
+        return positions
     
     def check_stop_loss(self, code: str, threshold: float = -5) -> bool:
         """检查是否触发止损"""
