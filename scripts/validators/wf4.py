@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
 """
-SOP-03 Phase 1: 4折Walk-Forward验证脚本
+SOP-03 Phase 2: 4折Walk-Forward验证脚本 v2.0
+
+⚠️ 严格按设计文档的日期分段，禁止用索引均分替代
 
 功能：
-- 对TOP ETF跑4折WF验证
-- 计算Sharpe/胜率/盈亏比
-- 输出JSON结果到 data/wf4_results.json
+- 对14只交易ETF跑4折WF验证
+- 使用主力维护的回测引擎 FactorBacktester（src/backtest/engine.py）
+- 测试 hold_count = 1/2/3 分别验证
+- 输出JSON结果到 data/wf4_results_v2.json
 
-数据范围: 2023-09-26 ~ 2026-06-01（644天）
-4折切分：
-  Fold 1: IS[~2024-12] → OOS[2025-01 ~ 2025-06]
-  Fold 2: IS[~2025-06] → OOS[2025-07 ~ 2025-12]
-  Fold 3: IS[~2025-12] → OOS[2026-01 ~ 2026-03]
-  Fold 4: IS[~2026-03] → OOS[2026-04 ~ 2026-06]
+4折切分（按设计文档）：
+  Fold 1: IS[2023-09-26 ~ 2024-12-31] → OOS[2025-01-01 ~ 2025-06-30]
+  Fold 2: IS[2023-09-26 ~ 2025-06-30] → OOS[2025-07-01 ~ 2025-12-31]
+  Fold 3: IS[2023-09-26 ~ 2025-12-31] → OOS[2026-01-01 ~ 2026-03-31]
+  Fold 4: IS[2023-09-26 ~ 2026-03-31] → OOS[2026-04-01 ~ 2026-06-02]
 
 通过标准：
   - Sharpe ≥ 0.5
   - 胜率 ≥ 40%
   - 盈亏比 × 胜率 > 1
+
+参考来源：
+  - src/backtest/engine.py（主力维护版本）
+  - Backtrader/Zipline/FMZ 最佳实践
 """
 import json
 import sys
 from pathlib import Path
 from datetime import datetime
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Callable
+from dataclasses import dataclass
+from typing import List, Dict
 
 import numpy as np
 import pandas as pd
@@ -33,423 +39,406 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.data.loader import DataLoader
-from src.core.selector import Selector
-from src.core.position import TradeExecutor
-from src.utils.config import StrategyConfig
-from src.analysis.metrics import calculate_metrics
+from src.indicators.wrapper import IndicatorCalculator
+from src.backtest.engine import FactorBacktester, BacktestConfig
 
+
+# ============================================================
+# ETF 池配置
+# ============================================================
+
+# 交易 ETF（14只，不含510300大盘参考）
+TRADE_ETFS = [
+    '588000',  # 科创50
+    '512480',  # 半导体
+    '512880',  # 证券
+    '512170',  # 医疗
+    '520900',  # 畜牧
+    '515790',  # 光伏
+    '515050',  # 游戏
+    '512400',  # 有色
+    '512660',  # 军工
+    '515070',  # AI
+    '512800',  # 银行
+    '512980',  # 传媒
+    '512200',  # 房地产
+    '515650',  # 消费
+]
+
+# 大盘参考 ETF（510300 沪深300，不参与交易）
+MARKET_ETF = '510300'
+
+# 所有 ETF（交易 + 大盘参考）
+ALL_ETFS = [MARKET_ETF] + TRADE_ETFS
+
+
+# ============================================================
+# 折数配置
+# ============================================================
+
+FOLD_CONFIGS = [
+    # fold, is_start, is_end, oos_start, oos_end
+    (1, '2023-09-26', '2024-12-31', '2025-01-01', '2025-06-30'),
+    (2, '2023-09-26', '2025-06-30', '2025-07-01', '2025-12-31'),
+    (3, '2023-09-26', '2025-12-31', '2026-01-01', '2026-03-31'),
+    (4, '2023-09-26', '2026-03-31', '2026-04-01', '2026-06-02'),
+]
+
+
+# ============================================================
+# 数据处理
+# ============================================================
+
+def _add_ma_vol_rsi(df: pd.DataFrame) -> pd.DataFrame:
+    """添加 Selector 需要的 ma/vol/rsi 列"""
+    # 均线
+    df['ma20'] = df['close'].rolling(20).mean()
+    df['ma60'] = df['close'].rolling(60).mean()
+    df['ma120'] = df['close'].rolling(120).mean()
+    
+    # 放量比率
+    df['vol_ratio'] = df['volume'] / df['volume'].rolling(20).mean()
+    
+    # RSI(14)
+    if 'rsi_14' not in df.columns:
+        delta = df['close'].diff()
+        gain = delta.copy()
+        loss = delta.copy()
+        gain[gain < 0] = 0
+        loss[loss > 0] = 0
+        loss = loss.abs()
+        avg_gain = gain.ewm(com=13, adjust=False).mean()
+        avg_loss = loss.ewm(com=13, adjust=False).mean()
+        rs = avg_gain / avg_loss
+        df['rsi_14'] = 100 - (100 / (1 + rs))
+    
+    df['rsi'] = df['RSI_5'] if 'RSI_5' in df.columns else df['rsi_14']
+    
+    return df
+
+
+def load_etf_data(loader: DataLoader, calc: IndicatorCalculator) -> Dict[str, pd.DataFrame]:
+    """加载并处理所有 ETF 数据
+    
+    Returns:
+        {code: df} 其中 df 已包含完整指标和 ma/vol/rsi 列
+    """
+    data = {}
+    for code in ALL_ETFS:
+        df = loader.load_single(code, min_rows=400)
+        if df is None or len(df) < 200:
+            print(f"  ⚠️ {code} 数据不足，跳过")
+            continue
+        
+        df = df.sort_values('date').reset_index(drop=True)
+        df = calc.calculate_all(df)
+        df = _add_ma_vol_rsi(df)
+        data[code] = df
+        print(f"  加载 {code}: {len(df)} 行")
+    
+    return data
+
+
+# ============================================================
+# 回测执行
+# ============================================================
+
+def run_wf_backtest(
+    all_data: Dict[str, pd.DataFrame],
+    oos_start: str,
+    oos_end: str,
+    hold_count: int,
+    score_threshold: int = 6,
+) -> Dict:
+    """执行单次回测（多 ETF 组合）
+    
+    Args:
+        all_data: 所有 ETF 数据（完整数据，已计算指标）
+        oos_start: OOS 开始日期
+        oos_end: OOS 结束日期
+        hold_count: 持仓数量
+        score_threshold: 评分阈值
+    
+    Returns:
+        回测结果
+    
+    注意：
+        - all_data 是完整数据，用于 Selector 评分
+        - 回测引擎会在内部根据日期过滤数据
+    """
+    # 过滤 OOS 期数据（用于持仓计算）
+    oos_data = {}
+    for code, df in all_data.items():
+        oos_df = df[(df['date'] >= oos_start) & (df['date'] <= oos_end)].copy()
+        if len(oos_df) >= 30:
+            oos_data[code] = oos_df
+    
+    if len(oos_data) < 5:  # 至少需要 5 只 ETF
+        return {
+            'sharpe': 0, 'return': 0, 'win_rate': 0, 
+            'profit_loss_ratio': 0, 'trades': 0,
+            'error': '数据不足'
+        }
+    
+    # 配置回测参数
+    config = BacktestConfig(
+        max_positions=hold_count,
+        score_threshold=score_threshold,
+        use_selector=True,                    # 使用 Selector 评分
+        enable_signal_persistence=True,       # 启用信号持续性
+        signal_consecutive_days=2,            # 连续2天低分才卖出
+        min_hold_days=3,                      # 最小持仓3天
+        max_hold_days=15,                     # 最大持仓15天
+        stop_loss=-0.10,                      # 止损10%
+        stop_profit=0.15,                     # 止盈15%
+        rebalance_only_when_empty=True,        # 只有空仓才重新选择
+    )
+    
+    # 创建回测器
+    backtester = FactorBacktester(config=config)
+    
+    # 注入完整数据用于评分（Selector 需要完整历史计算 ma120）
+    backtester._full_data = all_data
+    
+    # 注入排除列表（510300 是大盘参考，不参与交易）
+    backtester._exclude_codes = {MARKET_ETF}
+    
+    try:
+        # 执行回测
+        result = backtester.backtest(
+            price_data=oos_data,
+            start_date=oos_start,
+            end_date=oos_end,
+            valid_factors=[],  # Selector 模式不需要
+        )
+        
+        # 计算指标
+        return {
+            'sharpe': result.sharpe_relative or 0,
+            'return': result.total_return * 100,
+            'win_rate': result.win_rate * 100,
+            'profit_loss_ratio': result.profit_loss_ratio or 0,
+            'trades': result.trade_count,
+            'avg_hold_days': np.mean([t.get('hold_days', 0) for t in result.trades]) if result.trades else 0,
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            'sharpe': 0, 'return': 0, 'win_rate': 0,
+            'profit_loss_ratio': 0, 'trades': 0,
+            'error': str(e)
+        }
+
+
+# ============================================================
+# 4折验证
+# ============================================================
 
 @dataclass
-class WF4Fold:
+class WFFoldResult:
     """单折验证结果"""
-    fold: int                      # 1-4
-    is_range: str                 # "2023-09 ~ 2024-12"
-    oos_range: str                # "2025-01 ~ 2025-06"
-    sharpe: float                 # 夏普比率
-    win_rate: float              # 胜率（0-1）
-    profit_loss_ratio: float      # 盈亏比
-    profit_x_win: float          # 核心指标 = 盈亏比 × 胜率
-    pass_: bool                  # 是否通过
-    reason: str                  # 通过/失败原因
-
+    fold: int
+    oos_start: str
+    oos_end: str
+    sharpe: float
+    return_pct: float
+    win_rate: float
+    profit_loss_ratio: float
+    trades: int
+    pass_: bool
+    reason: str
+    
     def to_dict(self) -> Dict:
+        """转换为可序列化的字典"""
         return {
             'fold': self.fold,
-            'is_range': self.is_range,
-            'oos_range': self.oos_range,
-            'sharpe': round(self.sharpe, 3),
-            'win_rate': round(self.win_rate * 100, 1),
+            'oos_start': self.oos_start[:7],
+            'oos_end': self.oos_end[:7],
+            'sharpe': round(self.sharpe, 2),
+            'return_pct': round(self.return_pct, 1),
+            'win_rate': round(self.win_rate, 1),
             'profit_loss_ratio': round(self.profit_loss_ratio, 2),
-            'profit_x_win': round(self.profit_x_win, 3),
-            'pass': self.pass_,
+            'trades': self.trades,
+            'pass': bool(self.pass_),  # 确保原生 bool
             'reason': self.reason
         }
 
 
-@dataclass
-class WF4Result:
-    """4折WF验证汇总结果"""
-    etf_code: str
-    data_range: str
-    n_folds: int
-    n_passed: int
-    pass_rate: float
-    avg_sharpe: float
-    avg_win_rate: float
-    avg_profit_loss_ratio: float
-    avg_profit_x_win: float
-    overall_pass: bool
-    confidence: str              # HIGH/MEDIUM/LOW/FAIL
-    folds: List[WF4Fold]
-
-    def to_dict(self) -> Dict:
-        return {
-            'etf_code': self.etf_code,
-            'data_range': self.data_range,
-            'n_folds': self.n_folds,
-            'n_passed': self.n_passed,
-            'pass_rate': round(self.pass_rate * 100, 1),
-            'avg_sharpe': round(self.avg_sharpe, 3),
-            'avg_win_rate': round(self.avg_win_rate * 100, 1),
-            'avg_profit_loss_ratio': round(self.avg_profit_loss_ratio, 2),
-            'avg_profit_x_win': round(self.avg_profit_x_win, 3),
-            'overall_pass': self.overall_pass,
-            'confidence': self.confidence,
-            'folds': [f.to_dict() for f in self.folds]
-        }
-
-
-class WalkForward4Fold:
-    """4折Walk-Forward验证器"""
-
-    # 通过标准
-    MIN_SHARPE = 0.5
-    MIN_WIN_RATE = 0.4
-    MIN_PROFIT_X_WIN = 1.0
-
-    def __init__(self):
-        self.data_loader = DataLoader()
-        self.selector = Selector()
-        self.config = StrategyConfig()
-
-    def _split_folds(self, df: pd.DataFrame) -> List[Dict]:
-        """切分4折索引 - 按设计文档的日期分段
-
-        按设计文档（V9_BACKLOG.md）：
-        Fold 1: IS[2023-09-26 ~ 2024-12-31] → OOS[2025-01-01 ~ 2025-06-30]
-        Fold 2: IS[2023-09-26 ~ 2025-06-30] → OOS[2025-07-01 ~ 2025-12-31]
-        Fold 3: IS[2023-09-26 ~ 2025-12-31] → OOS[2026-01-01 ~ 2026-03-31]
-        Fold 4: IS[2023-09-26 ~ 2026-03-31] → OOS[2026-04-01 ~ 2026-06-02]
-        
-        注意：执行阶段不能擅自改动此配置，必须严格对齐设计文档
-        """
-        df = df.sort_values('date').reset_index(drop=True)
-        
-        # 设计文档确认的4折配置
-        fold_configs = [
-            # (fold_idx, is_end, oos_start, oos_end)
-            (1, '2024-12-31', '2025-01-01', '2025-06-30'),  # Fold 1
-            (2, '2025-06-30', '2025-07-01', '2025-12-31'),  # Fold 2
-            (3, '2025-12-31', '2026-01-01', '2026-03-31'),  # Fold 3
-            (4, '2026-03-31', '2026-04-01', '2026-06-02'),  # Fold 4
-        ]
-        
-        folds = []
-        
-        for fold_idx, is_end, oos_start, oos_end in fold_configs:
-            # IS期数据
-            train_df = df[(df['date'] >= '2023-09-26') & (df['date'] <= is_end)]
-            # OOS期数据
-            test_df = df[(df['date'] >= oos_start) & (df['date'] <= oos_end)]
-            
-            # 检查数据量
-            if len(train_df) < 100 or len(test_df) < 10:
-                continue
-
-            folds.append({
-                'fold_idx': fold_idx,
-                'train_start': '2023-09-26',
-                'train_end': is_end,
-                'test_start': oos_start,
-                'test_end': oos_end,
-                'train_df': train_df,
-                'test_df': test_df,
-            })
-
-        return folds
-
-    def _compute_metrics(self, df: pd.DataFrame, config: StrategyConfig) -> Dict:
-        """计算单次回测的完整指标
-
-        使用简单的MA多头策略：
-        - 买入信号：MA5 > MA20
-        - 卖出信号：MA5 < MA20 或止损/止盈
-        """
-        if len(df) < 30:
-            return {
-                'sharpe': 0, 'win_rate': 0, 'profit_loss_ratio': 0,
-                'profit_x_win': 0, 'trades': 0
-            }
-
-        df = df.copy()
-        df['ma5'] = df['close'].rolling(5).mean()
-        df['ma20'] = df['close'].rolling(20).mean()
-        df['signal'] = (df['ma5'] > df['ma20']).astype(int)
-
-        # 计算每日收益
-        df['ret'] = df['close'].pct_change().fillna(0)
-
-        # 模拟交易
-        position = 0
-        trades = []
-        entry_price = 0
-        entry_date = None
-
-        for i, row in df.iterrows():
-            if pd.isna(row['signal']):
-                continue
-
-            # 买入
-            if row['signal'] == 1 and position == 0:
-                position = 1
-                entry_price = row['close']
-                entry_date = row['date']
-
-            # 卖出
-            elif row['signal'] == 0 and position == 1:
-                pnl = (row['close'] - entry_price) / entry_price
-                trades.append({'pnl': pnl, 'hold_days': 1})
-                position = 0
-
-        # 最终清仓
-        if position == 1:
-            last_close = df.iloc[-1]['close']
-            pnl = (last_close - entry_price) / entry_price
-            hold_days = (pd.to_datetime(df.iloc[-1]['date']) - pd.to_datetime(entry_date)).days
-            trades.append({'pnl': pnl, 'hold_days': hold_days})
-
-        if not trades:
-            return {
-                'sharpe': 0, 'win_rate': 0, 'profit_loss_ratio': 0,
-                'profit_x_win': 0, 'trades': 0
-            }
-
-        # 计算指标
-        sells = trades
-        wins = [t['pnl'] for t in sells if t['pnl'] > 0]
-        losses = [t['pnl'] for t in sells if t['pnl'] <= 0]
-
-        win_rate = len(wins) / len(sells) if sells else 0
-        avg_win = np.mean(wins) if wins else 0
-        avg_loss = abs(np.mean(losses)) if losses else 0  # 取绝对值
-        # 盈亏比：全胜时 avg_loss=0，需要特殊处理
-        if avg_loss == 0:
-            profit_loss_ratio = avg_win if avg_win > 0 else 0
-        else:
-            profit_loss_ratio = avg_win / avg_loss
-        profit_x_win = profit_loss_ratio * win_rate
-
-        # 计算Sharpe
-        returns = [t['pnl'] for t in sells]
-        if len(returns) > 1 and np.std(returns) > 0:
-            sharpe = np.mean(returns) / np.std(returns) * np.sqrt(len(returns))
-        else:
-            sharpe = 0
-
-        return {
-            'sharpe': round(sharpe, 3),
-            'win_rate': round(win_rate, 3),
-            'profit_loss_ratio': round(profit_loss_ratio, 2),
-            'profit_x_win': round(profit_x_win, 3),
-            'trades': len(sells)
-        }
-
-    def _evaluate_fold(self, fold: Dict) -> WF4Fold:
-        """评估单折是否通过"""
-        test_df = fold['test_df']
-
-        # 计算IS期和OOS期的指标
-        is_metrics = self._compute_metrics(fold['train_df'], self.config)
-        oos_metrics = self._compute_metrics(test_df, self.config)
-
-        sharpe = oos_metrics['sharpe']
-        win_rate = oos_metrics['win_rate']
-        profit_loss_ratio = oos_metrics['profit_loss_ratio']
-        profit_x_win = oos_metrics['profit_x_win']
-
-        # 判断是否通过
-        reasons = []
-        pass_ = True
-
-        if sharpe < self.MIN_SHARPE:
-            reasons.append(f'sharpe={sharpe:.2f}<{self.MIN_SHARPE}')
-            pass_ = False
-
-        if win_rate < self.MIN_WIN_RATE:
-            reasons.append(f'win_rate={win_rate:.1%}<{self.MIN_WIN_RATE:.0%}')
-            pass_ = False
-
-        if profit_x_win <= self.MIN_PROFIT_X_WIN:
-            reasons.append(f'profit_x_win={profit_x_win:.2f}<={self.MIN_PROFIT_X_WIN}')
-            pass_ = False
-
-        return WF4Fold(
-            fold=fold['fold_idx'],
-            is_range=f"{fold['train_start'][:7]} ~ {fold['train_end'][:7]}",
-            oos_range=f"{fold['test_start'][:7]} ~ {fold['test_end'][:7]}",
-            sharpe=sharpe,
-            win_rate=win_rate,
-            profit_loss_ratio=profit_loss_ratio,
-            profit_x_win=profit_x_win,
-            pass_=pass_,
-            reason=', '.join(reasons) if reasons else '通过'
-        )
-
-    def validate(self, code: str) -> WF4Result:
-        """对单只ETF执行4折WF验证
-
-        Args:
-            code: ETF代码（如'515050'）
-
-        Returns:
-            WF4Result: 验证结果
-        """
-        # 加载数据
-        df = self.data_loader.load_single(code, min_rows=400)
-        if df is None:
-            raise ValueError(f"无法加载ETF {code} 的数据")
-
-        data_range = f"{df['date'].min()} ~ {df['date'].max()}"
-
-        # 切分4折
-        folds = self._split_folds(df)
-        if len(folds) < 4:
-            raise ValueError(f"ETF {code} 数据不足，无法进行4折WF验证（实际{len(folds)}折）")
-
-        # 评估每折
-        fold_results = [self._evaluate_fold(fold) for fold in folds]
-
-        # 汇总
-        n_passed = sum(1 for f in fold_results if f.pass_)
-        pass_rate = n_passed / len(fold_results)
-        avg_sharpe = np.mean([f.sharpe for f in fold_results])
-        avg_win_rate = np.mean([f.win_rate for f in fold_results])
-        avg_profit_loss_ratio = np.mean([f.profit_loss_ratio for f in fold_results])
-        avg_profit_x_win = np.mean([f.profit_x_win for f in fold_results])
-
-        overall_pass = n_passed == len(fold_results)
-
-        if overall_pass:
-            confidence = 'HIGH' if pass_rate == 1.0 else 'MEDIUM'
-        elif pass_rate >= 0.5:
-            confidence = 'LOW'
-        else:
-            confidence = 'FAIL'
-
-        return WF4Result(
-            etf_code=code,
-            data_range=data_range,
-            n_folds=len(fold_results),
-            n_passed=n_passed,
-            pass_rate=pass_rate,
-            avg_sharpe=avg_sharpe,
-            avg_win_rate=avg_win_rate,
-            avg_profit_loss_ratio=avg_profit_loss_ratio,
-            avg_profit_x_win=avg_profit_x_win,
-            overall_pass=overall_pass,
-            confidence=confidence,
-            folds=fold_results
-        )
-
-
-def run_wf4(codes: List[str], output_path: str = None) -> Dict[str, WF4Result]:
-    """对多只ETF执行4折WF验证
-
+def validate_4fold(
+    all_data: Dict[str, pd.DataFrame],
+    hold_count: int,
+    score_threshold: int = 6,
+) -> Dict:
+    """执行4折WF验证
+    
     Args:
-        codes: ETF代码列表
-        output_path: JSON输出路径（默认 data/wf4_results.json）
-
+        all_data: 所有 ETF 数据
+        hold_count: 持仓数量
+        score_threshold: 评分阈值
+    
     Returns:
-        Dict[str, WF4Result]: 各ETF的验证结果
+        验证结果
     """
-    if output_path is None:
-        output_path = Path(__file__).parent.parent.parent / 'data' / 'wf4_results.json'
-
-    results = {}
-    wf4 = WalkForward4Fold()
-
-    print(f"开始4折WF验证，共{len(codes)}只ETF")
-    print("=" * 60)
-
-    for i, code in enumerate(codes, 1):
-        print(f"\n[{i}/{len(codes)}] 验证 {code}...", end=' ')
-        try:
-            result = wf4.validate(code)
-            results[code] = result
-
-            status = "✅" if result.overall_pass else "❌"
-            print(f"{status} {result.n_passed}/{result.n_folds}折通过, "
-                  f"Sharpe={result.avg_sharpe:.2f}, "
-                  f"胜率={result.avg_win_rate:.1%}, "
-                  f"盈亏比×胜率={result.avg_profit_x_win:.2f}")
-
-        except Exception as e:
-            print(f"❌ 失败: {e}")
-
-    # 输出JSON
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    output_data = {
-        'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'data_range': '2023-09-26 ~ 2026-06-01',
-        'pass_criteria': {
-            'sharpe': f'>={wf4.MIN_SHARPE}',
-            'win_rate': f'>={wf4.MIN_WIN_RATE:.0%}',
-            'profit_x_win': f'>{wf4.MIN_PROFIT_X_WIN}'
-        },
-        'results': {code: result.to_dict() for code, result in results.items()}
+    fold_results = []
+    
+    for fold, is_start, is_end, oos_start, oos_end in FOLD_CONFIGS:
+        result = run_wf_backtest(
+            all_data, oos_start, oos_end,
+            hold_count, score_threshold
+        )
+        
+        # 判断通过
+        sharpe = result.get('sharpe', 0)
+        win_rate = result.get('win_rate', 0) / 100
+        profit_loss_ratio = result.get('profit_loss_ratio', 0)
+        profit_x_win = profit_loss_ratio * win_rate
+        
+        pass_ = bool(sharpe >= 0.5 and win_rate >= 0.4 and profit_x_win > 1.0)
+        
+        if pass_:
+            reason = "通过"
+        else:
+            reasons = []
+            if sharpe < 0.5:
+                reasons.append(f"Sharpe={sharpe:.2f}<0.5")
+            if win_rate < 0.4:
+                reasons.append(f"胜率={win_rate*100:.1f}%<40%")
+            if profit_x_win <= 1.0:
+                reasons.append(f"盈亏比×胜率={profit_x_win:.2f}≤1.0")
+            reason = "; ".join(reasons)
+        
+        fold_results.append(WFFoldResult(
+            fold=fold,
+            oos_start=oos_start,
+            oos_end=oos_end,
+            sharpe=float(sharpe),
+            return_pct=float(result.get('return', 0)),
+            win_rate=float(result.get('win_rate', 0)),
+            profit_loss_ratio=float(profit_loss_ratio),
+            trades=int(result.get('trades', 0)),
+            pass_=pass_,
+            reason=reason,
+        ))
+        
+        print(f"    Fold {fold}: Sharpe={sharpe:.2f}, 胜率={win_rate*100:.1f}%, "
+              f"盈亏比={profit_loss_ratio:.2f}, 交易={result.get('trades', 0)} → {'✅' if pass_ else '❌'}")
+    
+    n_passed = sum(1 for f in fold_results if f.pass_)
+    
+    return {
+        'hold_count': hold_count,
+        'score_threshold': score_threshold,
+        'n_folds': len(fold_results),
+        'n_passed': n_passed,
+        'pass_rate': n_passed / len(fold_results) * 100 if fold_results else 0,
+        'avg_sharpe': np.mean([f.sharpe for f in fold_results]) if fold_results else 0,
+        'avg_win_rate': np.mean([f.win_rate for f in fold_results]) if fold_results else 0,
+        'overall_pass': n_passed == len(fold_results),
+        'folds': fold_results,
     }
 
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=2)
 
-    print(f"\n结果已保存: {output_path}")
-
-    return results
-
+# ============================================================
+# 主入口
+# ============================================================
 
 def main():
-    """入口"""
     import argparse
-    parser = argparse.ArgumentParser(description='4折Walk-Forward验证')
-    parser.add_argument('--codes', nargs='+', default=None, help='ETF代码列表')
-    parser.add_argument('--codes-file', default=None, help='从文件读取ETF代码')
-    parser.add_argument('--output', default=None, help='JSON输出路径')
-    parser.add_argument('--top', type=int, default=5, help='验证TOP N ETF（按评分）')
+    parser = argparse.ArgumentParser(description='4折Walk-Forward验证 v2.0（多ETF组合）')
+    parser.add_argument('--hold-counts', nargs='+', type=int, default=[1, 2, 3],
+                        help='持仓数量列表，默认 1 2 3')
+    parser.add_argument('--score-threshold', type=int, default=6,
+                        help='评分阈值，默认 6')
+    parser.add_argument('--output', default='data/wf4_results_v2.json',
+                        help='输出JSON路径')
     args = parser.parse_args()
-
-    # 确定要验证的ETF
-    if args.codes:
-        codes = args.codes
-    elif args.codes_file:
-        with open(args.codes_file) as f:
-            codes = [line.strip() for line in f if line.strip()]
-    else:
-        # 默认：验证TOP信号ETF
-        print("未指定ETF，默认验证TOP 5信号ETF...")
-        from src.core.selector import Selector
-        from src.data.loader import DataLoader
-
-        loader = DataLoader()
-        etf_data = loader.load(min_rows=400)
-        selector = Selector()
-
-        latest_date = max(d for df in etf_data.values() for d in df['date'])
-
-        signals = []
-        for code, df in etf_data.items():
-            score, _ = selector.score_with_ic(df, latest_date)
-            if score >= 6:
-                signals.append((code, score))
-
-        signals.sort(key=lambda x: -x[1])
-        codes = [code for code, score in signals[:args.top]]
-
-        print(f"TOP {args.top} 信号ETF: {codes}")
-
-    if not codes:
-        print("没有要验证的ETF")
-        return 1
-
-    results = run_wf4(codes, args.output)
-
-    # 汇总统计
-    n_passed_total = sum(1 for r in results.values() if r.overall_pass)
-    print(f"\n汇总: {n_passed_total}/{len(results)}只ETF全部4折通过")
-
-    return 0
+    
+    print("=" * 60)
+    print(f"4折WF验证 v2.0（多ETF组合）")
+    print(f"持仓数量: {args.hold_counts}")
+    print(f"评分阈值: {args.score_threshold}")
+    print("=" * 60)
+    
+    # 加载数据
+    print("\n📊 加载 ETF 数据...")
+    loader = DataLoader()
+    calc = IndicatorCalculator()
+    all_data = load_etf_data(loader, calc)
+    
+    if len(all_data) < 5:
+        print("❌ ETF 数据不足，无法验证")
+        return
+    
+    print(f"\n✅ 加载完成：{len(all_data)} 只 ETF")
+    
+    # 执行验证
+    all_results = {}
+    
+    for hold_count in args.hold_counts:
+        print(f"\n📈 持仓数量 = {hold_count}:")
+        result = validate_4fold(all_data, hold_count, args.score_threshold)
+        all_results[f'hold_count_{hold_count}'] = result
+        
+        # 打印汇总
+        status = "✅" if result['overall_pass'] else "❌"
+        print(f"  汇总: {result['n_passed']}/{result['n_folds']}折通过 {status}")
+        print(f"  平均 Sharpe={result['avg_sharpe']:.2f}, 平均胜率={result['avg_win_rate']:.1f}%")
+    
+    # 保存结果
+    output = {
+        'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'etf_pool': {
+            'trade_etfs': TRADE_ETFS,
+            'market_etf': MARKET_ETF,
+            'total': len(ALL_ETFS),
+        },
+        'fold_configs': [(f, s, e, o, o2) for f, s, e, o, o2 in FOLD_CONFIGS],
+        'pass_criteria': {
+            'sharpe': '>=0.5',
+            'win_rate': '>=40%',
+            'profit_x_win': '>1.0',
+        },
+        'results': {
+            k: {
+                'n_folds': v['n_folds'],
+                'n_passed': v['n_passed'],
+                'pass_rate': round(v['pass_rate'], 1),
+                'avg_sharpe': round(v['avg_sharpe'], 2),
+                'avg_win_rate': round(v['avg_win_rate'], 1),
+                'overall_pass': v['overall_pass'],
+                'folds': [
+                    {
+                        'fold': f.fold,
+                        'oos_range': f'{f.oos_start[:7]}~{f.oos_end[:7]}',
+                        'sharpe': round(f.sharpe, 2),
+                        'return': round(f.return_pct, 1),
+                        'win_rate': round(f.win_rate, 1),
+                        'profit_loss_ratio': round(f.profit_loss_ratio, 2),
+                        'trades': f.trades,
+                        'pass': f.pass_,
+                        'reason': f.reason,
+                    }
+                    for f in v['folds']
+                ]
+            }
+            for k, v in all_results.items()
+        }
+    }
+    
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+    
+    print(f"\n{'=' * 60}")
+    print(f"✅ 结果已保存: {output_path}")
+    
+    # 汇总
+    n_pass_all = sum(1 for v in all_results.values() if v['overall_pass'])
+    print(f"汇总: {n_pass_all}/{len(all_results)} 种持仓配置全部4折通过")
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()

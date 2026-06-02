@@ -33,6 +33,10 @@ class StrategyConfig:
     stop_loss: float = -0.10                # 止损比例
     stop_gain: float = 0.15                 # 固定止盈比例
     max_hold_days: int = 15                 # 最大持仓天数
+    min_hold_days: int = 3                  # 最小持仓天数（防止频繁交易）
+    
+    # ===== 信号配置 =====
+    signal_consecutive_days: int = 2        # 连续N天评分低于阈值才触发卖出
     
     # ===== 移动止盈配置 =====
     enable_trailing_stop: bool = False      # 是否启用移动止盈
