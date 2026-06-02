@@ -403,6 +403,7 @@ class ETFDecisionEngine:
                     'ma120': latest.get('ma120', 0),
                     'rsi_14': latest.get('rsi_14', 0),
                     'vol_ratio': latest.get('vol_ratio', 0),
+                    'adx_14': latest.get('adx_14', 0),  # v9 双模式
                 }
             except Exception as e:
                 logger.warn(f"  ⚠ 数据处理失败: {e}")
@@ -425,11 +426,15 @@ class ETFDecisionEngine:
                 data_warning = line.strip()
         
         # 构建结果数据（供ScenarioAdapter使用）
+        # 判断市场模式：有信号=趋势市，无信号=震荡市
+        market_mode = "趋势市" if action == "买入" else "震荡市"
+        
         results = {
             'action': action,
             'code': new_code,
             'name': new_name,
             'price': new_price,
+            'market_mode': market_mode,  # v9 双模式标注
             'realtime': realtime,
             'indicators': indicators,
             'data_timestamp': data_timestamp,
@@ -466,18 +471,60 @@ class ETFDecisionEngine:
             'report': report,
         }
     
-    def execute_trade(self, code: str, action: str, price: float, quantity: int):
-        """执行交易"""
+    def execute_trade(self, code: str, action: str, price: float, quantity: int,
+                     reason: str = "", actual_pnl: float = 0, name: str = None,
+                     signal_time: str = "", signal_price: float = 0,
+                     signal_rsi: float = 0, signal_adx: float = 0,
+                     signal_score: int = 0, trade_time: str = "",
+                     emotion: str = "", session: str = ""):
+        """执行交易（SOP-06 v2.0: 信号快照 + 情绪 + 时段）
+        
+        Args:
+            code:           ETF代码
+            action:         'buy' 或 'sell'
+            price:          成交价格
+            quantity:       成交数量
+            reason:         交易原因
+            actual_pnl:     实际盈亏（仅卖出时）
+            name:           ETF名称（自动查找）
+            signal_time:    信号发出时间
+            signal_price:   信号价格
+            signal_rsi:     信号RSI(14)
+            signal_adx:     信号ADX(14)
+            signal_score:   信号评分
+            trade_time:     实际成交时间
+            emotion:        交易情绪
+            session:        交易时段
+        """
         from src.utils.industry import INDUSTRY_MAPPING
         
-        name = INDUSTRY_MAPPING.get(code, code)
+        # 自动获取名称
+        if name is None:
+            name = INDUSTRY_MAPPING.get(code, code)
         
         if action == 'buy':
-            self.tracker.record_buy(code, name, price, quantity, '策略推荐')
+            self.tracker.record_buy(
+                code=code,
+                name=name,
+                price=price,
+                quantity=quantity,
+                reason=reason or '手动买入',
+                signal_price=signal_price,
+                signal_time=signal_time,
+                signal_rsi=signal_rsi,
+                signal_adx=signal_adx,
+                signal_score=signal_score,
+                trade_time=trade_time,
+                emotion=emotion,
+                session=session,
+            )
             logger.info(f"✓ 已记录买入: {code} {name}")
         else:
-            pnl = (price - 1.0) * quantity  # TODO: 准确计算
-            self.tracker.record_sell(code, price, pnl)
+            self.tracker.record_sell(
+                code=code,
+                price=price,
+                actual_pnl=actual_pnl,
+            )
             logger.info(f"✓ 已记录卖出: {code} {name}")
     
     def input_actual_result(self, code: str):
@@ -547,6 +594,24 @@ def main():
                        help='CSV导出路径 (mode=export)')
     # ─────────────────────────────────────────────────────────────
     
+    # ── SOP-06 v2.0: 交易参数 ───────────────────────────────────
+    parser.add_argument('--name', type=str, help='ETF名称（可选）')
+    parser.add_argument('--reason', type=str, help='交易原因')
+    parser.add_argument('--actual_pnl', type=float, default=0, help='实际盈亏（仅卖出时）')
+    parser.add_argument('--signal_time', type=str, help='信号发出时间 (YYYY-MM-DD HH:MM)')
+    parser.add_argument('--signal_price', type=float, help='信号价格')
+    parser.add_argument('--signal_rsi', type=float, help='信号RSI(14)')
+    parser.add_argument('--signal_adx', type=float, help='信号ADX(14)')
+    parser.add_argument('--signal_score', type=int, help='信号评分')
+    parser.add_argument('--trade_time', type=str, help='实际成交时间 (YYYY-MM-DD HH:MM)')
+    parser.add_argument('--emotion', type=str, 
+                       choices=['calm', 'euphoria', 'fear', 'fomo', 'regret'],
+                       help='交易情绪 (calm/euphoria/fear/fomo/regret)')
+    parser.add_argument('--session', type=str,
+                       choices=['A', 'B', 'C', 'D', 'E', 'F'],
+                       help='交易时段 (A-F，对应UTC 00-24)')
+    # ─────────────────────────────────────────────────────────────
+    
     args = parser.parse_args()
     
     # 初始化日志器
@@ -574,7 +639,14 @@ def main():
         engine.run_full_evaluation(silent=args.silent, simple=args.simple)
     elif args.mode == 'trade':
         if args.code and args.action and args.price and args.quantity:
-            engine.execute_trade(args.code, args.action, args.price, args.quantity)
+            engine.execute_trade(
+                args.code, args.action, args.price, args.quantity,
+                reason=args.reason, actual_pnl=args.actual_pnl, name=args.name,
+                signal_time=args.signal_time, signal_price=args.signal_price,
+                signal_rsi=args.signal_rsi, signal_adx=args.signal_adx,
+                signal_score=args.signal_score, trade_time=args.trade_time,
+                emotion=args.emotion, session=args.session
+            )
         else:
             logger.error("错误: 需要指定 --code --action --price --quantity")
     elif args.mode == 'history':

@@ -1,11 +1,11 @@
 {
-  "159611": {
-    "name": "电力ETF广发",
-    "price": 1.248,
-    "yclose": 1.241,
-    "pct": 0.56,
-    "code_raw": "159611",
+  "515050": {
+    "name": "通信ETF华夏",
+    "price": 1.219,
+    "yclose": 1.156,
+    "pct": 5.45,
+    "code_raw": "515050",
     "data_source": "tencent"
   },
-  "_cache_time": 1780291395.703129
+  "_cache_time": 1780381811.650514
 }

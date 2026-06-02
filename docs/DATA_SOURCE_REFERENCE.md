@@ -530,4 +530,38 @@ class ETFData:
 
 ---
 
-*文档版本: v4.1 | 更新: 2026-05-30 | 测试脚本: scripts/verify_all_datasources.py, aktools-server/test_http_api.py*
+*文档版本: v4.2 | 更新: 2026-06-02 | 教训：数据目录必须统一路径（DataWriter bug 修复）*
+
+## 十五、数据目录规范（2026-06-02 教训）
+
+### 正确的目录结构
+```
+项目根目录/
+├── etf_data_live/    ← 唯一的业务数据目录
+├── data/              ← 实验产出目录
+└── src/               ← 代码（不含业务数据）
+```
+
+**DataWriter 和 DataLoader 必须用同一个 `db_path`**：来自 `src.constants.DB_NAME + DATA_DIR`，禁止各自计算路径。
+
+### DataWriter 路径 bug（已修复）
+```python
+# ❌ 错误：os.path.dirname(os.path.dirname(__file__)) 解析到 src/
+self.db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                            'etf_data_live', 'etf.db')
+
+# ✅ 正确：统一用 constants
+from src.constants import DB_NAME, DATA_DIR
+self.db_path = str(Path(DATA_DIR) / DB_NAME)
+```
+
+### 数据迁移 SOP
+```
+1. 列出所有可能的数据库路径（代码/配置中搜索）
+2. 检查每个路径的数据完整性（条数、日期范围）
+3. 确认业务实际使用的路径
+4. 确定迁移方向
+5. 备份目标库
+6. 执行迁移（INSERT OR REPLACE）
+7. 读回验证
+```

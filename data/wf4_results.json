@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-06-02 15:04:50",
+  "data_range": "2023-09-26 ~ 2026-06-01",
+  "pass_criteria": {
+    "sharpe": ">=0.5",
+    "win_rate": ">=40%",
+    "profit_x_win": ">1.0"
+  },
+  "results": {
+    "515050": {
+      "etf_code": "515050",
+      "data_range": "2019-10-16 ~ 2026-06-02",
+      "n_folds": 4,
+      "n_passed": 2,
+      "pass_rate": 50.0,
+      "avg_sharpe": -8.243,
+      "avg_win_rate": 58.4,
+      "avg_profit_loss_ratio": 1.86,
+      "avg_profit_x_win": 1.253,
+      "overall_pass": false,
+      "confidence": "LOW",
+      "folds": [
+        {
+          "fold": 1,
+          "is_range": "2023-09 ~ 2024-12",
+          "oos_range": "2025-01 ~ 2025-06",
+          "sharpe": 1.281,
+          "win_rate": 66.7,
+          "profit_loss_ratio": 4.66,
+          "profit_x_win": 3.107,
+          "pass": true,
+          "reason": "通过"
+        },
+        {
+          "fold": 2,
+          "is_range": "2023-09 ~ 2025-06",
+          "oos_range": "2025-07 ~ 2025-12",
+          "sharpe": 1.101,
+          "win_rate": 66.7,
+          "profit_loss_ratio": 2.6,
+          "profit_x_win": 1.734,
+          "pass": true,
+          "reason": "通过"
+        },
+        {
+          "fold": 3,
+          "is_range": "2023-09 ~ 2025-12",
+          "oos_range": "2026-01 ~ 2026-03",
+          "sharpe": -35.355,
+          "win_rate": 0.0,
+          "profit_loss_ratio": 0.0,
+          "profit_x_win": 0.0,
+          "pass": false,
+          "reason": "sharpe=-35.35<0.5, win_rate=0.0%<40%, profit_x_win=0.00<=1.0"
+        },
+        {
+          "fold": 4,
+          "is_range": "2023-09 ~ 2026-03",
+          "oos_range": "2026-04 ~ 2026-06",
+          "sharpe": 0,
+          "win_rate": 100.0,
+          "profit_loss_ratio": 0.17,
+          "profit_x_win": 0.171,
+          "pass": false,
+          "reason": "sharpe=0.00<0.5, profit_x_win=0.17<=1.0"
+        }
+      ]
+    }
+  }
+}

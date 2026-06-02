@@ -48,9 +48,21 @@ import requests
 from src.constants import TRADES_FILE, TENCENT_QT_URL, HTTP_TIMEOUT_SHORT
 
 
+# ── 情绪/时段常量（SOP-06 v2.0）────────────────────────────────
+EMOTION_OPTIONS = ["calm", "euphoria", "fear", "fomo", "regret"]
+SESSION_OPTIONS = [
+    ("A", "00:00-04:00 UTC 亚洲尾盘"),
+    ("B", "04:00-08:00 UTC 欧洲早盘"),
+    ("C", "08:00-12:00 UTC 欧洲午盘"),
+    ("D", "12:00-16:00 UTC 美洲早盘"),
+    ("E", "16:00-20:00 UTC 美洲午盘"),
+    ("F", "20:00-24:00 UTC 美洲尾盘"),
+]
+
+
 @dataclass
 class TradeRecord:
-    """交易记录"""
+    """交易记录（SOP-06 v2.0: 信号快照 + 情绪 + 时段）"""
     date: str           # 交易日期
     code: str           # ETF代码
     name: str           # ETF名称
@@ -63,13 +75,70 @@ class TradeRecord:
     actual_pnl: float = 0         # 实际盈亏
     note: str = ""                # 备注
 
-    # ── US-005 增强字段 ──────────────────────────────────────────
-    realtime_price: float = 0.0   # 实时价格（买入时快照）
+    # ── US-005 增强字段（买入时快照）─────────────────────────────
+    realtime_price: float = 0.0   # 实时价格
     price_deviation: float = 0.0  # 偏差率 (%)
     rsi_14: float = 0.0           # RSI(14) 值
-    day_change_pct: float = 0.0  # 当日涨跌幅 (%)
+    day_change_pct: float = 0.0   # 当日涨跌幅 (%)
     score: int = 0               # 策略评分
     # ─────────────────────────────────────────────────────────────
+
+    # ── SOP-06 信号快照 ─────────────────────────────────────────
+    signal_time: str = ""         # 信号发出时间 (YYYY-MM-DD HH:MM)
+    signal_price: float = 0.0     # 信号发出时的价格
+    signal_rsi: float = 0.0       # RSI(14)
+    signal_adx: float = 0.0       # ADX(14)
+    signal_score: int = 0         # 信号评分
+    # ─────────────────────────────────────────────────────────────
+
+    # ── SOP-06 v2.0 增强字段 ───────────────────────────────────
+    trade_time: str = ""          # 实际成交时间 (YYYY-MM-DD HH:MM)
+    emotion: str = ""            # 交易情绪 (calm/euphoria/fear/fomo/regret)
+    session: str = ""            # 交易时段 (A/B/C/D/E/F)
+    # ─────────────────────────────────────────────────────────────
+
+
+def _infer_session(trade_time: str) -> str:
+    """从交易时间推断UTC时段
+    
+    来源：参考 leionion/ai-trading-journal-audit-tool/session_analyzer.py
+    """
+    if not trade_time:
+        return ""
+    
+    try:
+        # 支持格式: "2026-06-02 10:40" 或 "10:40"
+        if len(trade_time) > 5 and " " in trade_time:
+            time_part = trade_time.split(" ")[1]
+        else:
+            time_part = trade_time
+        
+        hour = int(time_part.split(":")[0])
+        
+        # UTC时段划分（+8转北京时间）
+        utc_hour = (hour - 8) % 24
+        
+        if 0 <= utc_hour < 4:
+            return "A"  # 亚洲尾盘
+        elif 4 <= utc_hour < 8:
+            return "B"  # 欧洲早盘
+        elif 8 <= utc_hour < 12:
+            return "C"  # 欧洲午盘
+        elif 12 <= utc_hour < 16:
+            return "D"  # 美洲早盘
+        elif 16 <= utc_hour < 20:
+            return "E"  # 美洲午盘
+        else:
+            return "F"  # 美洲尾盘
+    except:
+        return ""
+
+
+def _validate_emotion(emotion: str) -> str:
+    """校验情绪值，无效则返回空"""
+    if emotion in EMOTION_OPTIONS:
+        return emotion
+    return ""
 
 
 @dataclass
@@ -179,10 +248,15 @@ class TradeTracker:
     def _fetch_tencent_realtime(self, code: str) -> Dict:
         """腾讯API直接获取实时数据（RSI由指标模块计算）"""
         # ETF代码前缀处理
+        # 上海ETF: 5开头（510xxx, 588xxx）
+        # 深圳ETF: 1开头（159xxx）
         if code.startswith(('sh', 'sz')):
             prefix = code
         elif code.isdigit():
-            prefix = f'sh{code}' if code.startswith(('5', '1', '11')) else f'sz{code}'
+            if code.startswith('5') or code.startswith('11'):
+                prefix = f'sh{code}'
+            else:
+                prefix = f'sz{code}'
         else:
             prefix = code
         
@@ -253,9 +327,15 @@ class TradeTracker:
     def record_buy(self, code: str, name: str, price: float, 
                    quantity: int, reason: str = "",
                    signal_price: float = 0.0,
-                   score: int = 0) -> TradeRecord:
+                   signal_time: str = "",
+                   signal_rsi: float = 0.0,
+                   signal_adx: float = 0.0,
+                   signal_score: int = 0,
+                   trade_time: str = "",
+                   emotion: str = "",
+                   session: str = "") -> TradeRecord:
         """
-        记录买入（US-005: 自动填充实时数据）
+        记录买入（SOP-06 v2.0: 信号快照 + 情绪 + 时段）
         
         Args:
             code:           ETF代码
@@ -263,15 +343,20 @@ class TradeTracker:
             price:          成交价格
             quantity:       数量
             reason:         交易原因
-            signal_price:   信号发出时的价格（用于计算偏差率）
-            score:          策略评分（可选）
+            signal_price:   信号发出时的价格
+            signal_time:    信号发出时间 (YYYY-MM-DD HH:MM)
+            signal_rsi:     信号时的RSI(14)
+            signal_adx:     信号时的ADX(14)
+            signal_score:   信号评分
+            trade_time:     实际成交时间 (YYYY-MM-DD HH:MM)
+            emotion:        交易情绪 (calm/euphoria/fear/fomo/regret)
+            session:        交易时段 (A/B/C/D/E/F)
         """
-        # ── 自动获取实时快照 ──
+        # ── 自动获取实时快照（买入时） ──
         rt = self._fetch_realtime_data(code)
         realtime_price = rt.get('price', price)
         day_change_pct = rt.get('change_pct', 0.0)
         rsi_14 = rt.get('rsi_14', 50.0)
-        data_source = rt.get('data_source', 'unknown')
         
         # 偏差率: (实时价 - 信号价) / 信号价 * 100
         if signal_price > 0 and realtime_price > 0:
@@ -279,13 +364,23 @@ class TradeTracker:
         else:
             price_deviation = 0.0
         
-        # 评分默认填充
-        final_score = score
-        
         amount = price * quantity
         
+        # 交易时间处理
+        if trade_time:
+            trade_date = trade_time.split(' ')[0] if ' ' in trade_time else trade_time
+        else:
+            trade_date = datetime.now().strftime('%Y-%m-%d')
+        
+        # 情绪校验
+        validated_emotion = _validate_emotion(emotion)
+        
+        # 时段推断（未指定时自动推断）
+        if not session and trade_time:
+            session = _infer_session(trade_time)
+        
         trade = TradeRecord(
-            date=datetime.now().strftime('%Y-%m-%d'),
+            date=trade_date,
             code=code,
             name=name,
             action='buy',
@@ -293,12 +388,22 @@ class TradeTracker:
             quantity=quantity,
             amount=amount,
             reason=reason,
-            # US-005 增强字段
+            # US-005 增强字段（买入时快照）
             realtime_price=realtime_price,
             price_deviation=price_deviation,
             rsi_14=rsi_14,
             day_change_pct=day_change_pct,
-            score=final_score,
+            score=signal_score,
+            # SOP-06 信号快照
+            signal_time=signal_time,
+            signal_price=signal_price,
+            signal_rsi=signal_rsi,
+            signal_adx=signal_adx,
+            signal_score=signal_score,
+            # SOP-06 v2.0 增强字段
+            trade_time=trade_time,
+            emotion=validated_emotion,
+            session=session,
         )
         
         self.save_trade(trade)
@@ -445,8 +550,84 @@ class TradeTracker:
         return positions
     
     def get_holdings(self) -> List[Position]:
-        """获取当前持仓"""
-        return self.load_positions()
+        """获取当前持仓（从positions文件 + 交易记录重建）"""
+        # 优先从positions文件读取
+        positions = self.load_positions()
+        
+        # 如果positions为空，从交易记录重建
+        if not positions:
+            positions = self._rebuild_positions_from_trades()
+        
+        # 更新当前价格和盈亏
+        from datetime import datetime
+        today = datetime.now().date()
+        
+        updated = []
+        for pos in positions:
+            # 获取实时价格
+            rt = self._fetch_realtime_data(pos.code)
+            current_price = rt.get('price', pos.entry_price)
+            
+            # 计算持仓天数和盈亏
+            entry_date = datetime.strptime(pos.entry_date, '%Y-%m-%d').date()
+            hold_days = (today - entry_date).days
+            
+            if pos.entry_price > 0:
+                pnl_pct = (current_price - pos.entry_price) / pos.entry_price * 100
+            else:
+                pnl_pct = 0
+            
+            pos.current_price = current_price
+            pos.pnl_pct = pnl_pct
+            pos.hold_days = hold_days
+            updated.append(pos)
+        
+        return updated
+    
+    def _rebuild_positions_from_trades(self) -> List[Position]:
+        """从交易记录重建持仓状态"""
+        positions = []
+        trades = self.load_trades()
+        
+        # 按代码分组，获取每只ETF的买入记录
+        buy_records = {}  # code -> (date, name, price, quantity)
+        sell_records = {}  # code -> [(date, quantity), ...]
+        
+        for trade in trades:
+            if trade.action == 'buy':
+                buy_records[trade.code] = {
+                    'date': trade.date,
+                    'name': trade.name,
+                    'price': trade.price,
+                    'quantity': trade.quantity,
+                }
+            elif trade.action == 'sell':
+                if trade.code not in sell_records:
+                    sell_records[trade.code] = []
+                sell_records[trade.code].append({
+                    'date': trade.date,
+                    'quantity': trade.quantity,
+                })
+        
+        # 计算当前持仓
+        for code, buy_info in buy_records.items():
+            total_bought = buy_info['quantity']
+            total_sold = sum(s['quantity'] for s in sell_records.get(code, []))
+            remaining = total_bought - total_sold
+            
+            if remaining > 0:
+                positions.append(Position(
+                    code=code,
+                    name=buy_info['name'],
+                    entry_date=buy_info['date'],
+                    entry_price=buy_info['price'],
+                    quantity=remaining,
+                    current_price=buy_info['price'],
+                    pnl_pct=0,
+                    hold_days=0,
+                ))
+        
+        return positions
     
     def check_stop_loss(self, code: str, threshold: float = -5) -> bool:
         """检查是否触发止损"""

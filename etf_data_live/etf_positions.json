@@ -9,6 +9,16 @@
       "current_price": 1.251,
       "pnl_pct": 0,
       "hold_days": 0
+    },
+    {
+      "code": "515050",
+      "name": "通信ETF华夏",
+      "entry_date": "2026-06-02",
+      "entry_price": 1.197,
+      "quantity": 2600,
+      "current_price": 1.197,
+      "pnl_pct": 0,
+      "hold_days": 0
     }
   ]
 }
