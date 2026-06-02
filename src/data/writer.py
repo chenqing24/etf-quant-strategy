@@ -71,12 +71,8 @@ class DataWriter:
             db_path: 数据库路径，默认使用 etf_data_live/etf.db
         """
         if db_path is None:
-            # 使用相对路径
-            self.db_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
-                'etf_data_live',
-                'etf.db'
-            )
+            from src.constants import DB_NAME, DATA_DIR
+            self.db_path = str(Path(DATA_DIR) / DB_NAME)
         else:
             self.db_path = db_path
         
