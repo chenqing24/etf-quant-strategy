@@ -752,18 +752,31 @@ def main():
 def _run_history_query(engine: ETFDecisionEngine, args):
     """
     US-005: 查询交易记录
-    
+    US-007: 增加"持仓策略指导"段
+
     Examples:
         python -m src.decision_cli -m history
         python -m src.decision_cli -m history --date 20260525
         python -m src.decision_cli -m history --date 2026-05 --code 510300
     """
+    # US-007: 持仓策略指导（在交易历史之前显示）
+    try:
+        from src.analysis.position_guide import PositionGuideAnalyzer
+        # 用 US-006 的 market_regime 检测
+        market_regime = engine._detect_market_mode() if hasattr(engine, '_detect_market_mode') else 'range_bound'
+        analyzer = PositionGuideAnalyzer()
+        guides = analyzer.analyze_portfolio(market_regime=market_regime)
+        if guides:
+            _print_position_guides(guides, market_regime)
+    except Exception as e:
+        print(f"[WARN] US-007 持仓策略指导失败: {e}")
+
     trades = engine.tracker.query_trades(
         date=args.date,
         code=args.code,
         action=args.action,
     )
-    
+
     print(f"\n{'=' * 80}")
     filter_note = f"(过滤: date={args.date}, code={args.code}, action={args.action})" if (args.date or args.code or args.action) else ""
     print(f"📜 交易历史 {filter_note}")
@@ -771,11 +784,11 @@ def _run_history_query(engine: ETFDecisionEngine, args):
     print(f"{'日期':<12} {'代码':<10} {'名称':<8} {'行为':<6} {'成交价':>8} {'数量':>6} "
           f"{'金额':>10} {'实时价':>8} {'偏差%':>7} {'RSI14':>7} {'涨幅%':>7} {'评分':>5}")
     print("-"*80)
-    
+
     if not trades:
         print("  (无记录)")
         return
-    
+
     for t in trades:
         note_pnl = f" 盈亏:{t.actual_pnl:+.2f}" if t.action == 'sell' else ""
         note_rt = (f" 实时:{t.realtime_price:.3f}" if t.realtime_price > 0
@@ -786,13 +799,49 @@ def _run_history_query(engine: ETFDecisionEngine, args):
         note_chng = (f" 涨幅:{t.day_change_pct:+.2f}%" if t.day_change_pct != 0
                      else "")
         note_score = f" 评分:{t.score}" if t.score > 0 else ""
-        
+
         print(f"  {t.date:<10} {t.code:<10} {t.name:<8} {t.action:<6} "
               f"{t.price:>8.3f} {t.quantity:>6} {t.amount:>10.1f}"
               f"{note_rt}{note_dev}{note_rsi}{note_chng}{note_score}{note_pnl}")
-    
+
     print("-"*80)
     print(f"  共 {len(trades)} 笔记录")
+
+
+def _print_position_guides(guides, market_regime: str = 'range_bound'):
+    """US-007: 打印持仓策略指导"""
+    print(f"\n{'=' * 80}")
+    print(f"📊 持仓策略指导 (US-007) | 市场: {market_regime}")
+    print(f"{'=' * 80}")
+
+    if not guides:
+        print("  (无持仓)")
+        return
+
+    REGIME_LABEL = {
+        'trend_up': '📈 趋势市',
+        'range_bound': '📊 震荡市',
+        'trend_down': '🔻 下跌市',
+        'crash': '🚨 暴跌市',
+    }
+
+    for g in guides:
+        legacy_tag = '  [legacy]' if g.action == '清仓（用户决策）' else ''
+        print(f"\n  【{g.code} {g.name}】{legacy_tag}")
+        print(f"    持仓 {g.hold_days} 天 | {g.quantity} 股 @ {g.entry_price:.3f}")
+        print(f"    当前 {g.current_price:.3f} | 盈亏 {g.pnl_pct:+.2%}")
+        from src.analysis.position_guide import DEFAULT_STOP_LOSS_PCT, DEFAULT_TAKE_PROFIT_PCT
+        print(f"    止损 {g.stop_loss_price:.3f} ({DEFAULT_STOP_LOSS_PCT:+.0%}) | "
+              f"止盈 {g.take_profit_price:.3f} ({DEFAULT_TAKE_PROFIT_PCT:+.0%}) | "
+              f"到期 {g.expire_in_days} 天")
+        if g.min_hold_remaining > 0:
+            print(f"    min_hold 剩余 {g.min_hold_remaining} 天")
+        emotion_warn = f" | 情绪: {g.emotion_flag} ⚠️" if g.emotion_flag in ('fear', 'fomo', 'euphoria') else ""
+        print(f"    评分 {g.current_score} | 市场 {REGIME_LABEL.get(g.market_regime, g.market_regime)}{emotion_warn}")
+        print(f"    决策：{g.action}")
+        print(f"    理由：{g.reason}")
+
+    print()
 
 
 def _run_export(engine: ETFDecisionEngine, args):

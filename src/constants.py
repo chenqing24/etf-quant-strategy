@@ -9,8 +9,9 @@ from pathlib import Path
 DATA_DIR = 'etf_data_live'      # 数据目录
 REPORTS_DIR = 'etf_reports'     # 报告目录
 CACHE_DIR = 'etf_reports/cache' # 缓存目录
-TRADES_FILE = 'etf_trades.json' # 交易记录文件
+TRADES_FILE = 'etf_trades.json' # 交易记录文件（US-008: 已废弃，迁移到 trade_history 表）
 DB_NAME = 'etf.db'              # 数据库文件名
+DB_PATH = 'etf_data_live/etf.db'  # 数据库完整路径（US-008: TradeTracker 主存储）
 
 # ==================== API地址 ====================
 # 腾讯行情API

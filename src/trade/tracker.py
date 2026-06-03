@@ -40,13 +40,14 @@ import csv
 import json
 import os
 import time
+import sqlite3
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 import requests
 import logging
 
-from src.constants import TRADES_FILE, TENCENT_QT_URL, HTTP_TIMEOUT_SHORT
+from src.constants import TRADES_FILE, TENCENT_QT_URL, HTTP_TIMEOUT_SHORT, DB_PATH
 
 
 # ── 情绪/时段常量（SOP-06 v2.0）────────────────────────────────
@@ -96,6 +97,18 @@ class TradeRecord:
     trade_time: str = ""          # 实际成交时间 (YYYY-MM-DD HH:MM)
     emotion: str = ""            # 交易情绪 (calm/euphoria/fear/fomo/regret)
     session: str = ""            # 交易时段 (A/B/C/D/E/F)
+    # ─────────────────────────────────────────────────────────────
+
+    # ── US-008 新增：区分实盘/模拟（默认保守 0）────────────
+    is_real: int = 0             # 0=模拟, 1=实盘
+    is_paper: int = 0            # 0=非纸面, 1=纸面（回测用）
+    # ─────────────────────────────────────────────────────────────
+
+    # ── Q-009 决策上下文（之前漏的）──────────────────────────
+    model: str = ""              # 模型名 'ETF量化决策v8_sop'
+    strategy: str = ""           # 策略配置 JSON 字符串
+    evaluation: str = ""         # 评价指标 JSON 字符串
+    snapshot_ref: str = ""       # 决策快照文件路径
     # ─────────────────────────────────────────────────────────────
 
 
@@ -177,66 +190,169 @@ class Position:
     status: str = 'EMPTY'  # US-005: 状态机字段
     score: int = 0  # US-005: 持仓评分（用于换仓决策）
 
+    # ── US-008 新增 ───────────────────────────────────────────
+    is_real: int = 0             # 0=模拟, 1=实盘
+    legacy_holding: int = 0      # 0=否, 1=是（legacy_holding 角色）
+    # ─────────────────────────────────────────────────────────────
+
 
 class TradeTracker:
-    """交易追踪器"""
-    
-    def __init__(self, data_dir: str = '.'):
+    """交易追踪器（US-008: 数据从 JSON 迁到 SQLite）
+
+    数据存储：
+      - trade_history: 交易记录（替代 etf_trades.json）
+      - positions:     持仓（替代 etf_positions.json）
+      - audit_log:     状态机审计（替代 etf_audit_log.json）
+
+    API 兼容性：
+      - load_trades() / save_trade() 签名不变
+      - load_positions() / save_positions() 签名不变
+      - record_buy / record_sell 加 is_real 默认参数
+    """
+
+    def __init__(self, data_dir: str = '.', db_path: str = None):
         self.data_dir = data_dir
-        from src.constants import TRADES_FILE, TENCENT_QT_URL
-        self.trades_file = os.path.join(data_dir, TRADES_FILE)
-        self.positions_file = os.path.join(data_dir, 'etf_positions.json')
-        self.performance_file = os.path.join(data_dir, 'etf_performance.json')
-        
-        # US-005: 审计日志
-        self.audit_log_file = os.path.join(data_dir, 'etf_audit_log.json')
-        self._ensure_files()
-    
-    def _ensure_files(self):
-        """初始化文件"""
-        for f in [self.trades_file, self.positions_file, self.performance_file, self.audit_log_file]:
-            if not os.path.exists(f):
-                with open(f, 'w') as fp:
-                    json.dump({
-                        'trades': [],
-                        'positions': [],
-                        'performance': {
-                            'initial_capital': 20000,
-                            'current_capital': 20000,
-                            'total_pnl': 0,
-                            'total_trades': 0,
-                            'win_rate': 0,
-                        }
-                    }, fp, indent=2)
-    
+        # US-008: 默认用常量 DB_PATH，测试可传临时 db_path
+        from src.constants import DB_PATH
+        self.db_path = db_path or DB_PATH
+        self._ensure_db()
+
+    def _get_conn(self):
+        """获取数据库连接"""
+        return sqlite3.connect(self.db_path)
+
+    def _ensure_db(self):
+        """验证 3 张表存在，不存在则提示运行迁移"""
+        conn = self._get_conn()
+        try:
+            tables = [r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('trade_history','positions','audit_log')"
+            ).fetchall()]
+            if not all(t in tables for t in ['trade_history', 'positions', 'audit_log']):
+                print(f'[WARN] DB 缺表 {tables}，请运行 scripts/migrate_trade_to_db.py')
+        finally:
+            conn.close()
+
     def load_trades(self) -> List[TradeRecord]:
-        """加载交易记录"""
-        with open(self.trades_file, 'r') as f:
-            data = json.load(f)
-            return [TradeRecord(**t) for t in data.get('trades', [])]
-    
+        """加载交易记录（US-008: 查 trade_history 表）"""
+        conn = self._get_conn()
+        try:
+            rows = conn.execute("""
+                SELECT date, code, name, action, price, quantity, amount, reason,
+                       expected_return, actual_pnl, note,
+                       realtime_price, price_deviation, rsi_14, day_change_pct, score,
+                       signal_time, signal_price, signal_rsi, signal_adx, signal_score,
+                       trade_time, emotion, session,
+                       is_real, is_paper,
+                       model, strategy, evaluation, snapshot_ref
+                FROM trade_history ORDER BY id
+            """).fetchall()
+        finally:
+            conn.close()
+        return [TradeRecord(
+            date=r[0], code=r[1], name=r[2], action=r[3],
+            price=r[4], quantity=r[5], amount=r[6], reason=r[7] or '',
+            expected_return=r[8] or 0, actual_pnl=r[9] or 0, note=r[10] or '',
+            realtime_price=r[11] or 0.0, price_deviation=r[12] or 0.0,
+            rsi_14=r[13] or 0.0, day_change_pct=r[14] or 0.0, score=r[15] or 0,
+            signal_time=r[16] or '', signal_price=r[17] or 0.0,
+            signal_rsi=r[18] or 0.0, signal_adx=r[19] or 0.0, signal_score=r[20] or 0,
+            trade_time=r[21] or '', emotion=r[22] or '', session=r[23] or '',
+            is_real=r[24] or 0, is_paper=r[25] or 0,
+            model=r[26] or '', strategy=r[27] or '',
+            evaluation=r[28] or '', snapshot_ref=r[29] or '',
+        ) for r in rows]
+
     def save_trade(self, trade: TradeRecord):
-        """保存交易记录"""
-        with open(self.trades_file, 'r') as f:
-            data = json.load(f)
-        
-        data['trades'].append(asdict(trade))
-        
-        with open(self.trades_file, 'w') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-    
+        """保存交易记录（US-008: 写 trade_history 表）"""
+        # US-008: emotion/session 空字符串转 None（CHECK 约束要求）
+        emotion = trade.emotion if trade.emotion else None
+        session = trade.session if trade.session else None
+        model = trade.model if trade.model else None
+        strategy = trade.strategy if trade.strategy else None
+        evaluation = trade.evaluation if trade.evaluation else None
+        snapshot_ref = trade.snapshot_ref if trade.snapshot_ref else None
+
+        conn = self._get_conn()
+        try:
+            conn.execute("""
+                INSERT INTO trade_history (
+                    date, code, name, action, price, quantity, amount, reason,
+                    expected_return, actual_pnl, note,
+                    realtime_price, price_deviation, rsi_14, day_change_pct, score,
+                    signal_time, signal_price, signal_rsi, signal_adx, signal_score,
+                    trade_time, emotion, session,
+                    is_real, is_paper,
+                    model, strategy, evaluation, snapshot_ref
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                trade.date, trade.code, trade.name, trade.action,
+                trade.price, trade.quantity, trade.amount, trade.reason,
+                trade.expected_return, trade.actual_pnl, trade.note,
+                trade.realtime_price, trade.price_deviation,
+                trade.rsi_14, trade.day_change_pct, trade.score,
+                trade.signal_time, trade.signal_price,
+                trade.signal_rsi, trade.signal_adx, trade.signal_score,
+                trade.trade_time, emotion, session,
+                trade.is_real, trade.is_paper,
+                model, strategy, evaluation, snapshot_ref,
+            ))
+            conn.commit()
+        finally:
+            conn.close()
+
     def load_positions(self) -> List[Position]:
-        """加载当前持仓"""
-        with open(self.positions_file, 'r') as f:
-            data = json.load(f)
-            return [Position(**p) for p in data.get('positions', [])]
-    
+        """加载当前持仓（US-008: 查 positions 表）"""
+        conn = self._get_conn()
+        try:
+            rows = conn.execute("""
+                SELECT code, name, entry_date, entry_price, quantity,
+                       current_price, pnl_pct, hold_days, status, score,
+                       is_real, legacy_holding
+                FROM positions
+            """).fetchall()
+        finally:
+            conn.close()
+        return [Position(
+            code=r[0], name=r[1], entry_date=r[2], entry_price=r[3],
+            quantity=r[4], current_price=r[5] or 0, pnl_pct=r[6] or 0,
+            hold_days=r[7] or 0, status=r[8] or 'EMPTY', score=r[9] or 0,
+            is_real=r[10] or 0, legacy_holding=r[11] or 0,
+        ) for r in rows]
+
     def save_positions(self, positions: List[Position]):
-        """保存持仓"""
-        with open(self.positions_file, 'w') as f:
-            json.dump({
-                'positions': [asdict(p) for p in positions],
-            }, f, indent=2, ensure_ascii=False)
+        """保存持仓（US-008: 写 positions 表，全量替换语义）
+
+        实现：先 DELETE 不在传入列表中的 code，再 INSERT OR REPLACE 传入列表。
+        这与原 JSON "全量替换" 行为一致：传入什么就保存什么。
+
+        状态机原子操作请用 transition_position()，它内部用 save_positions 实现。
+        """
+        conn = self._get_conn()
+        try:
+            # 1. 删除不在传入列表中的 code
+            new_codes = {p.code for p in positions}
+            existing = [r[0] for r in conn.execute("SELECT code FROM positions").fetchall()]
+            for old_code in existing:
+                if old_code not in new_codes:
+                    conn.execute("DELETE FROM positions WHERE code = ?", (old_code,))
+
+            # 2. INSERT OR REPLACE 传入列表
+            for p in positions:
+                conn.execute("""
+                    INSERT OR REPLACE INTO positions (
+                        code, name, entry_date, entry_price, quantity,
+                        current_price, pnl_pct, hold_days, status, score,
+                        is_real, legacy_holding, updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))
+                """, (
+                    p.code, p.name, p.entry_date, p.entry_price, p.quantity,
+                    p.current_price, p.pnl_pct, p.hold_days, p.status, p.score,
+                    p.is_real, p.legacy_holding,
+                ))
+            conn.commit()
+        finally:
+            conn.close()
     
     # ── US-005: 实时数据获取 ────────────────────────────────────
     
@@ -350,7 +466,7 @@ class TradeTracker:
     
     # ─────────────────────────────────────────────────────────────
     
-    def record_buy(self, code: str, name: str, price: float, 
+    def record_buy(self, code: str, name: str, price: float,
                    quantity: int, reason: str = "",
                    signal_price: float = 0.0,
                    signal_time: str = "",
@@ -359,10 +475,15 @@ class TradeTracker:
                    signal_score: int = 0,
                    trade_time: str = "",
                    emotion: str = "",
-                   session: str = "") -> TradeRecord:
+                   session: str = "",
+                   is_real: int = 0,                 # 🆕 US-008: 0=模拟, 1=实盘
+                   model: str = "",                  # 🆕 Q-009 决策上下文
+                   strategy: str = "",               # 🆕 Q-009
+                   evaluation: str = "",             # 🆕 Q-009
+                   snapshot_ref: str = "") -> TradeRecord:
         """
-        记录买入（SOP-06 v2.0: 信号快照 + 情绪 + 时段）
-        
+        记录买入（SOP-06 v2.0 + US-008 区分实盘/模拟 + Q-009 决策上下文）
+
         Args:
             code:           ETF代码
             name:           ETF名称
@@ -430,10 +551,17 @@ class TradeTracker:
             trade_time=trade_time,
             emotion=validated_emotion,
             session=session,
+            # US-008 区分实盘/模拟
+            is_real=is_real,
+            # Q-009 决策上下文
+            model=model,
+            strategy=strategy,
+            evaluation=evaluation,
+            snapshot_ref=snapshot_ref,
         )
-        
+
         self.save_trade(trade)
-        
+
         # 更新持仓
         positions = self.load_positions()
         # US-005: 事务保护 - 检查是否可买入
@@ -453,44 +581,72 @@ class TradeTracker:
             hold_days=0,
             status='HOLDING',  # US-005: 直接到 HOLDING 状态
             score=signal_score,  # US-005: 记录评分
+            is_real=is_real,  # US-008
         )
         positions.append(new_pos)
         self.save_positions(positions)
         self._audit(code, 'EMPTY', 'HOLDING', f"买入 {quantity}股 @ {price}")
         return trade
-    
+
     def record_sell(self, code: str, price: float, actual_pnl: float = 0,
-                     signal_price: float = 0.0, score: int = 0) -> Optional[TradeRecord]:
+                     signal_price: float = 0.0, score: int = 0,
+                     quantity: int = None,                # 🆕 US-008: 部分卖出（None=全仓）
+                     is_real: int = 0,                    # 🆕 US-008
+                     emotion: str = "",                   # 🆕 SOP-06
+                     session: str = "",                   # 🆕 SOP-06
+                     model: str = "",                     # 🆕 Q-009
+                     strategy: str = "",                  # 🆕 Q-009
+                     evaluation: str = "",                # 🆕 Q-009
+                     snapshot_ref: str = "") -> Optional[TradeRecord]:
         """
-        记录卖出（US-005: 填充实时快照字段，sell端留0）
-        
+        记录卖出（US-005: 填充实时快照字段，sell端留0 + US-008: 部分卖 + Q-009: 决策上下文）
+
         Args:
             code:           ETF代码
             price:          成交价格
             actual_pnl:     实际盈亏
             signal_price:   信号价（sell时未使用，留0）
             score:          评分（sell时未使用，留0）
+            quantity:       卖出数量（None = 全部卖出，US-008 支持部分卖）
+            is_real:        1=实盘, 0=模拟
+            emotion/session/model/strategy/evaluation/snapshot_ref: Q-009/SOP-06 字段
         """
         positions = self.load_positions()
         pos = next((p for p in positions if p.code == code), None)
-        
+
         if pos:
+            # US-008: 部分卖出支持（quantity=None 表示全仓）
+            sell_qty = quantity if quantity is not None else pos.quantity
+            actual_pnl_partial = actual_pnl if quantity is None else (
+                (price - pos.entry_price) * sell_qty
+            )
+
             trade = TradeRecord(
                 date=datetime.now().strftime('%Y-%m-%d'),
                 code=code,
                 name=pos.name,
                 action='sell',
                 price=price,
-                quantity=pos.quantity,
-                amount=price * pos.quantity,
+                quantity=sell_qty,
+                amount=price * sell_qty,
                 reason='卖出',
-                actual_pnl=actual_pnl,
+                actual_pnl=actual_pnl_partial,
                 # US-005: sell时无法提供有效实时快照，填0
                 realtime_price=price,
                 price_deviation=0.0,
                 rsi_14=0.0,
                 day_change_pct=0.0,
                 score=0,
+                # SOP-06 字段
+                emotion=emotion,
+                session=session,
+                # US-008 字段
+                is_real=is_real,
+                # Q-009 字段
+                model=model,
+                strategy=strategy,
+                evaluation=evaluation,
+                snapshot_ref=snapshot_ref,
             )
             self.save_trade(trade)
             
@@ -503,10 +659,25 @@ class TradeTracker:
 
             # 状态转换：HOLDING → CLOSING → EMPTY
             self.transition_position(code, 'CLOSING', f"准备卖出 @ {price}")
-            # 移除持仓
-            positions = [p for p in positions if p.code != code]
-            self.save_positions(positions)
-            self._audit(code, 'CLOSING', 'EMPTY', f"已卖出 @ {price}, pnl={actual_pnl}")
+            # US-008: 部分卖：扣减持仓数量而非移除
+            if quantity is not None and quantity < pos.quantity:
+                # 部分卖：更新数量
+                conn = self._get_conn()
+                try:
+                    conn.execute("""
+                        UPDATE positions
+                        SET quantity = quantity - ?, updated_at = datetime('now')
+                        WHERE code = ?
+                    """, (sell_qty, code))
+                    conn.commit()
+                finally:
+                    conn.close()
+                self._audit(code, 'HOLDING', 'HOLDING', f"部分卖出 {sell_qty}股 @ {price}，剩余 {pos.quantity - sell_qty}")
+            else:
+                # 全仓卖：移除持仓
+                positions = [p for p in positions if p.code != code]
+                self.save_positions(positions)
+                self._audit(code, 'CLOSING', 'EMPTY', f"已卖出 @ {price}, pnl={actual_pnl_partial}")
 
             return trade
         return None
@@ -677,27 +848,30 @@ class TradeTracker:
     # ===== US-005: 状态机 + 事务保护 + 审计日志 =====
 
     def _audit(self, code: str, from_state: str, to_state: str, reason: str = ""):
-        """写审计日志"""
-        entry = {
-            'timestamp': datetime.now().isoformat(),
-            'code': code,
-            'from_state': from_state,
-            'to_state': to_state,
-            'reason': reason,
-        }
+        """写审计日志（US-008: 走 audit_log 表）"""
+        conn = self._get_conn()
         try:
-            with open(self.audit_log_file, 'a') as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+            conn.execute("""
+                INSERT INTO audit_log (action, code, from_state, to_state, detail, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                'state_change', code, from_state, to_state,
+                json.dumps({'reason': reason}, ensure_ascii=False),
+                datetime.now().isoformat(),
+            ))
+            conn.commit()
         except Exception as e:
             _logger = logging.getLogger(__name__)
             _logger.error(f"audit log 写入失败: {e}")
+        finally:
+            conn.close()
 
     def _validate_transition(self, from_state: str, to_state: str) -> bool:
         """验证状态转换是否合法"""
         valid = VALID_TRANSITIONS.get(from_state, set())
         return to_state in valid
 
-    def can_buy(self, code: str, max_holdings: int = 1) -> tuple:
+    def can_buy(self, code: str, max_holdings: int = 2) -> tuple:  # US-008: 默认 2（沿用 v8 POSITION_MANAGEMENT.md + 用户 B 决策）
         """检查是否能买入（事务前置检查）
 
         Returns:

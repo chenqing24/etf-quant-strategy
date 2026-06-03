@@ -125,6 +125,9 @@ class FactorBacktester:
         
         # === 新增：信号持续性控制 ===
         self._consecutive_low_score_days = 0  # 连续低分天数计数器
+        
+        # === 排除列表（大盘参考 ETF 等不参与交易）===
+        self._exclude_codes = set()
     
     def _init_selector(self):
         """延迟初始化 Selector（避免循环导入）"""

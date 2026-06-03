@@ -14,10 +14,20 @@ sys.path.insert(0, str(ROOT))
 
 @pytest.fixture
 def tracker():
-    """临时 TradeTracker"""
+    """临时 TradeTracker（US-008: 用临时 db_path + schema 隔离）"""
     with tempfile.TemporaryDirectory() as tmpdir:
         from src.trade.tracker import TradeTracker
-        tt = TradeTracker(data_dir=tmpdir)
+        import sqlite3 as _sqlite
+        # 临时 DB 路径
+        tmp_db = os.path.join(tmpdir, 'test.db')
+        # 初始化 schema（US-008 行为变化：从 JSON → DB）
+        schema_file = os.path.join(ROOT, 'schema/migrations/004_add_trade_tables.sql')
+        if os.path.exists(schema_file):
+            conn = _sqlite.connect(tmp_db)
+            with open(schema_file) as f:
+                conn.executescript(f.read())
+            conn.close()
+        tt = TradeTracker(data_dir=tmpdir, db_path=tmp_db)
         yield tt
 
 
@@ -70,13 +80,15 @@ class TestCanBuy:
 
     def test_cannot_buy_exceed_max_holdings(self, tracker):
         from src.trade.tracker import Position
+        # US-008: max_holdings 默认改为 2（沿用 v8 POSITION_MANAGEMENT.md + 用户 B 决策）
+        # 测试需显式传 max_holdings=1 才能复现"超限"场景
         positions = [
             Position(code='588000', name='a', entry_date='2026-06-01',
                      entry_price=1.0, quantity=100, status='HOLDING'),
         ]
         tracker.save_positions(positions)
-        # 默认 max_holdings=1
-        ok, reason = tracker.can_buy('512480')
+        # 显式传 max_holdings=1，触发上限
+        ok, reason = tracker.can_buy('512480', max_holdings=1)
         assert ok is False
         assert '上限' in reason
 
@@ -175,7 +187,17 @@ class TestCheckPortfolio:
 
 
 class TestAuditLog:
-    """审计日志测试"""
+    """审计日志测试（US-008: audit_log 改走 SQLite 表）"""
+
+    def _read_audit_log(self, tracker):
+        """US-008: 从 audit_log 表读取（替代旧文件读取）"""
+        import sqlite3
+        conn = sqlite3.connect(tracker.db_path)
+        rows = conn.execute(
+            "SELECT code, from_state, to_state, detail FROM audit_log ORDER BY id"
+        ).fetchall()
+        conn.close()
+        return rows
 
     def test_audit_writes_to_file(self, tracker):
         from src.trade.tracker import Position
@@ -185,11 +207,12 @@ class TestAuditLog:
         )]
         tracker.save_positions(positions)
         tracker.transition_position('510300', 'CLOSING', 'test reason')
-        # 读 audit log
-        with open(tracker.audit_log_file, 'r') as f:
-            content = f.read()
-        assert 'CLOSING' in content
-        assert 'test reason' in content
+        # US-008: 读 audit_log 表
+        rows = self._read_audit_log(tracker)
+        assert len(rows) == 1
+        assert rows[0][1] == 'HOLDING'    # from_state
+        assert rows[0][2] == 'CLOSING'    # to_state
+        assert 'test reason' in rows[0][3]  # detail JSON
 
     def test_invalid_transition_does_not_audit(self, tracker):
         from src.trade.tracker import Position
@@ -201,9 +224,9 @@ class TestAuditLog:
         # EMPTY → HOLDING 非法
         result = tracker.transition_position('510300', 'HOLDING', 'should fail')
         assert result is False
-        with open(tracker.audit_log_file, 'r') as f:
-            content = f.read()
-        assert 'should fail' not in content
+        # US-008: 读 audit_log 表，非法转换不写日志
+        rows = self._read_audit_log(tracker)
+        assert len(rows) == 0
 
 
 class TestRecordBuySellTransaction:

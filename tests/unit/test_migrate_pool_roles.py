@@ -126,10 +126,11 @@ def test_migration_unclassified_count(backup_etf_db):
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM etf_names WHERE pool_role = 'unclassified'")
         cnt = cur.fetchone()[0]
-        # 14 + 1 + ~22 + unclassified = 1486
+        # US-008 后：14 + 1 + 1 (legacy_holding) + ~22 + unclassified = 1486
         cur.execute("SELECT COUNT(*) FROM etf_names")
         total = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM etf_names WHERE pool_role IN ('core', 'reference', 'excluded')")
+        # US-008: legacy_holding 角色（159611）也算 categorized
+        cur.execute("SELECT COUNT(*) FROM etf_names WHERE pool_role IN ('core', 'reference', 'excluded', 'legacy_holding')")
         categorized = cur.fetchone()[0]
         assert cnt == total - categorized
     finally:
