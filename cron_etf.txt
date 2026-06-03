@@ -1,2 +1,5 @@
 ﻿# ETF量化策略 - 每个工作日下午2:30自动执行
+# -m eval    决策评估（生成报告 + 推荐）
+# -m account 统一账户视图（持仓+推荐+动作清单，US-012）
 30 14 * * 1-5 cd /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy && /Users/qingchen/git/qwenpaw/venv/bin/python -m src.decision_cli -m eval >> /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy/logs/cron_etf.log 2>&1
+30 14 * * 1-5 cd /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy && /Users/qingchen/git/qwenpaw/venv/bin/python -m src.cli.decision -m account >> /Users/qingchen/.qwenpaw/workspaces/default/etf_strategy/logs/cron_account.log 2>&1
