@@ -126,18 +126,23 @@ class ETFReportGenerator:
         """分析当前市场状态
 
         US-003：从 Repository 加载 tradable 池，不依赖 config.exclude_codes
+        US-010：过滤已持仓（self.held_codes 由 generate_report 注入）
         """
         selector = Selector()
         indicator = Indicator()
-        
+
         # US-003: 单一过滤入口 = Repository (tradable AND core)
         # 不再依赖 StrategyConfig().exclude_codes（已 deprecated）
         repo = ETFRepository()
         tradable_pool = set(repo.list_codes("core"))  # 14 只 core
         # 也加入 reference（如 510300）但要单独标记
         reference_pool = set(repo.list_codes("reference"))  # [510300]
-        
+
+        # US-010: 已持仓过滤集合
+        held_codes = getattr(self, 'held_codes', set()) or set()
+
         scores = []
+        filtered_by_held = []  # US-010: 记录被持仓过滤的标的
         for code, df in self.data.items():
             # US-003 单一过滤入口:
             # 1. 不在 core 池（包括 510300 等 reference / excluded / unclassified）→ 跳过
@@ -145,6 +150,10 @@ class ETFReportGenerator:
                 continue
             # 2. 是大盘参考（510300）→ 跳过（虽然 core 池已经过滤了，这里是双保险）
             if code in reference_pool:
+                continue
+            # US-010: 过滤已持仓（不入选 Top N，但记录到 filtered_by_held 供报告展示）
+            if code in held_codes:
+                filtered_by_held.append(code)
                 continue
             if len(df) < 60:
                 continue
@@ -161,14 +170,16 @@ class ETFReportGenerator:
                         'price': price,
                         'reasons': reasons
                     })
-        
+
         scores.sort(key=lambda x: -x['score'])
         self.current_etfs = scores
-        
+        self.filtered_by_held = filtered_by_held  # US-010
+
         return {
             'total_qualified': len(scores),
             'bullish': len(scores) > 10,
-            'top_etfs': scores[:10]
+            'top_etfs': scores[:10],
+            'filtered_by_held': filtered_by_held,  # US-010
         }
     
     def validate_strategy(self, periods: List[Tuple] = None) -> List[Dict]:
@@ -214,8 +225,43 @@ class ETFReportGenerator:
         self.validation_results = results
         return results
     
-    def generate_report(self, capital: float = 20000) -> str:
-        """生成完整报告"""
+    def generate_report(self, capital: float = 20000,
+                        tracker: Optional['TradeTracker'] = None) -> str:
+        """生成完整报告
+
+        Args:
+            capital: 用户投入本金（如果提供 tracker，仅作参考；实际以 tracker 账户数据为准）
+            tracker: 交易追踪器实例（US-009，提供后资金配置段查持仓+现金）
+        """
+        # ── US-009: 账户数据集成 ─────────────────────────────
+        from typing import Optional
+        if tracker is not None:
+            account = tracker.get_account_summary()
+            cash_available = account['cash']                  # 现金余额
+            positions_value = account['positions_value']      # 持仓市值
+            total_asset = account['total_asset']              # 总资产
+            hold_count = account['hold_count']                # 当前持仓数
+            max_holdings = account['max_holdings']            # 最大持仓数
+            # US-010: 注入已持仓代码集合给 analyze_market
+            self.held_codes = {h['code'] for h in account['holdings']}
+            # 可投入 = max(0, 总资产×90% - 持仓市值)
+            available = max(0, total_asset * 0.9 - positions_value)
+            account_status_note = (
+                f"- 现金: {cash_available:,.0f}元\n"
+                f"- 持仓市值: {positions_value:,.0f}元（{hold_count}只）\n"
+                f"- 总资产: {total_asset:,.0f}元"
+            )
+        else:
+            # 旧行为：按传入本金
+            cash_available = capital
+            positions_value = 0
+            total_asset = capital
+            hold_count = 0
+            max_holdings = 2  # US-008 默认
+            self.held_codes = set()  # US-010: 无 tracker 不过滤
+            available = capital * 0.9
+            account_status_note = f"- 现金: {cash_available:,.0f}元（未接入 TradeTracker）"
+
         # 获取数据
         latest = self.load_data()
         
@@ -338,12 +384,20 @@ class ETFReportGenerator:
         stop_loss_price = trade_price * 0.94  # 止损价 -6%
         take_profit_price = trade_price * 1.10  # 止盈价 +10%
         
-        # 计算股数（基于推荐价格）
+        # 计算股数（US-009: 用 available 替代 capital*0.9）
         position = 0
         action = "观望"
         if top:
-            position = int(capital * 0.9 / trade_price / 100) * 100
-            action = f"买入 {top['code']} {top['name']} {position}股"
+            position = int(available / trade_price / 100) * 100  # 整百股
+            # US-009: 满仓 / 现金不足 → 不买入
+            if hold_count >= max_holdings:
+                action = f"已达仓位上限（{hold_count}/{max_holdings}），暂不买入"
+                position = 0
+            elif available < trade_price * 100:
+                action = f"可用金额不足（{available:,.0f}元），暂不买入"
+                position = 0
+            elif position > 0:
+                action = f"买入 {top['code']} {top['name']} {position}股"
         
         # ========== 计算止盈止损空间（基于实时交易价格）==========
         # 使用实际的交易价格计算止盈止损空间
@@ -410,12 +464,20 @@ class ETFReportGenerator:
         stop_loss_price = trade_price * 0.94  # 止损价 -6%
         take_profit_price = trade_price * 1.10  # 止盈价 +10%
         
-        # 计算股数（基于推荐价格）
+        # 计算股数（US-009: 用 available 替代 capital*0.9）
         position = 0
         action = "观望"
         if top:
-            position = int(capital * 0.9 / trade_price / 100) * 100
-            action = f"买入 {top['code']} {top['name']} {position}股"
+            position = int(available / trade_price / 100) * 100  # 整百股
+            # US-009: 满仓 / 现金不足 → 不买入
+            if hold_count >= max_holdings:
+                action = f"已达仓位上限（{hold_count}/{max_holdings}），暂不买入"
+                position = 0
+            elif available < trade_price * 100:
+                action = f"可用金额不足（{available:,.0f}元），暂不买入"
+                position = 0
+            elif position > 0:
+                action = f"买入 {top['code']} {top['name']} {position}股"
         
         # 构建报告 - 交易建议放开头和结尾
         report = f"""
@@ -426,8 +488,9 @@ class ETFReportGenerator:
 【基本信息】
 报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 数据最新日期: {latest} {data_freshness}
-投资本金: {capital:,}元
-策略模式: 单持仓 + 6%止损 + 10%止盈 + 移动止盈
+投资本金: {capital:,}元（参考）
+策略模式: 多持仓(最多{max_holdings}) + 6%止损 + 10%止盈 + 移动止盈
+当前持仓: {hold_count}只 / 现金: {cash_available:,.0f}元
 
 {f"{data_freshness_warning}" if data_freshness_warning else ""}
 {'='*70}
@@ -437,7 +500,7 @@ class ETFReportGenerator:
 【操作】{action}
 【目标】{top['code']} {top['name']}
 【价格】{trade_price:.3f}元
-【数量】{position}股 ({capital*0.9:,.0f}元)
+【数量】{position}股 ({available:,.0f}元)
 【止损】-6% ({stop_loss_price:.3f}元)
 【止盈】+10% ({take_profit_price:.3f}元)
 
@@ -524,7 +587,13 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
         for i, etf in enumerate(self.current_etfs[:10], 1):
             reasons = '+'.join(etf['reasons'][:3])
             report += f"{i:<4} {etf['code']:<8} {etf['name']:<10} {etf['price']:>8.3f} {etf['score']:>6} {reasons}\n"
-        
+
+        # US-010: 过滤说明段
+        if getattr(self, 'filtered_by_held', []):
+            report += "\n【过滤说明】(US-010)\n"
+            for code in self.filtered_by_held:
+                report += f"- {code} 已持仓，不重复推荐\n"
+
         report += f"""
 【核心推荐】
 1. {self.current_etfs[0]['code']} {self.current_etfs[0]['name']} - 分数{self.current_etfs[0]['score']}分 (最高)
@@ -534,23 +603,39 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 四、资金配置方案
 {'='*70}
 
-【建议方案】(本金{capital:,}元)
+【建议方案】(本金{capital:,}元{', 接入 TradeTracker' if tracker else ', 未接入 TradeTracker'})
 """
         
         # 计算配置
         top = self.current_etfs[0]
-        position = int(capital * 0.9 / top['price'] / 100) * 100  # 整手
+        position = int(available / top['price'] / 100) * 100  # US-009: 用 available 替代
+        cash_remaining = cash_available - (position * top['price'] if position > 0 else 0)
+        
+        # 满仓/不足时特殊处理
+        if hold_count >= max_holdings:
+            capital_table = f"""| 标的 | 金额(元) | 占比 | 买入数量 |
+|------|----------|------|----------|
+| ⚠️ 已达仓位上限（{hold_count}/{max_holdings}）| - | - | 暂不买入 |
+| 现金 | {cash_available:,.0f} | 100% | - |"""
+        else:
+            capital_table = f"""| 标的 | 金额(元) | 占比 | 买入数量 |
+|------|----------|------|----------|
+| {top['code']} {top['name']} | {position * top['price']:,.0f} | {(position * top['price'] / total_asset * 100) if total_asset > 0 else 0:.0f}% | {position}股 |
+| 现金（剩余） | {cash_remaining:,.0f} | {(cash_remaining / total_asset * 100) if total_asset > 0 else 0:.0f}% | - |
+| 当前持仓 | {positions_value:,.0f} | - | {hold_count}只 |"""
         
         report += f"""
-| 标的 | 金额(元) | 占比 | 买入数量 |
-|------|----------|------|----------|
-| {top['code']} {top['name']} | {capital*0.9:,.0f} | 90% | {position}股 |
-| 现金 | {capital*0.1:,.0f} | 10% | - |
+{capital_table}
+
+【账户状态】
+{account_status_note}
+- 可投入: {available:,.0f}元（仓位90%上限）
+- 已持仓: {hold_count} / {max_holdings}只
 
 【说明】
-- 采用单持仓策略，降低组合波动
+- 多持仓策略（最多{max_holdings}只），降低单标的风险
 - 预留10%现金应对突发情况
-- 最大止损6%，即最多亏损{capital*0.9*0.06:,.0f}元
+- 最大止损6%，即最多亏损{position * top['price'] * 0.06 if position > 0 else 0:,.0f}元
 
 {'='*70}
 五、风险控制
@@ -589,9 +674,11 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 【操作】{action}
 【目标】{top['code']} {top['name']}
 【价格】{top['price']:.3f}元
-【数量】{position}股 ({capital*0.9:,.0f}元)
+【数量】{position}股 ({position * top['price']:,.0f}元)
 【止损】-6% ({top['price']*0.94:.3f}元)
 【止盈】+10% ({top['price']*1.10:.3f}元)
+
+【账户状态】{hold_count}只持仓 / 现金 {cash_available:,.0f}元 / 可投入 {available:,.0f}元
 
 【操作建议】
 {'✓ 建议积极参与，严格执行止损' if market['bullish'] else '建议轻仓观望'}
@@ -605,27 +692,30 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
         
         return report
     
-    def save_report(self, path: str = 'etf_report.txt'):
+    def save_report(self, path: str = 'etf_report.txt',
+                    tracker: Optional['TradeTracker'] = None):
         """保存报告到文件"""
-        report = self.generate_report()
+        report = self.generate_report(tracker=tracker)
         with open(path, 'w', encoding='utf-8') as f:
             f.write(report)
         return path
 
 
-def generate_decision_report(capital: float = 20000, simple: bool = False) -> str:
+def generate_decision_report(capital: float = 20000, simple: bool = False,
+                             tracker: Optional['TradeTracker'] = None) -> str:
     """快速生成决策报告
-    
+
     Args:
         capital: 本金
         simple: 简版模式（禁用调试输出）
+        tracker: 交易追踪器（US-009 提供后，资金配置段查持仓+现金）
     """
     generator = ETFReportGenerator()
     if simple:
         generator._simple_mode = True
         from src.core.selector import Selector
         Selector._simple_mode = True
-    return generator.generate_report(capital)
+    return generator.generate_report(capital, tracker=tracker)
 
 
 if __name__ == '__main__':

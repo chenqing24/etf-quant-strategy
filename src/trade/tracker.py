@@ -215,6 +215,9 @@ class TradeTracker:
         # US-008: 默认用常量 DB_PATH，测试可传临时 db_path
         from src.constants import DB_PATH
         self.db_path = db_path or DB_PATH
+        # US-009 修复: US-008 改 __init__ 时漏了 self.performance_file
+        # （get_account_summary() 依赖此属性读现金余额）
+        self.performance_file = os.path.join(data_dir, 'etf_performance.json')
         self._ensure_db()
 
     def _get_conn(self):
@@ -1045,12 +1048,12 @@ class TradeTracker:
             'win_rate': 0,
         }
     
-    def update_performance(self, capital: float, pnl: float, 
+    def update_performance(self, capital: float, pnl: float,
                            total_trades: int, win_rate: float):
         """更新绩效"""
         with open(self.performance_file, 'r') as f:
             data = json.load(f)
-        
+
         data['performance'].update({
             'current_capital': capital,
             'total_pnl': pnl,
@@ -1058,6 +1061,60 @@ class TradeTracker:
             'win_rate': win_rate,
             'updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
-        
+
         with open(self.performance_file, 'w') as f:
             json.dump(data, f, indent=2)
+
+    def get_account_summary(self, max_holdings: int = 2) -> dict:
+        """
+        账户总览（US-009）
+
+        Returns:
+            {
+                'cash': float,            # 现金余额（来自 performance_file）
+                'positions_value': float, # 持仓市值（实时价×数量）
+                'total_asset': float,     # 总资产 = cash + positions_value
+                'holdings': [...],        # Position 列表（dict 形式）
+                'hold_count': int,        # 持仓数量
+                'max_holdings': int,      # 最大持仓数
+            }
+
+        Notes:
+            - cash 来自 etf_performance.json 的 current_capital（用户/系统认为的可用现金）
+            - positions_value 按当前价估算（实时价 × 数量）
+            - total_asset = cash + positions_value（资产 = 现金 + 持仓市值）
+            - 调用方应用 max(0, total_asset*0.9 - positions_value) 算"可投入"
+        """
+        holdings = self.get_holdings()
+
+        # 现金：来自 performance_file（可能为 0/默认 20000）
+        perf = self.get_performance_summary()
+        cash = float(perf.get('current_capital', 20000))
+
+        # 持仓市值
+        positions_value = 0.0
+        holdings_dicts = []
+        for pos in holdings:
+            if pos.current_price > 0 and pos.quantity > 0:
+                positions_value += pos.current_price * pos.quantity
+            holdings_dicts.append({
+                'code': pos.code,
+                'name': pos.name,
+                'quantity': pos.quantity,
+                'entry_price': pos.entry_price,
+                'current_price': pos.current_price,
+                'pnl_pct': pos.pnl_pct,
+                'hold_days': pos.hold_days,
+                'status': pos.status,
+                'is_real': getattr(pos, 'is_real', 0),
+                'legacy_holding': getattr(pos, 'legacy_holding', 0),
+            })
+
+        return {
+            'cash': round(cash, 2),
+            'positions_value': round(positions_value, 2),
+            'total_asset': round(cash + positions_value, 2),
+            'holdings': holdings_dicts,
+            'hold_count': len(holdings),
+            'max_holdings': max_holdings,
+        }

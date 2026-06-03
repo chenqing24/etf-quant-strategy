@@ -408,12 +408,16 @@ class ETFDecisionEngine:
         
         # 1. 生成决策报告
         logger.info("[1/3] 生成决策报告...")
-        
+
         # 设置简版模式（传递给report_generator内部组件）
         from src.core.selector import Selector
         Selector._simple_mode = simple
-        
-        report = generate_decision_report(self.capital, simple=simple)
+
+        # US-009: 传入 TradeTracker 让报告查持仓+现金
+        from src.trade.tracker import TradeTracker
+        tracker = TradeTracker('.')
+
+        report = generate_decision_report(self.capital, simple=simple, tracker=tracker)
         
         # 保存报告
         report_file = f"etf_reports/report_{datetime.now().strftime('%Y%m%d')}.txt"
