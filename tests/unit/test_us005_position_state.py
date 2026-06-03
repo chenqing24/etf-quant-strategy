@@ -13,22 +13,11 @@ sys.path.insert(0, str(ROOT))
 
 
 @pytest.fixture
-def tracker():
-    """临时 TradeTracker（US-008: 用临时 db_path + schema 隔离）"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        from src.trade.tracker import TradeTracker
-        import sqlite3 as _sqlite
-        # 临时 DB 路径
-        tmp_db = os.path.join(tmpdir, 'test.db')
-        # 初始化 schema（US-008 行为变化：从 JSON → DB）
-        schema_file = os.path.join(ROOT, 'schema/migrations/004_add_trade_tables.sql')
-        if os.path.exists(schema_file):
-            conn = _sqlite.connect(tmp_db)
-            with open(schema_file) as f:
-                conn.executescript(f.read())
-            conn.close()
-        tt = TradeTracker(data_dir=tmpdir, db_path=tmp_db)
-        yield tt
+def tracker(isolated_tracker):
+    """US-014: 用 conftest 全局 fixture（自动加载所有 migrations）"""
+    t, tmpdir, tmp_db = isolated_tracker
+    yield t
+
 
 
 class TestStatusTransitions:

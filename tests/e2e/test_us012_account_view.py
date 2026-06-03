@@ -13,38 +13,10 @@ sys.path.insert(0, str(ROOT))
 
 
 @pytest.fixture
-def isolated_account():
-    """隔离账户（临时 DB + 临时 performance.json）"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        from src.trade.tracker import TradeTracker
-        tmp_db = os.path.join(tmpdir, 'test.db')
-        schema_file = os.path.join(ROOT, 'schema/migrations/004_add_trade_tables.sql')
-        conn = sqlite3.connect(tmp_db)
-        with open(schema_file) as f:
-            conn.executescript(f.read())
-        # US-012 测试需要 realtime_cache 表（PositionGuide 查实时价）
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS realtime_cache (
-                code TEXT PRIMARY KEY,
-                price REAL,
-                change_pct REAL,
-                source TEXT,
-                updated_at TEXT
-            )
-        """)
-        conn.commit()
-        conn.close()
-        # performance.json
-        with open(os.path.join(tmpdir, 'etf_performance.json'), 'w') as f:
-            json.dump({
-                'trades': [], 'positions': [],
-                'performance': {
-                    'initial_capital': 20000, 'current_capital': 20000,
-                    'total_pnl': 0, 'total_trades': 0, 'win_rate': 0
-                }
-            }, f)
-        tracker = TradeTracker(data_dir=tmpdir, db_path=tmp_db)
-        yield tracker, tmpdir, tmp_db
+def isolated_account(isolated_tracker):
+    """US-014: 用 conftest 全局 fixture（自动加载所有 migrations）"""
+    yield isolated_tracker
+
 
 
 class TestAccountViewGeneration:

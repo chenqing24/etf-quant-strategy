@@ -13,29 +13,11 @@ sys.path.insert(0, str(ROOT))
 
 
 @pytest.fixture
-def isolated_tracker():
-    """隔离 TradeTracker（临时 DB + 临时 performance.json）"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        from src.trade.tracker import TradeTracker
-        tmp_db = os.path.join(tmpdir, 'test.db')
-        schema_file = os.path.join(ROOT, 'schema/migrations/004_add_trade_tables.sql')
-        conn = sqlite3.connect(tmp_db)
-        with open(schema_file) as f:
-            conn.executescript(f.read())
-        conn.close()
-        # 创建 performance.json 模拟 cash
-        perf_file = os.path.join(tmpdir, 'etf_performance.json')
-        with open(perf_file, 'w') as f:
-            json.dump({
-                'trades': [], 'positions': [],
-                'performance': {
-                    'initial_capital': 20000,
-                    'current_capital': 20000,
-                    'total_pnl': 0, 'total_trades': 0, 'win_rate': 0
-                }
-            }, f)
-        tracker = TradeTracker(data_dir=tmpdir, db_path=tmp_db)
-        yield tracker
+def isolated_tracker(isolated_tracker):
+    """US-014: 用 conftest 全局 fixture（自动加载所有 migrations）"""
+    t, tmpdir, tmp_db = isolated_tracker
+    yield t
+
 
 
 class TestGetAccountSummary:

@@ -13,37 +13,23 @@ sys.path.insert(0, str(ROOT))
 
 
 @pytest.fixture
-def analyzer():
-    """临时 analyzer + 临时 DB（隔离测试）"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        from src.analysis.position_guide import PositionGuideAnalyzer
-        tmp_db = os.path.join(tmpdir, 'test.db')
-        schema_file = os.path.join(ROOT, 'schema/migrations/004_add_trade_tables.sql')
-        conn = sqlite3.connect(tmp_db)
-        with open(schema_file) as f:
-            conn.executescript(f.read())
-        # 补建 realtime_cache（_get_realtime_price 用）
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS realtime_cache (
-                code TEXT PRIMARY KEY,
-                price REAL
-            )
-        """)
-        conn.commit()
-        conn.close()
-        # 插入测试持仓
-        conn = sqlite3.connect(tmp_db)
-        conn.executemany("""
-            INSERT INTO positions (code, name, entry_date, entry_price, quantity, status, is_real, legacy_holding)
-            VALUES (?,?,?,?,?,?,?,?)
-        """, [
-            ('A', 'ETF_A', str(date.today() - timedelta(days=1)), 1.0, 1000, 'HOLDING', 1, 0),
-            ('B', 'ETF_B', str(date.today() - timedelta(days=10)), 1.0, 500, 'HOLDING', 1, 0),
-            ('LEGACY', 'Legacy ETF', str(date.today()), 1.0, 100, 'HOLDING', 1, 1),
-        ])
-        conn.commit()
-        conn.close()
-        yield PositionGuideAnalyzer(db_path=tmp_db)
+def analyzer(isolated_tracker):
+    """US-014: 用 conftest 全局 fixture"""
+    from src.analysis.position_guide import PositionGuideAnalyzer
+    tracker, tmpdir, tmp_db = isolated_tracker
+    # 插入测试持仓
+    conn = sqlite3.connect(tmp_db)
+    conn.executemany("""
+        INSERT INTO positions (code, name, entry_date, entry_price, quantity, status, is_real, legacy_holding, is_reference)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """, [
+        ('A', 'ETF_A', str(date.today() - timedelta(days=1)), 1.0, 1000, 'HOLDING', 1, 0, 0),
+        ('B', 'ETF_B', str(date.today() - timedelta(days=10)), 1.0, 500, 'HOLDING', 1, 0, 0),
+        ('LEGACY', 'Legacy ETF', str(date.today()), 1.0, 100, 'HOLDING', 1, 1, 0),
+    ])
+    conn.commit()
+    conn.close()
+    yield PositionGuideAnalyzer(db_path=tmp_db)
 
 
 class TestUS007PositionGuideSchema:
