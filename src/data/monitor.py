@@ -77,8 +77,27 @@ class DataQualityMonitor:
         'max_db_size_mb': 100,        # 数据库超过100MB提示
         # 交易日完整性检查
         'max_day_missing_pct': 0.20,  # 交易日数据缺失超过20%告警
-        'min_day_count': 50,          # 交易日数据最少50条才正常
+        # B1 修复: min_day_count 改为动态方法 get_min_day_count()，跟随核心池大小
     }
+
+    def get_min_day_count(self) -> int:
+        """
+        动态获取交易日最小数据量阈值
+        
+        来源: v9 交易池大小（etf_data_live/top500_target_pool.txt）
+        下限: 10（避免过小阈值失效）
+        
+        为什么不写死 50: 历史 monitor 假设完整扩展池（~80 只），
+        实际 v9 池只 15 只，硬编码 50 会误报。
+        """
+        try:
+            from src.data.etf_pool_loader import ETFListLoader
+            loader = ETFListLoader()
+            codes = loader.load()
+            return max(len(codes), 10)  # 下限保护
+        except Exception as e:
+            # ETFListLoader 失败时回退到 v9 默认值
+            return 15  # v9 默认值（核心池 14 + 510300 大盘参考 = 15）
     
     def __init__(self, db_path: str = None):
         self.db_path = db_path or os.path.join(DATA_DIR, DB_NAME)
@@ -256,8 +275,12 @@ class DataQualityMonitor:
             etf_counts = {row[0]: row[1] for row in cur.fetchall()}
             
             try:
-                from src.config.etf_pools import ETF_POOLS
-                expected_etfs = len(ETF_POOLS.get('core', [])) + len(ETF_POOLS.get('extended', []))
+                from src.data.etf_pool_loader import ETFListLoader
+                # B2 修复: 使用 v9 交易池（top500_target_pool.txt）作为 expected_etfs
+                # 历史 ETF_POOLS.core+extended=71 是 v3.0 时代的数据采集池，
+                # v9 已迁移到 15 只核心交易池（2026-06-02 启用）
+                loader = ETFListLoader()
+                expected_etfs = len(loader.load())
             except:
                 expected_etfs = total_etfs
             
@@ -283,14 +306,6 @@ class DataQualityMonitor:
                 (last_trading_day,)
             )
             last_day_count = cur.fetchone()[0]
-            
-            # 获取前一个交易日记录数（基准）
-            prev_day = (datetime.strptime(last_trading_day, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
-            cur = conn.execute(
-                'SELECT COUNT(*) FROM daily WHERE date = ?',
-                (prev_day,)
-            )
-            prev_day_count = cur.fetchone()[0]
             
             conn.close()
             
@@ -320,8 +335,8 @@ class DataQualityMonitor:
             
             # 2. 交易日完整性（仅交易时段检查）
             if is_trade_day:
-                # 基准：前一个交易日的记录数
-                baseline_count = prev_day_count if prev_day_count > 0 else 60  # 默认60条
+                # B3 修复: 基准改为配置池大小（不再用前一日历史）
+                baseline_count = self.get_min_day_count()
                 
                 if last_day_count == 0:
                     # 没有数据
@@ -332,14 +347,14 @@ class DataQualityMonitor:
                         'message': f'交易日 {last_trading_day} 无数据',
                         'detail': f'基准: {baseline_count}条'
                     })
-                elif last_day_count < self.THRESHOLDS['min_day_count']:
+                elif last_day_count < self.get_min_day_count():
                     # 数据太少
                     trade_day_status = 'ERROR'
                     self.alerts.append({
                         'type': 'trade_day_completeness',
                         'level': 'ERROR',
                         'message': f'交易日 {last_trading_day} 数据不足 ({last_day_count}条)',
-                        'detail': f'基准: {baseline_count}条, 阈值: {self.THRESHOLDS["min_day_count"]}条'
+                        'detail': f'基准: {baseline_count}条, 阈值: {self.get_min_day_count()}条'
                     })
                 elif last_day_count < baseline_count * (1 - self.THRESHOLDS['max_day_missing_pct']):
                     # 数据缺失超过阈值
@@ -372,7 +387,8 @@ class DataQualityMonitor:
                 # 交易日完整性
                 'last_trading_day': last_trading_day,
                 'last_day_count': last_day_count,
-                'prev_day_count': prev_day_count,
+                # B3 修复: 移除 prev_day_count 字段，基准来自配置池（get_min_day_count）
+                'baseline_count': self.get_min_day_count(),
                 'is_trading_day': is_trade_day,
             }
             
@@ -475,7 +491,7 @@ class DataQualityMonitor:
             f"  ETF数量: {r['completeness'].get('total_etfs', 0)}/{r['completeness'].get('expected_etfs', 0)}",
             f"  缺失: {r['completeness'].get('missing_count', 0)} 只",
             f"  交易日: {r['completeness'].get('last_trading_day', 'N/A')} ({r['completeness'].get('last_day_count', 0)}条)",
-            f"  基准: {r['completeness'].get('prev_day_count', 0)}条",
+            f"  配置池: {r['completeness'].get('baseline_count', 0)}只",
             "",
             "【存储】",
             f"  状态: {r['storage'].get('status', 'N/A')}",
