@@ -46,6 +46,9 @@ from src.core.selector import Selector
 from src.analysis.indicator import Indicator
 from src.data.loader import DataLoader, ETFNameLoader
 from src.data.etf_pool_repository import ETFRepository
+from src.analysis.report_templates import (
+    format_strategy_mode, format_action_advice, format_scenario
+)
 
 # 尝试导入热冷数据管理器
 try:
@@ -290,10 +293,14 @@ class ETFReportGenerator:
         
         market_status = self.analyze_market()  # 分析市场
         self.validate_strategy()  # 验证策略
-        
+
+        # US-011: 检测市场环境（trend_up/range_bound/trend_down/crash）
+        market_regime = self._detect_market_regime_for_report()
+
         market = {
             'total_qualified': market_status['total_qualified'],
             'bullish': market_status['bullish'],
+            'regime': market_regime,  # US-011
         }
         
         # 计算平均表现
@@ -489,7 +496,7 @@ class ETFReportGenerator:
 报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 数据最新日期: {latest} {data_freshness}
 投资本金: {capital:,}元（参考）
-策略模式: 多持仓(最多{max_holdings}) + 6%止损 + 10%止盈 + 移动止盈
+策略模式: {format_strategy_mode(market['regime'], max_holdings)}
 当前持仓: {hold_count}只 / 现金: {cash_available:,.0f}元
 
 {f"{data_freshness_warning}" if data_freshness_warning else ""}
@@ -650,11 +657,7 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 | 持仓周期 | 最长15天 | 超过强制平仓 |
 
 【情景分析】
-| 情景 | 概率 | 收益区间 |
-|------|------|----------|
-| 乐观 | 30% | +15%~+30% |
-| 中性 | 40% | +5%~+15% |
-| 悲观 | 30% | -5%~0% |
+{format_scenario(market['regime'], validation_results=self.validation_results)}
 
 最大亏损: -10% (约{capital*0.1:,.0f}元)
 
@@ -680,8 +683,14 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 
 【账户状态】{hold_count}只持仓 / 现金 {cash_available:,.0f}元 / 可投入 {available:,.0f}元
 
-【操作建议】
-{'✓ 建议积极参与，严格执行止损' if market['bullish'] else '建议轻仓观望'}
+{format_action_advice(
+    market_regime=market['regime'],
+    has_recommendation=bool(top),
+    cash_sufficient=available >= (top['price'] * 100 if top else float('inf')),
+    hold_count=hold_count,
+    max_holdings=max_holdings,
+    portfolio_actions=None
+)}
 {'✓ 策略已经过多时段验证' if avg_sharpe > 0.3 else '⚠ 需进一步验证'}
 {'✓ 回撤可控' if avg_drawdown > -35 else '⚠ 回撤较大，注意风险'}
 
@@ -689,9 +698,26 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 风险提示: 本报告仅供决策参考，不构成投资建议
 {'='*70}
 """
-        
+
         return report
-    
+
+    def _detect_market_regime_for_report(self) -> str:
+        """
+        US-011: 检测市场环境（trend_up/range_bound/trend_down/crash）
+
+        Returns:
+            'trend_up' / 'range_bound' / 'trend_down' / 'crash'
+        """
+        try:
+            from src.analysis.market_regime import MarketRegimeDetector
+            from src.data.loader import DataLoader
+            loader = DataLoader()
+            # 用 510300（大盘参考）作为市场环境判断基准
+            df_510300 = loader.load_etf_history('510300')
+            return MarketRegimeDetector().detect(df_510300)
+        except Exception:
+            return 'range_bound'  # 数据不足时默认震荡
+
     def save_report(self, path: str = 'etf_report.txt',
                     tracker: Optional['TradeTracker'] = None):
         """保存报告到文件"""
