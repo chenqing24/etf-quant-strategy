@@ -660,7 +660,7 @@ class ETFDecisionEngine:
 def main():
     parser = argparse.ArgumentParser(description='ETF量化决策引擎')
     parser.add_argument('--mode', '-m', 
-                       choices=['daily', 'eval', 'trade', 'history', 'perf', 'update_pool', 'export'],
+                       choices=['daily', 'eval', 'trade', 'history', 'perf', 'update_pool', 'export', 'account'],
                        default='daily', help='运行模式')
     parser.add_argument('--capital', '-c', type=float, default=20000,
                        help='本金')
@@ -745,6 +745,9 @@ def main():
     elif args.mode == 'export':
         # US-005: CSV导出
         _run_export(engine, args)
+    elif args.mode == 'account':
+        # US-012: 统一账户视图
+        _run_account_view(engine, args)
     elif args.mode == 'update_pool':
         from src.etf_pool_updater import ETFListUpdater
         updater = ETFListUpdater('etf_pool.json')
@@ -752,6 +755,20 @@ def main():
 
 
 # ── US-005: 新增 CLI 子命令实现 ─────────────────────────────────
+
+def _run_account_view(engine: ETFDecisionEngine, args):
+    """
+    US-012: 统一账户视图（-m account）
+
+    Examples:
+        python -m src.cli.decision -m account
+        python -m src.cli.decision -m account --webhook https://oapi.dingtalk.com/robot/send?access_token=xxx
+    """
+    from src.analysis.account_view import AccountView
+    webhook = getattr(args, 'webhook', None) or engine.webhook_url
+    view = AccountView(webhook_url=webhook)
+    print(view.generate())
+
 
 def _run_history_query(engine: ETFDecisionEngine, args):
     """
