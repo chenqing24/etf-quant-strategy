@@ -183,6 +183,124 @@ class ETFDecisionEngine:
         
         return "未知"
     
+    def _parse_recommendation(self, report: str):
+        """US-004: 通用报告解析器
+
+        输入: report 文本
+        输出: (action, code, name, price, quantity, stop_loss, stop_profit)
+
+        解析规则：
+        1. 【操作】买入 510300 沪深300ETF华泰柏瑞 3600股 → action=买入, code=510300, name=沪深300ETF华泰柏瑞, quantity=3600
+        2. 【价格】4.966元 → price=4.966
+        3. 【止损】-6% (4.668元) → stop_loss=4.668
+        4. 【止盈】+10% (5.463元) → stop_profit=5.463
+
+        通用：r'\b\d{6}\b' 匹配 6 位数字代码
+        价格：r'\d+\.\d+' 匹配小数
+        数量：r'\d+股' 匹配 N股
+        """
+        import re
+        action = '观望'
+        new_code = ''
+        new_name = ''
+        new_price = 0.0
+        new_quantity = 0
+        stop_loss_price = 0.0
+        stop_profit_price = 0.0
+
+        # 找到"今日交易建议"区块（US-004: 兼容多种报告格式）
+        lines = report.split('\n')
+        in_recommendation = False
+        for i, line in enumerate(lines):
+            # 进入建议区：遇到 今日交易建议 行 或 第一个 【操作】行
+            if '今日交易建议' in line or ('【操作】' in line and not in_recommendation):
+                in_recommendation = True
+            if not in_recommendation:
+                continue
+            # US-004: 不在循环里 break（避免误判）
+            # 改为：找到【价格】后立即记录（first-match-wins）
+
+            # 1. 解析【操作】行
+            if '【操作】' in line and '买入' in line:
+                action = '买入'
+                # 提取 6 位代码（US-004: 通用正则，移除硬编码）
+                code_match = re.search(r'\b(\d{6})\b', line)
+                if code_match:
+                    new_code = code_match.group(1)
+                # 提取名称（代码后到 NNNN股 之间的部分）
+                name_match = re.search(r'\b\d{6}\b\s+(.+?)\s+\d+股', line)
+                if name_match:
+                    new_name = name_match.group(1).strip()
+                # 提取数量
+                qty_match = re.search(r'\d+股', line)
+                if qty_match:
+                    new_quantity = int(re.search(r'\d+', qty_match.group(0)).group(0))
+                continue
+
+            # 2. 解析【价格】行（US-004: first-match-wins，避免被实时价覆盖）
+            if '【价格】' in line and new_price == 0.0:
+                price_match = re.search(r'(\d+\.\d+)', line)
+                if price_match:
+                    new_price = float(price_match.group(1))
+                continue
+
+            # 3. 解析【止损】行（first-match-wins）
+            if '【止损】' in line and stop_loss_price == 0.0:
+                sl_match = re.search(r'\((\d+\.\d+)元\)', line)
+                if sl_match:
+                    stop_loss_price = float(sl_match.group(1))
+                continue
+
+            # 4. 解析【止盈】行（first-match-wins）
+            if '【止盈】' in line and stop_profit_price == 0.0:
+                sp_match = re.search(r'\((\d+\.\d+)元\)', line)
+                if sp_match:
+                    stop_profit_price = float(sp_match.group(1))
+                continue
+
+        # 5. 如果没找到名称，从 Repository 查（数据库是单一来源）
+        if new_code and not new_name:
+            try:
+                from src.data.etf_pool_repository import ETFRepository
+                new_name = ETFRepository().get_name(new_code) or new_code
+            except Exception:
+                new_name = new_code
+
+        return action, new_code, new_name, new_price, new_quantity, stop_loss_price, stop_profit_price
+
+
+    def _detect_market_mode(self) -> str:
+        """US-006: 用 MarketRegimeDetector 基于市场结构判断
+
+        Returns:
+            'trend_up' | 'range_bound' | 'trend_down' | 'crash'
+        """
+        try:
+            from src.analysis.market_regime import MarketRegimeDetector
+            from src.data.loader import DataLoader
+
+            # 走 DataLoader 统一入口（不直接 sqlite3.connect）
+            loader = DataLoader()
+            df = loader.load_single('510300', min_rows=1)
+
+            if df is None or df.empty or len(df) < 130:
+                logger.warning("510300 数据不足 130 天，默认震荡市")
+                return 'range_bound'
+
+            detector = MarketRegimeDetector()
+            regime = detector.detect(df)
+            return regime
+        except Exception as e:
+            logger.error(f"_detect_market_mode 失败: {e}")
+            return 'range_bound'
+
+    def _regime_to_label(self, regime: str) -> str:
+        """US-006: 把 regime 翻译为中文标签"""
+        from src.analysis.market_regime import REGIME_LABELS, REGIME_EMOJI
+        label = REGIME_LABELS.get(regime, '震荡市')
+        emoji = REGIME_EMOJI.get(regime, '📊')
+        return f"{emoji} {label}"
+
     def run_full_evaluation(self, silent: bool = False, simple: bool = False):
         """完整策略评估
         
@@ -304,44 +422,9 @@ class ETFDecisionEngine:
             f.write(report)
         logger.info(f"  报告已保存: {report_file}")
         
-        # 2. 提取关键建议
+        # 2. 提取关键建议（US-004 改进：通用解析，不再硬编码）
         logger.info("[2/3] 分析建议...")
-        # 简化解析，提取买入建议
-        action = '观望'
-        new_code = ''
-        new_name = ''
-        new_price = 0
-        
-        # 从报告中提取交易建议
-        lines = report.split('\n')
-        for i, line in enumerate(lines):
-            if '今日交易建议' in line:
-                # 往下找操作信息
-                for j in range(i, min(i+10, len(lines))):
-                    if '买入' in lines[j]:
-                        action = '买入'
-                        # 提取代码和名称
-                        for k in range(j, min(j+5, len(lines))):
-                            if '516050' in lines[k] or '515050' in lines[k] or '159' in lines[k]:
-                                parts = lines[k].split()
-                                for p in parts:
-                                    if p.isdigit() and len(p) == 6:
-                                        new_code = p
-                                        # 找名称
-                                        if k+1 < len(lines):
-                                            name_line = lines[k+1]
-                                            if '科创' in name_line or '科技' in name_line or '创新' in name_line or '工业' in name_line or '稀土' in name_line or '计算机' in name_line or '新能源' in name_line:
-                                                new_name = name_line.strip()
-                                # 找价格
-                                for m in range(j, min(j+10, len(lines))):
-                                    if '价格' in lines[m]:
-                                        try:
-                                            price_str = ''.join(c for c in lines[m] if c.isdigit() or c == '.')
-                                            new_price = float(price_str) if price_str else 0
-                                        except:
-                                            pass
-                        break
-                break
+        action, new_code, new_name, new_price, new_quantity, stop_loss_price, stop_profit_price =             self._parse_recommendation(report)
         
         if action == '买入':
             positions = self.tracker.get_holdings()
@@ -426,8 +509,9 @@ class ETFDecisionEngine:
                 data_warning = line.strip()
         
         # 构建结果数据（供ScenarioAdapter使用）
-        # 判断市场模式：有信号=趋势市，无信号=震荡市
-        market_mode = "趋势市" if action == "买入" else "震荡市"
+        # US-006: 用 MarketRegimeDetector 基于市场结构判断
+        market_mode_regime = self._detect_market_mode()
+        market_mode = self._regime_to_label(market_mode_regime)
         
         results = {
             'action': action,
