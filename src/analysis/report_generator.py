@@ -45,6 +45,7 @@ from src.utils.config import run_strategy, StrategyConfig
 from src.core.selector import Selector
 from src.analysis.indicator import Indicator
 from src.data.loader import DataLoader, ETFNameLoader
+from src.data.etf_pool_repository import ETFRepository
 
 # 尝试导入热冷数据管理器
 try:
@@ -122,17 +123,28 @@ class ETFReportGenerator:
         return self.latest_date
     
     def analyze_market(self) -> Dict:
-        """分析当前市场状态"""
+        """分析当前市场状态
+
+        US-003：从 Repository 加载 tradable 池，不依赖 config.exclude_codes
+        """
         selector = Selector()
         indicator = Indicator()
         
-        # 获取排除列表
-        exclude_codes = StrategyConfig().exclude_codes
+        # US-003: 单一过滤入口 = Repository (tradable AND core)
+        # 不再依赖 StrategyConfig().exclude_codes（已 deprecated）
+        repo = ETFRepository()
+        tradable_pool = set(repo.list_codes("core"))  # 14 只 core
+        # 也加入 reference（如 510300）但要单独标记
+        reference_pool = set(repo.list_codes("reference"))  # [510300]
         
         scores = []
         for code, df in self.data.items():
-            # 排除特殊ETF (红利、港股、证券、债券等)
-            if code in exclude_codes:
+            # US-003 单一过滤入口:
+            # 1. 不在 core 池（包括 510300 等 reference / excluded / unclassified）→ 跳过
+            if code not in tradable_pool:
+                continue
+            # 2. 是大盘参考（510300）→ 跳过（虽然 core 池已经过滤了，这里是双保险）
+            if code in reference_pool:
                 continue
             if len(df) < 60:
                 continue

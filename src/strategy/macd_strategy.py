@@ -21,6 +21,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.etf_pool_loader import ETFListLoader
+from src.data.etf_pool_repository import ETFRepository
 from src.data.loader import DataLoader
 from src.utils.logger import get_logger
 
@@ -151,9 +152,9 @@ class MACDStrategy:
         """
         # 默认使用目标ETF池
         if target_codes is None:
+            # US-003: pool_loader 默认 role='core' 已自动排除 510300
+            # 无需再硬编码 c != self.MARKET_CODE
             target_codes = self.pool_loader.load()
-            # 排除510300
-            target_codes = [c for c in target_codes if c != self.MARKET_CODE]
         
         signals = []
         market_ok = self._is_market_bullish(pd.Timestamp.now())

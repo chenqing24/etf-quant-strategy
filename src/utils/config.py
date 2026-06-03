@@ -58,7 +58,8 @@ class StrategyConfig:
     # ===== 交易成本 =====
     fee_rate: float = 0.0003                # 手续费率
     
-    # ===== ETF排除规则 =====
+    # ===== ETF排除规则（DEPRECATED，US-003 后请用 etf.db.etf_names.pool_role）=====
+    # 此配置项保留仅为向后兼容，新代码请直接用 ETFRepository.list_codes("core")
     # 7因子模型基于技术动量，以下ETF不适用：
     # - 红利ETF：走势与基本面/分红高度相关
     # - 低波动/价值ETF：策略驱动，非市场动量

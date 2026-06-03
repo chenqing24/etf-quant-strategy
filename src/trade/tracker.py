@@ -44,6 +44,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 import requests
+import logging
 
 from src.constants import TRADES_FILE, TENCENT_QT_URL, HTTP_TIMEOUT_SHORT
 
@@ -141,9 +142,30 @@ def _validate_emotion(emotion: str) -> str:
     return ""
 
 
+# ── US-005: 持仓状态机 ─────────────────────────────────────
+# 状态流转：EMPTY → PENDING → HOLDING → CLOSING → EMPTY
+#                              ↘ REBALANCING ↗
+POSITION_STATUS = {
+    'EMPTY': '空仓',
+    'PENDING': '待买入',
+    'HOLDING': '持仓中',
+    'REBALANCING': '换仓中',
+    'CLOSING': '待平仓',
+}
+
+# 合法状态转换图
+VALID_TRANSITIONS = {
+    'EMPTY': {'PENDING'},
+    'PENDING': {'HOLDING', 'EMPTY'},  # 取消买入 → EMPTY
+    'HOLDING': {'CLOSING', 'REBALANCING'},
+    'REBALANCING': {'HOLDING', 'EMPTY'},  # 换仓完成 → 新持仓 或 失败 → 空仓
+    'CLOSING': {'EMPTY'},
+}
+
+
 @dataclass
 class Position:
-    """持仓"""
+    """持仓（US-005: 含状态机）"""
     code: str
     name: str
     entry_date: str
@@ -152,6 +174,8 @@ class Position:
     current_price: float = 0
     pnl_pct: float = 0
     hold_days: int = 0
+    status: str = 'EMPTY'  # US-005: 状态机字段
+    score: int = 0  # US-005: 持仓评分（用于换仓决策）
 
 
 class TradeTracker:
@@ -164,11 +188,13 @@ class TradeTracker:
         self.positions_file = os.path.join(data_dir, 'etf_positions.json')
         self.performance_file = os.path.join(data_dir, 'etf_performance.json')
         
+        # US-005: 审计日志
+        self.audit_log_file = os.path.join(data_dir, 'etf_audit_log.json')
         self._ensure_files()
     
     def _ensure_files(self):
         """初始化文件"""
-        for f in [self.trades_file, self.positions_file, self.performance_file]:
+        for f in [self.trades_file, self.positions_file, self.performance_file, self.audit_log_file]:
             if not os.path.exists(f):
                 with open(f, 'w') as fp:
                     json.dump({
@@ -410,7 +436,13 @@ class TradeTracker:
         
         # 更新持仓
         positions = self.load_positions()
-        positions.append(Position(
+        # US-005: 事务保护 - 检查是否可买入
+        ok, reason = self.can_buy(code)
+        if not ok:
+            _logger = logging.getLogger(__name__)
+            _logger.warning(f"record_buy 拒绝: {code} - {reason}")
+            return None
+        new_pos = Position(
             code=code,
             name=name,
             entry_date=trade.date,
@@ -419,9 +451,12 @@ class TradeTracker:
             current_price=price,
             pnl_pct=0,
             hold_days=0,
-        ))
+            status='HOLDING',  # US-005: 直接到 HOLDING 状态
+            score=signal_score,  # US-005: 记录评分
+        )
+        positions.append(new_pos)
         self.save_positions(positions)
-        
+        self._audit(code, 'EMPTY', 'HOLDING', f"买入 {quantity}股 @ {price}")
         return trade
     
     def record_sell(self, code: str, price: float, actual_pnl: float = 0,
@@ -459,10 +494,20 @@ class TradeTracker:
             )
             self.save_trade(trade)
             
+            # US-005: 事务保护 - 检查是否可卖出
+            ok, reason, pos_checked = self.can_sell(code)
+            if not ok:
+                _logger = logging.getLogger(__name__)
+                _logger.warning(f"record_sell 拒绝: {code} - {reason}")
+                return None
+
+            # 状态转换：HOLDING → CLOSING → EMPTY
+            self.transition_position(code, 'CLOSING', f"准备卖出 @ {price}")
             # 移除持仓
             positions = [p for p in positions if p.code != code]
             self.save_positions(positions)
-            
+            self._audit(code, 'CLOSING', 'EMPTY', f"已卖出 @ {price}, pnl={actual_pnl}")
+
             return trade
         return None
     
@@ -629,6 +674,162 @@ class TradeTracker:
         
         return positions
     
+    # ===== US-005: 状态机 + 事务保护 + 审计日志 =====
+
+    def _audit(self, code: str, from_state: str, to_state: str, reason: str = ""):
+        """写审计日志"""
+        entry = {
+            'timestamp': datetime.now().isoformat(),
+            'code': code,
+            'from_state': from_state,
+            'to_state': to_state,
+            'reason': reason,
+        }
+        try:
+            with open(self.audit_log_file, 'a') as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+        except Exception as e:
+            _logger = logging.getLogger(__name__)
+            _logger.error(f"audit log 写入失败: {e}")
+
+    def _validate_transition(self, from_state: str, to_state: str) -> bool:
+        """验证状态转换是否合法"""
+        valid = VALID_TRANSITIONS.get(from_state, set())
+        return to_state in valid
+
+    def can_buy(self, code: str, max_holdings: int = 1) -> tuple:
+        """检查是否能买入（事务前置检查）
+
+        Returns:
+            (ok, reason) - ok=True 可买入, ok=False 不可买入及原因
+        """
+        positions = self.load_positions()
+
+        # 1. 检查持仓数量上限
+        active = [p for p in positions if p.status in ('PENDING', 'HOLDING', 'REBALANCING', 'CLOSING')]
+        if len(active) >= max_holdings:
+            return False, f"持仓数量已达上限 {max_holdings}（当前 {len(active)}）"
+
+        # 2. 检查重复代码
+        for p in positions:
+            if p.code == code and p.status in ('HOLDING', 'PENDING', 'REBALANCING'):
+                return False, f"已持仓 {code}（status={p.status}），不能重复买入"
+
+        return True, ""
+
+    def can_sell(self, code: str, quantity: int = None) -> tuple:
+        """检查是否能卖出
+
+        Args:
+            code: ETF 代码
+            quantity: 要卖出的数量（None = 全部）
+
+        Returns:
+            (ok, reason, position) - position 是当前持仓
+        """
+        positions = self.load_positions()
+        pos = next((p for p in positions if p.code == code), None)
+
+        if pos is None:
+            return False, f"未持有 {code}", None
+
+        if pos.status not in ('HOLDING', 'REBALANCING', 'CLOSING'):
+            return False, f"持仓 {code} 状态 {pos.status} 不能卖出", pos
+
+        if quantity is not None and quantity > pos.quantity:
+            return False, f"卖出数量 {quantity} 超过持仓 {pos.quantity}", pos
+
+        return True, "", pos
+
+    def check_portfolio(self, candidates: List[dict] = None,
+                         stop_loss: float = -0.06,
+                         stop_profit: float = 0.10,
+                         max_hold_days: int = 15,
+                         rebalance_threshold: int = 2) -> List[dict]:
+        """批量检查所有持仓
+
+        Args:
+            candidates: 候选 ETF 列表 [{code, name, score, price}, ...]
+            stop_loss: 止损比例 (默认 -6%)
+            stop_profit: 止盈比例 (默认 +10%)
+            max_hold_days: 最大持仓天数
+            rebalance_threshold: 换仓阈值（候选分 - 持仓分）
+
+        Returns:
+            操作建议列表 [{code, action, reason}, ...]
+        """
+        positions = self.load_positions()
+        actions = []
+
+        for pos in positions:
+            if pos.status != 'HOLDING':
+                continue
+
+            # 1. 止损
+            if pos.pnl_pct <= stop_loss * 100:
+                actions.append({
+                    'code': pos.code,
+                    'action': 'sell',
+                    'reason': f"止损 {pos.pnl_pct:.2f}% <= {stop_loss * 100}%",
+                    'priority': 'high',
+                })
+                continue
+
+            # 2. 止盈
+            if pos.pnl_pct >= stop_profit * 100:
+                actions.append({
+                    'code': pos.code,
+                    'action': 'sell',
+                    'reason': f"止盈 {pos.pnl_pct:.2f}% >= {stop_profit * 100}%",
+                    'priority': 'medium',
+                })
+                continue
+
+            # 3. 到期
+            if pos.hold_days >= max_hold_days:
+                actions.append({
+                    'code': pos.code,
+                    'action': 'sell',
+                    'reason': f"持仓 {pos.hold_days} 天 >= 上限 {max_hold_days}",
+                    'priority': 'medium',
+                })
+                continue
+
+            # 4. 换仓（候选评分 > 当前评分 + threshold）
+            if candidates:
+                for cand in candidates:
+                    if cand.get('code') == pos.code:
+                        continue  # 候选 = 当前，不换
+                    cand_score = cand.get('score', 0)
+                    if cand_score > pos.score + rebalance_threshold:
+                        actions.append({
+                            'code': pos.code,
+                            'action': 'rebalance',
+                            'reason': f"换仓: 候选 {cand.get('code')} 评分 {cand_score} > 当前 {pos.score} + {rebalance_threshold}",
+                            'priority': 'low',
+                        })
+                        break
+
+        return actions
+
+    def transition_position(self, code: str, to_state: str, reason: str = "") -> bool:
+        """原子操作：修改持仓状态（带审计日志）
+
+        Returns:
+            True 成功, False 失败（非法转换或持仓不存在）
+        """
+        positions = self.load_positions()
+        for p in positions:
+            if p.code == code:
+                from_state = p.status
+                if not self._validate_transition(from_state, to_state):
+                    return False
+                p.status = to_state
+                self.save_positions(positions)
+                self._audit(code, from_state, to_state, reason)
+                return True
+        return False
+
     def check_stop_loss(self, code: str, threshold: float = -5) -> bool:
         """检查是否触发止损"""
         positions = self.load_positions()
