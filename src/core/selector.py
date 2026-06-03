@@ -4,6 +4,13 @@ import pandas as pd
 from typing import Dict, List, Tuple, Set
 
 from src.utils.config import StrategyConfig
+
+# US-003: 引入 Repository 用于池过滤
+try:
+    from src.data.etf_pool_repository import ETFRepository
+    _REPO_AVAILABLE = True
+except ImportError:
+    _REPO_AVAILABLE = False
 from src.utils.logger import get_logger
 
 # 配置加载器 - 从配置文件读取因子权重
@@ -97,11 +104,26 @@ class Selector:
         """
         results = []
         
-        exclude_codes = config.exclude_codes or set()
+        # US-003: 单一过滤入口走 Repository
+        # 1. 优先用 Repository 的 core 池（14 只）
+        # 2. 兼容旧 config.exclude_codes（deprecated）
+        if _REPO_AVAILABLE:
+            repo = ETFRepository()
+            tradable_pool = set(repo.list_codes("core"))
+            reference_pool = set(repo.list_codes("reference"))
+        else:
+            tradable_pool = set()
+            reference_pool = set()
+        legacy_exclude = config.exclude_codes or set()  # deprecated
         
         for code, df in data.items():
-            # 排除规则
-            if code in exclude_codes:
+            # US-003 主过滤：必须在 core 池，不在 reference 池
+            if tradable_pool and code not in tradable_pool:
+                continue
+            if code in reference_pool:
+                continue
+            # 兼容旧逻辑（US-003 完成后可删除）
+            if code in legacy_exclude:
                 continue
             
             # 训练期筛选

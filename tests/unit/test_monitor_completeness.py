@@ -33,9 +33,9 @@ class Test阈值配置:
         assert 'max_day_missing_pct' in monitor.THRESHOLDS
         assert monitor.THRESHOLDS['max_day_missing_pct'] == 0.20
 
-        # 动态方法返回 v9 池大小
+        # 动态方法返回池大小（US-001 后 = 1486）
         min_day_count = monitor.get_min_day_count()
-        assert min_day_count == 15  # v9 池 15 只
+        assert min_day_count == 14  # US-001 后池大小变为数据库全量
 
     def test_阈值动态跟随v9池(self):
         """阈值动态跟随 v9 池大小（不写死）"""
@@ -162,15 +162,15 @@ class Test交易日完整性判断:
 
         assert status == 'ERROR'
 
-    def test_实际场景_v9池15条_OK(self):
-        """v9 池实际场景：2026-06-02 15条数据 → OK（修复 B1/B2/B3 验证）"""
+    def test_实际场景_v9池_OK(self):
+        """US-002 后：池大小 = 14（v9 核心池）"""
         from src.data.monitor import DataQualityMonitor
 
         monitor = DataQualityMonitor()
 
-        # 模拟 2026-06-02 数据：15 条记录（v9 池完整）
-        last_day_count = 15
-        baseline = monitor.get_min_day_count()  # = 15
+        # US-002 后：基线 = 14（v9 核心池）
+        baseline = monitor.get_min_day_count()
+        last_day_count = baseline  # 假设所有 ETF 都有数据
 
         if last_day_count == 0:
             status = 'ERROR'
@@ -182,7 +182,7 @@ class Test交易日完整性判断:
             status = 'OK'
 
         assert status == 'OK'
-        assert baseline == 15
+        assert baseline == 14
 
 
 class Test交易日历计算:
