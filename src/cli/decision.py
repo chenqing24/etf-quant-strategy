@@ -279,7 +279,7 @@ class ETFDecisionEngine:
             from src.analysis.market_regime import MarketRegimeDetector
             from src.data.loader import DataLoader
 
-            # 走 DataLoader 统一入口（不直接 sqlite3.connect）
+            # 走 DataLoader 统一入口
             loader = DataLoader()
             df = loader.load_single('510300', min_rows=1)
 
