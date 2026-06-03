@@ -246,9 +246,21 @@ def rebuild_positions():
 
 
 def insert_jun3_trades():
-    """补录 6/3 用户实盘两笔交易"""
+    """补录 6/3 用户实盘两笔交易（幂等：检查是否已存在）"""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
+
+    # 幂等检查：是否已存在 6/3 159611 buy 1.221 x 1900
+    existing = cur.execute("""
+        SELECT COUNT(*) FROM trade_history
+        WHERE date='2026-06-03' AND code='159611' AND action='buy'
+              AND price=1.221 AND quantity=1900
+    """).fetchone()[0]
+
+    if existing > 0:
+        print(f'[SKIP] 6/3 159611 buy 1.221x1900 已存在 ({existing} 条)，跳过')
+        conn.close()
+        return
 
     # 6/3 09:30 加仓 159611 1900 股
     cur.execute("""
