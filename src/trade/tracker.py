@@ -780,13 +780,13 @@ class TradeTracker:
         return positions
     
     def get_holdings(self) -> List[Position]:
-        """获取当前持仓（从positions文件 + 交易记录重建）"""
-        # 优先从positions文件读取
-        positions = self.load_positions()
-        
-        # 如果positions为空，从交易记录重建
-        if not positions:
-            positions = self._rebuild_positions_from_trades()
+        """获取当前持仓（US-015: 强制从 trade_history 重建, 不读 positions 缓存）
+
+        US-015 修复: 之前优先读 positions 缓存, 导致 159611 清仓后仍残留
+        现在: 每次都从 trade_history (事实源) 重建, 保证一致性
+        """
+        # US-015: 强制从 trade_history 重建, 不读 positions 缓存
+        positions = self._rebuild_positions_from_trades()
         
         # 更新当前价格和盈亏
         from datetime import datetime
@@ -827,18 +827,22 @@ class TradeTracker:
         except Exception:
             pass
 
-        # 按代码分组，获取每只ETF的买入记录
-        buy_records = {}  # code -> (date, name, price, quantity)
+        # US-015: 修 buy_records 覆盖式 bug → 改用 list 累加
+        buy_records = {}  # code -> list of {date, name, price, quantity}
         sell_records = {}  # code -> [(date, quantity), ...]
 
         for trade in trades:
             if trade.action == 'buy':
-                buy_records[trade.code] = {
+                if trade.code not in buy_records:
+                    buy_records[trade.code] = {
+                        'name': trade.name,
+                        'buys': [],  # 累加多笔 buy
+                    }
+                buy_records[trade.code]['buys'].append({
                     'date': trade.date,
-                    'name': trade.name,
                     'price': trade.price,
                     'quantity': trade.quantity,
-                }
+                })
             elif trade.action == 'sell':
                 if trade.code not in sell_records:
                     sell_records[trade.code] = []
@@ -847,21 +851,27 @@ class TradeTracker:
                     'quantity': trade.quantity,
                 })
 
-        # 计算当前持仓
-        for code, buy_info in buy_records.items():
-            total_bought = buy_info['quantity']
+        # 计算当前持仓 (US-015: 多笔 buy 加权平均, 不覆盖)
+        for code, info in buy_records.items():
+            buys = info['buys']
+            total_bought = sum(b['quantity'] for b in buys)
             total_sold = sum(s['quantity'] for s in sell_records.get(code, []))
             remaining = total_bought - total_sold
 
             if remaining > 0:
+                # 加权平均入场价 (按 quantity 加权)
+                total_cost = sum(b['price'] * b['quantity'] for b in buys)
+                avg_price = total_cost / total_bought if total_bought > 0 else 0
+                # 最早入场日 (hold_days 计算用)
+                earliest_date = min(b['date'] for b in buys)
                 is_reference = 1 if code in reference_pool else 0
                 positions.append(Position(
                     code=code,
-                    name=buy_info['name'],
-                    entry_date=buy_info['date'],
-                    entry_price=buy_info['price'],
+                    name=info['name'],
+                    entry_date=earliest_date,
+                    entry_price=round(avg_price, 4),
                     quantity=remaining,
-                    current_price=buy_info['price'],
+                    current_price=avg_price,
                     pnl_pct=0,
                     hold_days=0,
                     is_reference=is_reference,  # US-014 R2
