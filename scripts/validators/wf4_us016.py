@@ -281,8 +281,8 @@ def run_fold_v3(all_data, fold, is_start, is_end, oos_start, oos_end):
         signal_consecutive_days=2,
         min_hold_days=3,
         max_hold_days=dynamic_max_hold,
-        stop_loss=-0.05,   # 收紧 (平均 -5% vs baseline -10%)
-        stop_profit=0.12,  # 适中
+        stop_loss=-0.04,   # US-014 v2: -5%→-4% (更紧, 防止大回撤)
+        stop_profit=0.20,  # US-014 v2: 0.12→0.20 (更宽, 让利润奔跑)
         rebalance_only_when_empty=True,
     )
     backtester = FactorBacktester(config=config)
