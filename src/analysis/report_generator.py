@@ -47,7 +47,8 @@ from src.analysis.indicator import Indicator
 from src.data.loader import DataLoader, ETFNameLoader
 from src.data.etf_pool_repository import ETFRepository
 from src.analysis.report_templates import (
-    format_strategy_mode, format_action_advice, format_scenario
+    format_strategy_mode, format_action_advice, format_scenario,
+    POSITION_LIMITS, format_position_limit
 )
 
 # 尝试导入热冷数据管理器
@@ -247,23 +248,32 @@ class ETFReportGenerator:
             max_holdings = account['max_holdings']            # 最大持仓数
             # US-010: 注入已持仓代码集合给 analyze_market
             self.held_codes = {h['code'] for h in account['holdings']}
-            # 可投入 = max(0, 总资产×90% - 持仓市值)
-            available = max(0, total_asset * 0.9 - positions_value)
+            # US-015: 按市场状态分档资金利用率（2026-06-04 用户规则）
+            # 震荡 50% / 趋势 90% / 下跌 30% / 暴跌 0%
+            # ⚠️ market 变量在 line 304 才设置，这里先用默认 range_bound
+            #       真正生效的位置在 US-015 第二次计算（line 234, position_limit）
+            position_limit = POSITION_LIMITS.get('range_bound', 0.5)
+            available = max(0, total_asset * position_limit - positions_value)
             account_status_note = (
                 f"- 现金: {cash_available:,.0f}元\n"
                 f"- 持仓市值: {positions_value:,.0f}元（{hold_count}只）\n"
-                f"- 总资产: {total_asset:,.0f}元"
+                f"- 总资产: {total_asset:,.0f}元\n"
+                f"- 市场仓位上限: {position_limit*100:.0f}%"
             )
         else:
-            # 旧行为：按传入本金
+            # 旧行为：按传入本金（US-015: 仍按市场分档，market 尚未检测先用 range_bound）
             cash_available = capital
             positions_value = 0
             total_asset = capital
             hold_count = 0
             max_holdings = 2  # US-008 默认
             self.held_codes = set()  # US-010: 无 tracker 不过滤
-            available = capital * 0.9
-            account_status_note = f"- 现金: {cash_available:,.0f}元（未接入 TradeTracker）"
+            position_limit = POSITION_LIMITS.get('range_bound', 0.5)
+            available = capital * position_limit
+            account_status_note = (
+                f"- 现金: {cash_available:,.0f}元（未接入 TradeTracker）\n"
+                f"- 市场仓位上限: {position_limit*100:.0f}%"
+            )
 
         # 获取数据
         latest = self.load_data()

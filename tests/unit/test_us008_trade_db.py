@@ -14,17 +14,11 @@ sys.path.insert(0, str(ROOT))
 
 
 @pytest.fixture
-def tracker():
-    """临时 TradeTracker（隔离 DB）"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        from src.trade.tracker import TradeTracker
-        tmp_db = os.path.join(tmpdir, 'test.db')
-        schema_file = os.path.join(ROOT, 'schema/migrations/004_add_trade_tables.sql')
-        conn = sqlite3.connect(tmp_db)
-        with open(schema_file) as f:
-            conn.executescript(f.read())
-        conn.close()
-        yield TradeTracker(data_dir=tmpdir, db_path=tmp_db)
+def tracker(isolated_tracker):
+    """US-014: 用 conftest 全局 fixture（自动加载所有 migrations）"""
+    t, tmpdir, tmp_db = isolated_tracker
+    yield t
+
 
 
 class TestUS008DatabaseSchema:

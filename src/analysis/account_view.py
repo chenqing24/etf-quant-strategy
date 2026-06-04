@@ -20,6 +20,7 @@ from typing import List, Optional, Dict, Any
 from src.analysis.position_guide import PositionGuideAnalyzer, PositionGuide
 from src.trade.tracker import TradeTracker
 from src.analysis.report_generator import generate_decision_report
+from src.analysis.report_templates import POSITION_LIMITS, format_position_limit
 
 
 # ── 9 步决策树 → 优先级映射（US-012 方案 B）──────────────
@@ -224,13 +225,14 @@ class AccountView:
         else:
             lines.append(f"  ⚠️ 推荐生成失败: {self._recommendation.get('error', '未知')}")
 
-        # 资金配置状态
+        # 资金配置状态（US-015: 按市场状态分档）
         cash = account.get('cash', 0)
         positions_value = account.get('positions_value', 0)
         total_asset = account.get('total_asset', 0)
         hold_count = account.get('hold_count', 0)
         max_holdings = account.get('max_holdings', 2)
-        available = max(0, total_asset * 0.9 - positions_value)
+        position_limit = POSITION_LIMITS.get(self.market_regime, 0.5)
+        available = max(0, total_asset * position_limit - positions_value)
         if hold_count >= max_holdings:
             lines.append(f"  状态: ⚠️ 已达仓位上限（{hold_count}/{max_holdings}），暂不买入")
         else:
@@ -275,8 +277,9 @@ class AccountView:
             f"  现金 {cash:,.0f}元 / 持仓市值 {positions_value:,.0f}元 / "
             f"总资产 {total_asset:,.0f}元"
         )
+        # US-015: 按市场状态显示仓位上限
         lines.append(
-            f"  可投入 {available:,.0f}元（仓位90%上限） / "
+            f"  可投入 {available:,.0f}元（{format_position_limit(self.market_regime)}） / "
             f"已持仓 {hold_count}/{max_holdings}只"
         )
 

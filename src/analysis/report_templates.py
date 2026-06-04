@@ -28,6 +28,35 @@ STRATEGY_MODE_TEMPLATES = {
 }
 
 
+# ── US-015: 4 市场状态仓位利用率（2026-06-04 用户规则）────────
+# 震荡市 ≤ 50%, 趋势市 ≤ 90%, 下跌市 ≤ 30%, 暴跌市 0%
+POSITION_LIMITS = {
+    'trend_up':    0.9,   # 趋势市: 90%
+    'range_bound': 0.5,   # 震荡市: 50%
+    'trend_down':  0.3,   # 下跌市: 30%
+    'crash':       0.0,   # 暴跌市: 0%
+}
+
+
+def format_position_limit(market_regime: str) -> str:
+    """
+    段 4: 市场仓位上限（US-015 新增）
+
+    Args:
+        market_regime: trend_up / range_bound / trend_down / crash
+    Returns:
+        "震荡市 · 50% 上限" / "趋势市 · 90% 上限" / 等
+    """
+    limit = POSITION_LIMITS.get(market_regime, 0.5)
+    regime_zh = {
+        'trend_up':    '趋势市',
+        'range_bound': '震荡市',
+        'trend_down':  '下跌市',
+        'crash':       '暴跌市',
+    }.get(market_regime, market_regime)
+    return f"{regime_zh} · {limit*100:.0f}% 上限"
+
+
 def format_strategy_mode(market_regime: str, max_holdings: int) -> str:
     """段 1: 策略模式（D1+D2: 4×2=8 组合）"""
     key = (market_regime, max_holdings)

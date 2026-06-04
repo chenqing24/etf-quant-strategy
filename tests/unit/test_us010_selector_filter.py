@@ -92,74 +92,41 @@ class TestReportFilterNotice:
         # 无持仓 → 不应有过滤说明
         assert '【过滤说明】' not in report
 
-    def test_report_includes_filter_notice_with_holdings(self):
+    def test_report_includes_filter_notice_with_holdings(self, isolated_tracker):
         """持仓时报告含'过滤说明'段"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            from src.trade.tracker import TradeTracker
-            tmp_db = os.path.join(tmpdir, 'test.db')
-            schema_file = os.path.join(ROOT, 'schema/migrations/004_add_trade_tables.sql')
-            conn = sqlite3.connect(tmp_db)
-            with open(schema_file) as f:
-                conn.executescript(f.read())
-            conn.close()
-            # 创建 performance.json
-            with open(os.path.join(tmpdir, 'etf_performance.json'), 'w') as f:
-                json.dump({
-                    'trades': [], 'positions': [],
-                    'performance': {
-                        'initial_capital': 20000, 'current_capital': 20000,
-                        'total_pnl': 0, 'total_trades': 0, 'win_rate': 0
-                    }
-                }, f)
-            tracker = TradeTracker(data_dir=tmpdir, db_path=tmp_db)
-            # 模拟持仓
-            tracker.record_buy('515050', '通信ETF华夏', 1.197, 1000, 'test')
-            tracker.record_buy('159611', '电力ETF广发', 1.221, 1900, 'test')
+        tracker, tmpdir, tmp_db = isolated_tracker
+        # 模拟持仓
+        tracker.record_buy('515050', '通信ETF华夏', 1.197, 1000, 'test')
+        tracker.record_buy('159611', '电力ETF广发', 1.221, 1900, 'test')
 
-            from src.analysis.report_generator import ETFReportGenerator
-            gen = ETFReportGenerator()
-            report = gen.generate_report(capital=20000, tracker=tracker)
+        from src.analysis.report_generator import ETFReportGenerator
+        gen = ETFReportGenerator()
+        report = gen.generate_report(capital=20000, tracker=tracker)
 
-            # US-010 关键断言
-            assert '【过滤说明】' in report
-            assert '515050' in report
-            assert '已持仓' in report
-            assert '不重复推荐' in report
+        # US-010 关键断言
+        assert '【过滤说明】' in report
+        assert '515050' in report
+        assert '已持仓' in report
+        assert '不重复推荐' in report
 
-    def test_legacy_holding_not_in_filter_notice(self):
+    def test_legacy_holding_not_in_filter_notice(self, isolated_tracker):
         """legacy_holding（159611）不在过滤说明中（不在 core 池）"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            from src.trade.tracker import TradeTracker
-            tmp_db = os.path.join(tmpdir, 'test.db')
-            schema_file = os.path.join(ROOT, 'schema/migrations/004_add_trade_tables.sql')
-            conn = sqlite3.connect(tmp_db)
-            with open(schema_file) as f:
-                conn.executescript(f.read())
-            conn.close()
-            with open(os.path.join(tmpdir, 'etf_performance.json'), 'w') as f:
-                json.dump({
-                    'trades': [], 'positions': [],
-                    'performance': {
-                        'initial_capital': 20000, 'current_capital': 20000,
-                        'total_pnl': 0, 'total_trades': 0, 'win_rate': 0
-                    }
-                }, f)
-            tracker = TradeTracker(data_dir=tmpdir, db_path=tmp_db)
-            tracker.record_buy('159611', '电力ETF广发', 1.221, 1900, 'test',
-                               is_real=1)
-            # 直接改 positions 表的 legacy_holding 字段
-            conn = sqlite3.connect(tmp_db)
-            conn.execute("UPDATE positions SET legacy_holding=1 WHERE code='159611'")
-            conn.commit()
-            conn.close()
+        tracker, tmpdir, tmp_db = isolated_tracker
+        tracker.record_buy('159611', '电力ETF广发', 1.221, 1900, 'test',
+                           is_real=1)
+        # 直接改 positions 表的 legacy_holding 字段
+        conn = sqlite3.connect(tmp_db)
+        conn.execute("UPDATE positions SET legacy_holding=1 WHERE code='159611'")
+        conn.commit()
+        conn.close()
 
-            from src.analysis.report_generator import ETFReportGenerator
-            gen = ETFReportGenerator()
-            report = gen.generate_report(capital=20000, tracker=tracker)
-            # 159611 不会出现在过滤说明
-            filter_section_start = report.find('【过滤说明】')
-            filter_section_end = report.find('\n\n【核心推荐】') if filter_section_start >= 0 else -1
-            if filter_section_start >= 0 and filter_section_end > filter_section_start:
-                filter_section = report[filter_section_start:filter_section_end]
-                # 过滤说明段不应含 159611
-                assert '159611' not in filter_section
+        from src.analysis.report_generator import ETFReportGenerator
+        gen = ETFReportGenerator()
+        report = gen.generate_report(capital=20000, tracker=tracker)
+        # 159611 不会出现在过滤说明
+        filter_section_start = report.find('【过滤说明】')
+        filter_section_end = report.find('\n\n【核心推荐】') if filter_section_start >= 0 else -1
+        if filter_section_start >= 0 and filter_section_end > filter_section_start:
+            filter_section = report[filter_section_start:filter_section_end]
+            # 过滤说明段不应含 159611
+            assert '159611' not in filter_section

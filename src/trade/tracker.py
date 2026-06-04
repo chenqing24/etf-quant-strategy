@@ -194,6 +194,9 @@ class Position:
     is_real: int = 0             # 0=模拟, 1=实盘
     legacy_holding: int = 0      # 0=否, 1=是（legacy_holding 角色）
     # ─────────────────────────────────────────────────────────────
+    # ── US-014 R2 新增 ─────────────────────────────────────────
+    is_reference: int = 0        # 0=否, 1=是（reference 池，可交易但非 core）
+    # ─────────────────────────────────────────────────────────────
 
 
 class TradeTracker:
@@ -305,13 +308,13 @@ class TradeTracker:
             conn.close()
 
     def load_positions(self) -> List[Position]:
-        """加载当前持仓（US-008: 查 positions 表）"""
+        """加载当前持仓（US-008: 查 positions 表，US-014 R2: 含 is_reference）"""
         conn = self._get_conn()
         try:
             rows = conn.execute("""
                 SELECT code, name, entry_date, entry_price, quantity,
                        current_price, pnl_pct, hold_days, status, score,
-                       is_real, legacy_holding
+                       is_real, legacy_holding, is_reference
                 FROM positions
             """).fetchall()
         finally:
@@ -321,6 +324,7 @@ class TradeTracker:
             quantity=r[4], current_price=r[5] or 0, pnl_pct=r[6] or 0,
             hold_days=r[7] or 0, status=r[8] or 'EMPTY', score=r[9] or 0,
             is_real=r[10] or 0, legacy_holding=r[11] or 0,
+            is_reference=r[12] or 0,  # US-014 R2
         ) for r in rows]
 
     def save_positions(self, positions: List[Position]):
@@ -346,12 +350,13 @@ class TradeTracker:
                     INSERT OR REPLACE INTO positions (
                         code, name, entry_date, entry_price, quantity,
                         current_price, pnl_pct, hold_days, status, score,
-                        is_real, legacy_holding, updated_at
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))
+                        is_real, legacy_holding, is_reference, updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))
                 """, (
                     p.code, p.name, p.entry_date, p.entry_price, p.quantity,
                     p.current_price, p.pnl_pct, p.hold_days, p.status, p.score,
                     p.is_real, p.legacy_holding,
+                    getattr(p, 'is_reference', 0),  # US-014 R2
                 ))
             conn.commit()
         finally:
@@ -588,6 +593,8 @@ class TradeTracker:
         )
         positions.append(new_pos)
         self.save_positions(positions)
+        # US-014 R1: 同步更新 current_capital（买 = 钱出去）
+        self._update_performance_capital(-amount)
         self._audit(code, 'EMPTY', 'HOLDING', f"买入 {quantity}股 @ {price}")
         return trade
 
@@ -675,11 +682,15 @@ class TradeTracker:
                     conn.commit()
                 finally:
                     conn.close()
+                # US-014 R1: 部分卖：current_capital 加回部分金额
+                self._update_performance_capital(+(price * sell_qty))
                 self._audit(code, 'HOLDING', 'HOLDING', f"部分卖出 {sell_qty}股 @ {price}，剩余 {pos.quantity - sell_qty}")
             else:
                 # 全仓卖：移除持仓
                 positions = [p for p in positions if p.code != code]
                 self.save_positions(positions)
+                # US-014 R1: 全仓卖：current_capital 加回全部金额
+                self._update_performance_capital(+(price * pos.quantity))
                 self._audit(code, 'CLOSING', 'EMPTY', f"已卖出 @ {price}, pnl={actual_pnl_partial}")
 
             return trade
@@ -804,14 +815,22 @@ class TradeTracker:
         return updated
     
     def _rebuild_positions_from_trades(self) -> List[Position]:
-        """从交易记录重建持仓状态"""
+        """从交易记录重建持仓状态（US-014 R2: 支持 reference 池）"""
         positions = []
         trades = self.load_trades()
-        
+
+        # US-014 R2: 加载 reference 池代码集合（用于标 is_reference=1）
+        reference_pool = set()
+        try:
+            from src.data.etf_pool_repository import ETFRepository
+            reference_pool = set(ETFRepository().list_codes("reference"))
+        except Exception:
+            pass
+
         # 按代码分组，获取每只ETF的买入记录
         buy_records = {}  # code -> (date, name, price, quantity)
         sell_records = {}  # code -> [(date, quantity), ...]
-        
+
         for trade in trades:
             if trade.action == 'buy':
                 buy_records[trade.code] = {
@@ -827,14 +846,15 @@ class TradeTracker:
                     'date': trade.date,
                     'quantity': trade.quantity,
                 })
-        
+
         # 计算当前持仓
         for code, buy_info in buy_records.items():
             total_bought = buy_info['quantity']
             total_sold = sum(s['quantity'] for s in sell_records.get(code, []))
             remaining = total_bought - total_sold
-            
+
             if remaining > 0:
+                is_reference = 1 if code in reference_pool else 0
                 positions.append(Position(
                     code=code,
                     name=buy_info['name'],
@@ -844,8 +864,9 @@ class TradeTracker:
                     current_price=buy_info['price'],
                     pnl_pct=0,
                     hold_days=0,
+                    is_reference=is_reference,  # US-014 R2
                 ))
-        
+
         return positions
     
     # ===== US-005: 状态机 + 事务保护 + 审计日志 =====
@@ -1064,6 +1085,35 @@ class TradeTracker:
 
         with open(self.performance_file, 'w') as f:
             json.dump(data, f, indent=2)
+
+    def _update_performance_capital(self, delta: float):
+        """
+        US-014 R1: 增量更新 current_capital
+        每次 record_buy/record_sell 调用，atomic 调整现金余额
+
+        Args:
+            delta: +amount 表示回款（卖），-amount 表示支出（买）
+        """
+        if not os.path.exists(self.performance_file):
+            return
+        try:
+            with open(self.performance_file, 'r') as f:
+                data = json.load(f)
+            perf = data.get('performance', {})
+            old = float(perf.get('current_capital', 20000))
+            new = max(0, old + delta)
+            perf['current_capital'] = new
+            perf['updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            data['performance'] = perf
+            # SOUL 规则 18: json.dump + 立即验证
+            with open(self.performance_file, 'w') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            # 立即验证
+            with open(self.performance_file, 'r') as f:
+                json.load(f)  # 失败立即抛错
+        except Exception as e:
+            _logger = logging.getLogger(__name__)
+            _logger.warning(f"_update_performance_capital 失败: {e}")
 
     def get_account_summary(self, max_holdings: int = 2) -> dict:
         """
