@@ -593,8 +593,8 @@ class TradeTracker:
         )
         positions.append(new_pos)
         self.save_positions(positions)
-        # US-014 R1: 同步更新 current_capital（买 = 钱出去）
-        self._update_performance_capital(-amount)
+        # US-016: 不再调 _update_performance_capital (deprecaed)
+        # 现金由 get_performance_summary() 调 recompute_cash() 按需重算
         self._audit(code, 'EMPTY', 'HOLDING', f"买入 {quantity}股 @ {price}")
         return trade
 
@@ -682,15 +682,15 @@ class TradeTracker:
                     conn.commit()
                 finally:
                     conn.close()
-                # US-014 R1: 部分卖：current_capital 加回部分金额
-                self._update_performance_capital(+(price * sell_qty))
+                # US-016: 不再调 _update_performance_capital (deprecaed)
+                # 现金由 get_performance_summary() 调 recompute_cash() 按需重算
                 self._audit(code, 'HOLDING', 'HOLDING', f"部分卖出 {sell_qty}股 @ {price}，剩余 {pos.quantity - sell_qty}")
             else:
                 # 全仓卖：移除持仓
                 positions = [p for p in positions if p.code != code]
                 self.save_positions(positions)
-                # US-014 R1: 全仓卖：current_capital 加回全部金额
-                self._update_performance_capital(+(price * pos.quantity))
+                # US-016: 不再调 _update_performance_capital (deprecaed)
+                # 现金由 get_performance_summary() 调 recompute_cash() 按需重算
                 self._audit(code, 'CLOSING', 'EMPTY', f"已卖出 @ {price}, pnl={actual_pnl_partial}")
 
             return trade
@@ -1115,9 +1115,10 @@ class TradeTracker:
         数据源: trade_history (事实源)
         公式: cash = 20000 - 5879.7 - 2319.9 - 3112.2 - 7609 + 5719.9 + 2371.2 = 9170.3
 
+        副作用: 同步把 current_capital 写回 performance file (覆盖任何脏值)
         与 _update_performance_capital 增量逻辑不同：
         - 增量逻辑：每次 trade 累加 delta，文件不存在时静默失败
-        - 重算逻辑：每次都从 trade_history 算真相，文件可有可无
+        - 重算逻辑：每次都从 trade_history 算真相，自动修复脏数据
         """
         initial = 20000
         conn = self._get_conn()
@@ -1133,7 +1134,34 @@ class TradeTracker:
             sell_sum = row[1] or 0
         finally:
             conn.close()
-        return round(initial - buy_sum + sell_sum, 2)
+        cash = round(initial - buy_sum + sell_sum, 2)
+
+        # US-016: 同步把 current_capital 写回 performance file
+        # 即使文件不存在或被写脏，也会被正确值覆盖
+        try:
+            self._write_cash_to_perf_file(cash)
+        except Exception as e:
+            _logger = logging.getLogger(__name__)
+            _logger.warning(f"recompute_cash 写回 perf file 失败: {e}")
+
+        return cash
+
+    def _write_cash_to_perf_file(self, cash: float):
+        """US-016: 写 current_capital 到 performance file (私有 helper)"""
+        if not os.path.exists(self.performance_file):
+            return  # 没有文件就不写
+        try:
+            with open(self.performance_file, 'r') as f:
+                data = json.load(f)
+            perf = data.get('performance', {})
+            perf['current_capital'] = cash
+            perf['last_recompute_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            data['performance'] = perf
+            with open(self.performance_file, 'w') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            _logger = logging.getLogger(__name__)
+            _logger.warning(f"_write_cash_to_perf_file 失败: {e}")
 
     def update_performance(self, capital: float, pnl: float,
                            total_trades: int, win_rate: float):
