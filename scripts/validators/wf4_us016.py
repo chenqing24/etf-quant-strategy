@@ -39,7 +39,46 @@ from src.indicators.wrapper import IndicatorCalculator
 from src.backtest.engine import FactorBacktester, BacktestConfig
 from src.analysis.market_regime import MarketRegimeDetector
 from src.strategy.combiner import StrategyCombiner
+from src.strategy.base import Signal
 from src.analysis.report_templates import POSITION_LIMITS
+
+
+def score_signal_func(date, df_dict):
+    """US-009: 评分信号函数（模拟原 use_selector 行为）"""
+    from src.core.selector import Selector
+    selector = Selector()
+    signals = {}
+    for code, df in df_dict.items():
+        if df is None or len(df) < 60:
+            continue
+        try:
+            score, _ = selector.evaluate(df, date)
+            if score >= 6:
+                signals[code] = Signal(
+                    code=code, action='buy', price=float(df['close'].iloc[-1]),
+                    confidence=float(score) / 10.0, reason='score>=6'
+                )
+        except Exception:
+            pass
+    return signals
+
+
+def combiner_signal_func(combiner):
+    """US-009: Combiner 信号函数（v3 真按市态切换）"""
+    def signals_for_date(date, df_dict):
+        # 用 510300 简易检测市态
+        market_510300 = df_dict.get('510300')
+        if market_510300 is not None:
+            oos = market_510300[market_510300['date'] <= date]
+            regime = detect_market_regime(oos) if len(oos) > 0 else 'range_bound'
+        else:
+            regime = 'range_bound'
+        try:
+            sigs = combiner.select_signals(df_dict, regime=regime)
+            return {s.code: s for s in sigs if s.action == 'buy'}
+        except Exception:
+            return {}
+    return signals_for_date
 
 
 # 14 只核心 ETF
@@ -106,8 +145,8 @@ def run_fold_baseline(all_data, fold, is_start, is_end, oos_start, oos_end, hold
         return {'fold': fold, 'error': '数据不足'}
     config = BacktestConfig(
         max_positions=hold_count,
-        score_threshold=6,
-        use_selector=True,
+        
+        
         enable_signal_persistence=True,
         signal_consecutive_days=2,
         min_hold_days=3,
@@ -122,6 +161,7 @@ def run_fold_baseline(all_data, fold, is_start, is_end, oos_start, oos_end, hold
     try:
         result = backtester.backtest(
             price_data=oos_data,
+            signal_func=score_signal_func,  # US-009: 解耦后必传
             start_date=oos_start, end_date=oos_end,
             valid_factors=[],
         )
@@ -194,8 +234,8 @@ def run_fold_v3(all_data, fold, is_start, is_end, oos_start, oos_end):
     # 用现有回测 + 调整参数
     config = BacktestConfig(
         max_positions=2,
-        score_threshold=6,
-        use_selector=True,
+        
+        
         enable_signal_persistence=True,
         signal_consecutive_days=2,
         min_hold_days=3,
@@ -210,6 +250,7 @@ def run_fold_v3(all_data, fold, is_start, is_end, oos_start, oos_end):
     try:
         result = backtester.backtest(
             price_data=oos_data,
+            signal_func=score_signal_func,  # US-009: 解耦后必传
             start_date=oos_start, end_date=oos_end,
             valid_factors=[],
         )

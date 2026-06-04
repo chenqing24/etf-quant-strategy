@@ -49,8 +49,6 @@ class BacktestConfig:
     min_factors: int = 2             # 最小因子数
     
     # === 新增：Selector 评分模式 ===
-    score_threshold: int = 6         # 选股分数门槛（Selector 模式）
-    use_selector: bool = False        # 使用 Selector 而非因子评分
     
     # === 新增：信号持续性控制 ===
     signal_consecutive_days: int = 2  # 连续N天评分低于阈值才触发卖出
@@ -96,7 +94,22 @@ class BacktestResult:
 # ============================================================
 
 class FactorBacktester:
-    """因子回测引擎 v8.0"""
+    """回测引擎（US-009: 执行/策略解耦）
+
+    设计原则（2026-06-04 用户明确）:
+    - 引擎是对立的（不依赖具体策略）
+    - 引擎和策略解耦（不内置选股/评分）
+    - 所有信号由 signal_func 外部传入
+
+    引擎职责:
+    1. 日期循环
+    2. 持仓管理 (positions dict)
+    3. 调 signal_func(date, df_dict) 拿外部信号
+    4. T+1 撮合 / 仓位计算 / 损益统计
+
+    业界参考: Backtrader (Strategy 子类化) / Zipline (Pipeline + Algorithm)
+    详见: docs/ARCHITECTURE_DECOUPLING.md
+    """
     
     def __init__(
         self,
@@ -129,51 +142,10 @@ class FactorBacktester:
         # === 排除列表（大盘参考 ETF 等不参与交易）===
         self._exclude_codes = set()
     
-    def _init_selector(self):
-        """延迟初始化 Selector（避免循环导入）"""
-        if self._selector is None and self.config.use_selector:
-            from src.core.selector import Selector
-            self._selector = Selector()
-    
-    def _get_score(self, df: pd.DataFrame, date: str) -> float:
-        """获取评分（优先 Selector，否则因子评分）
-        
-        Args:
-            df: 当前可用的数据（可能是 OOS 期切片）
-            date: 评估日期
-        
-        注意：
-            如果注入了 _full_data，优先使用完整数据计算评分
-            （因为 OOS 期切片可能缺少 MA120 所需的120天历史）
-        """
-        self._init_selector()
-        
-        # 如果有完整数据，用完整数据评分
-        if hasattr(self, '_full_data') and self._full_data:
-            # 找到对应的完整 df
-            code = df['code'].iloc[0] if 'code' in df.columns else None
-            if code and code in self._full_data:
-                full_df = self._full_data[code]
-                try:
-                    score, _ = self._selector.evaluate(full_df, date)
-                    return score
-                except Exception:
-                    pass
-        
-        # 否则用传入的 df
-        if self._selector and self.config.use_selector:
-            try:
-                score, _ = self._selector.evaluate(df, date)
-                return score
-            except Exception:
-                return 0
-        else:
-            return self._factor_score(df, self.valid_factors or self.factors)
-    
     def backtest(
         self,
         price_data: Dict[str, pd.DataFrame],
-        signal_func: Callable[[pd.DataFrame], pd.Series] = None,
+        signal_func: Callable = None,  # US-009: 必传 (date, df_dict) -> {code: Signal}
         score_func: Callable[[pd.DataFrame], pd.Series] = None,
         benchmark_data: pd.DataFrame = None,
         start_date: str = None,
@@ -224,12 +196,14 @@ class FactorBacktester:
                 if current_price == 0:
                     current_price = pos['entry_price']
                 
-                # 获取当前评分（用于信号持续性控制）
+                # 获取当前评分（用于信号持续性控制，US-009: 由 signal_func 外部计算）
                 current_score = None
-                if self.config.enable_signal_persistence and price_data:
-                    df = price_data.get(code)
-                    if df is not None:
-                        current_score = self._get_score(df, current_date)
+                if self.config.enable_signal_persistence and signal_func is not None:
+                    df_for_signals = getattr(self, '_full_data', None) or price_data
+                    signals = signal_func(current_date, df_for_signals)
+                    sig = signals.get(code)
+                    if sig is not None:
+                        current_score = getattr(sig, 'confidence', 1.0)
                 
                 # 检查是否需要平仓
                 should_close, reason = self._check_exit(
@@ -269,24 +243,25 @@ class FactorBacktester:
             if len(positions) < self.config.max_positions and should_rebalance:
                 candidates = []
                 
-                # Selector 模式：直接遍历所有 ETF 计算评分
-                if self.config.use_selector:
+                # US-009: 引擎解耦 — 优先用 signal_func 拿信号（无 use_selector 硬编码）
+                if signal_func is not None:
+                    # 优先用 _full_data（含历史 120+ 天），否则用 OOS 切片
+                    df_for_signals = getattr(self, '_full_data', None) or price_data
+                    # 外部传入信号函数: signal_func(date, df_dict) -> {code: Signal}
+                    signals = signal_func(current_date, df_for_signals)
                     scored_candidates = []
-                    for code in price_data.keys():
-                        # 排除：已持仓、当日已平仓、排除列表
+                    for code, sig in signals.items():
+                        if sig.action != 'buy':
+                            continue
                         exclude_codes = getattr(self, '_exclude_codes', set())
                         if code in positions or code in closed_today or code in exclude_codes:
                             continue
-                        df = price_data.get(code)
-                        if df is None or df.empty:
-                            continue
-                        score = self._get_score(df, current_date)
-                        if score >= self.config.score_threshold:
-                            scored_candidates.append((code, score))
+                        confidence = getattr(sig, 'confidence', 1.0)
+                        scored_candidates.append((code, confidence))
                     scored_candidates.sort(key=lambda x: -x[1])
                     candidates = scored_candidates
                 else:
-                    # 原有逻辑：信号模式或评分模式
+                    # 兼容旧路径: signal_func/score_func 模式
                     candidates = self._get_candidates(
                         current_date, current_prices, positions, 
                         signal_func, score_func,
@@ -419,10 +394,10 @@ class FactorBacktester:
         if (self.config.enable_signal_persistence and 
             current_score is not None and
             hold_days >= self.config.min_hold_days):
-            if current_score < self.config.score_threshold:
+            if current_score < self.config.min_score:
                 self._consecutive_low_score_days += 1
                 if self._consecutive_low_score_days >= self.config.signal_consecutive_days:
-                    return True, f'信号下降({self._consecutive_low_score_days}天,<{self.config.score_threshold})'
+                    return True, f'信号下降({self._consecutive_low_score_days}天,<{self.config.min_score})'
             else:
                 self._consecutive_low_score_days = 0
         
