@@ -1,0 +1,106 @@
+{
+  "generated_at": "2026-06-04T11:44:50.289709",
+  "us": "US-007 + US-008",
+  "period": "5年 (2021-01-01 ~ 2026-06-04)",
+  "folds": 4,
+  "baseline": [
+    {
+      "fold": 1,
+      "oos": "2024-01-01 ~ 2024-06-30",
+      "regime": "range_bound",
+      "sharpe": -5.032071168586735,
+      "return_pct": -4.9,
+      "win_rate_pct": 41.18,
+      "max_drawdown_pct": 4.84,
+      "trades": 17,
+      "strategy_used": "baseline_1_strategy"
+    },
+    {
+      "fold": 2,
+      "oos": "2024-07-01 ~ 2024-12-31",
+      "regime": "range_bound",
+      "sharpe": -2.276650234802072,
+      "return_pct": -6.28,
+      "win_rate_pct": 31.58,
+      "max_drawdown_pct": 15.45,
+      "trades": 19,
+      "strategy_used": "baseline_1_strategy"
+    },
+    {
+      "fold": 3,
+      "oos": "2025-01-01 ~ 2025-06-30",
+      "regime": "range_bound",
+      "sharpe": 0.3712334831367522,
+      "return_pct": 0.46,
+      "win_rate_pct": 35.71,
+      "max_drawdown_pct": 3.12,
+      "trades": 14,
+      "strategy_used": "baseline_1_strategy"
+    },
+    {
+      "fold": 4,
+      "oos": "2025-07-01 ~ 2026-06-04",
+      "regime": "trend_up",
+      "sharpe": 3.2416012900637052,
+      "return_pct": 16.93,
+      "win_rate_pct": 46.88,
+      "max_drawdown_pct": 2.83,
+      "trades": 32,
+      "strategy_used": "baseline_1_strategy"
+    }
+  ],
+  "v3": [
+    {
+      "fold": 1,
+      "oos": "2024-01-01 ~ 2024-06-30",
+      "regime": "range_bound",
+      "sharpe": -3.326889782280787,
+      "return_pct": -4.53,
+      "win_rate_pct": 19.23,
+      "max_drawdown_pct": 8.15,
+      "trades": 26,
+      "position_limit": 0.5,
+      "dynamic_max_hold": 8,
+      "strategy_used": "v3_4strategies_risk_parity (none)"
+    },
+    {
+      "fold": 2,
+      "oos": "2024-07-01 ~ 2024-12-31",
+      "regime": "range_bound",
+      "sharpe": -4.552923066356193,
+      "return_pct": -14.68,
+      "win_rate_pct": 31.03,
+      "max_drawdown_pct": 15.65,
+      "trades": 29,
+      "position_limit": 0.5,
+      "dynamic_max_hold": 8,
+      "strategy_used": "v3_4strategies_risk_parity (none)"
+    },
+    {
+      "fold": 3,
+      "oos": "2025-01-01 ~ 2025-06-30",
+      "regime": "range_bound",
+      "sharpe": 1.98709997381572,
+      "return_pct": 2.87,
+      "win_rate_pct": 36.67,
+      "max_drawdown_pct": 1.73,
+      "trades": 30,
+      "position_limit": 0.5,
+      "dynamic_max_hold": 8,
+      "strategy_used": "v3_4strategies_risk_parity (none)"
+    },
+    {
+      "fold": 4,
+      "oos": "2025-07-01 ~ 2026-06-04",
+      "regime": "trend_up",
+      "sharpe": 2.456510472450874,
+      "return_pct": 10.04,
+      "win_rate_pct": 30.77,
+      "max_drawdown_pct": 7.38,
+      "trades": 26,
+      "position_limit": 0.9,
+      "dynamic_max_hold": 20,
+      "strategy_used": "v3_4strategies_risk_parity (none)"
+    }
+  ]
+}
