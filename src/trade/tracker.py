@@ -1112,13 +1112,15 @@ class TradeTracker:
         """
         US-016: 现金 = initial_capital - sum(buy.amount) + sum(sell.amount)
 
-        数据源: trade_history (事实源)
+        数据源: trade_history (事实源), 仅算 is_real=1 (实盘)
         公式: cash = 20000 - 5879.7 - 2319.9 - 3112.2 - 7609 + 5719.9 + 2371.2 = 9170.3
 
         副作用: 同步把 current_capital 写回 performance file (覆盖任何脏值)
         与 _update_performance_capital 增量逻辑不同：
         - 增量逻辑：每次 trade 累加 delta，文件不存在时静默失败
         - 重算逻辑：每次都从 trade_history 算真相，自动修复脏数据
+
+        按 SOUL 规则 23: 现金计算只看 is_real=1 (实盘), 排除 is_real=0 (测试数据)
         """
         initial = 20000
         conn = self._get_conn()
@@ -1128,6 +1130,7 @@ class TradeTracker:
                     COALESCE(SUM(CASE WHEN action='buy' THEN amount ELSE 0 END), 0) AS buy_sum,
                     COALESCE(SUM(CASE WHEN action='sell' THEN amount ELSE 0 END), 0) AS sell_sum
                 FROM trade_history
+                WHERE is_real = 1
             """)
             row = cur.fetchone()
             buy_sum = row[0] or 0

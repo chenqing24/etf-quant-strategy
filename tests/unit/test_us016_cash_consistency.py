@@ -92,7 +92,7 @@ class TestUS016CashConsistency:
         """买入后 cash 减少"""
         tracker, _, _, _ = isolated_tracker
         tracker.record_buy(code='159919', name='测试ETF',
-                           price=1.0, quantity=1000, is_real=0)
+                           price=1.0, quantity=1000, is_real=1)
         cash = tracker.recompute_cash()
         assert cash == 19000, f"cash {cash} != 20000 - 1000 = 19000"
 
@@ -101,10 +101,10 @@ class TestUS016CashConsistency:
         tracker, _, _, _ = isolated_tracker
         # 买入 1000股 @1.0
         tracker.record_buy(code='159919', name='测试ETF',
-                           price=1.0, quantity=1000, is_real=0)
+                           price=1.0, quantity=1000, is_real=1)
         # 卖出 1000股 @1.2 (盈利 200)
         tracker.record_sell(code='159919', price=1.2, actual_pnl=200,
-                            quantity=1000, is_real=0)
+                            quantity=1000, is_real=1)
         cash = tracker.recompute_cash()
         # cash = 20000 - 1000 + 1200 = 20200
         assert cash == 20200, f"cash {cash} != 20000 - 1000 + 1200 = 20200"
@@ -112,14 +112,17 @@ class TestUS016CashConsistency:
     def test_cash_with_real_production_data(self, isolated_tracker):
         """真实生产数据验证（已知预期值）
 
-        基于 2026-06-04 真实 trade_history 计算:
+        基于 2026-06-04 真实 trade_history 计算 (仅 is_real=1):
         - 20000 - 5879.7 (买159611 4700股) - 2319.9 (加仓) - 3112.2 (买515050) - 7609 (买512480)
         + 5719.9 (卖159611 4700股) + 2371.2 (卖159611 1900股)
         = 9170.3
+
+        US-016-补充: 即使 trade_history 里有 is_real=0 的 510300 测试数据, 也不应计入
         """
         tracker, db_path, _, _ = isolated_tracker
         # 写入真实交易
         conn = sqlite3.connect(db_path)
+        # 6 笔 is_real=1 实盘交易
         trades = [
             ('2026-06-01', '159611', '电力ETF广发', 'buy',  1.251, 4700, 5879.7),
             ('2026-06-02', '515050', '通信ETF华夏', 'buy',  1.197, 2600, 3112.2),
@@ -134,11 +137,20 @@ class TestUS016CashConsistency:
                 "VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
                 (date, code, name, action, price, qty, amount)
             )
+        # 5 笔 is_real=0 测试数据 (510300 脏数据, 不应影响 cash 计算)
+        for i in range(5):
+            conn.execute(
+                "INSERT INTO trade_history (date, code, name, action, price, quantity, amount, is_real) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, 0)",
+                ('2026-06-04', '510300', '沪深300', 'buy', 4.0, 1000, 4000.0)
+            )
         conn.commit()
         conn.close()
 
         cash = tracker.recompute_cash()
-        assert abs(cash - 9170.3) < 0.01, f"cash {cash} != 9170.3 (期望值)"
+        # US-016-补充: 现金只看 is_real=1, 测试数据被排除
+        assert abs(cash - 9170.3) < 0.01, \
+            f"cash {cash} != 9170.3 (期望值, 排除 is_real=0 测试数据)"
 
     def test_cash_not_use_dirty_positions_quantity(self, isolated_tracker):
         """cash 不应受 positions 表脏数据影响"""
@@ -179,9 +191,9 @@ class TestUS016CashConsistency:
                 }
             }, f)
 
-        # 写入一笔交易
+        # 写入一笔交易 (is_real=1 才会被 cash 计算)
         tracker.record_buy(code='159919', name='测试ETF',
-                           price=1.0, quantity=1000, is_real=0)
+                           price=1.0, quantity=1000, is_real=1)
 
         # 调用 recompute_cash 后，performance file 不应保留 22371.2
         tracker.recompute_cash()
