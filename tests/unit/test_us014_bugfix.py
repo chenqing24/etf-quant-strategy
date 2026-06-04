@@ -125,20 +125,24 @@ class TestR3MigrationScript:
         sys.path.insert(0, str(ROOT / 'scripts'))
         from migrate_us008_bugfix import compute_current_capital
         result = compute_current_capital('etf_data_live/etf.db', is_real_only=True)
-        # 4 笔实盘交易
+        # US-010 Q2=A: 改测试期望值 (接受 6 笔实盘, 含 512480 buy 7609)
+        #   4 笔 (6/1-6/3) buy 总额 11311.8 + 1 笔 6/4 buy 7609.0 = 18920.8
+        #   sell 总额: 6/3 sell 5719.9 + 6/4 sell 2371.2 = 8091.1
+        #   new_capital = 20000 - 18920.8 + 8091.1 = 9170.3
         assert result['initial_capital'] == 20000
-        assert result['total_buy'] == 11311.8
-        assert result['total_sell'] == 5719.9
-        assert result['new_capital'] == 14408.1
-        assert result['trades_count'] == 4
+        assert result['total_buy'] == 18920.8
+        assert result['total_sell'] == 8091.1
+        assert abs(result['new_capital'] - 9170.3) < 0.1
+        assert result["trades_count"] == 6  # 5 笔 buy (含 512480)
 
     def test_get_account_summary_reflects_fix(self):
         """get_account_summary 反映 R1+R3 修复"""
         from src.trade.tracker import TradeTracker
         tracker = TradeTracker('.')
         acc = tracker.get_account_summary()
-        # R3 已 apply，current_capital 应该是 14,408.1
-        assert abs(acc['cash'] - 14408.1) < 0.01
+        # US-010 Q2=A: 接受 6 笔实盘，current_capital ≈ 9170.3
+        # (20000 - 18920.8 + 8091.1 = 9170.3)
+        assert abs(acc['cash'] - 9170.3) < 0.5
 
 
 class TestUS008BugFixes:
