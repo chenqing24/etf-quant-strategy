@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
-"""数据源接口测试脚本"""
+"""数据源接口冒烟测试脚本
+
+US-016: 从 tests/ 移出（不是 pytest 测试）。URL 改用 src/constants.py 避免硬编码。
+"""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import requests
 import baostock as bs
+from src.constants import TENCENT_QT_URL
 
 print("=" * 60)
 print("ETF量化系统 - 数据源接口测试")
@@ -9,7 +17,7 @@ print("=" * 60)
 
 # 1. 腾讯实时行情
 print("\n【1】腾讯实时行情 - qt.gtimg.cn")
-url = "https://qt.gtimg.cn/q=sz159919,sh510300"
+url = f"{TENCENT_QT_URL}sz159919,sh510300"
 r = requests.get(url, timeout=10)
 for line in r.text.strip().split('\n'):
     code = line.split('~')[0].split('_')[-1]

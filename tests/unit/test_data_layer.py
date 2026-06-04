@@ -15,7 +15,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data.exceptions import DataValidationError, DataSourceError, DataNotFoundError
-from src.data.types import RealtimeQuote, DailyRecord, StockInfo
+from src.data.data_types import RealtimeQuote, DailyRecord, StockInfo
 
 
 class TestExceptions(unittest.TestCase):
@@ -381,24 +381,32 @@ class TestDataQualityMonitor(unittest.TestCase):
     def test_check_freshness_with_data(self):
         """测试有数据时的检查"""
         from src.data.monitor import DataQualityMonitor
-        
-        # 写入测试数据
+
+        # 写入测试数据（匹配生产 schema，US-016: 修复缺 updated_at 字段）
         conn = sqlite3.connect(self.db_path)
         conn.execute('''
             CREATE TABLE daily (
-                id INTEGER PRIMARY KEY,
-                code TEXT,
-                date TEXT,
-                UNIQUE(code, date)
+                code TEXT NOT NULL,
+                date TEXT NOT NULL,
+                open REAL,
+                high REAL,
+                low REAL,
+                close REAL,
+                volume INTEGER,
+                updated_at TEXT
             )
         ''')
-        conn.execute("INSERT INTO daily VALUES (1, '510300', '2024-01-01')")
+        conn.execute(
+            "INSERT INTO daily (code, date, open, high, low, close, volume, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ('510300', '2024-01-01', 4.0, 4.1, 3.9, 4.05, 1000, '2024-01-01 09:30:00')
+        )
         conn.commit()
         conn.close()
-        
+
         monitor = DataQualityMonitor(self.db_path)
         result = monitor.check_data_freshness()
-        
+
         self.assertIn(result['status'], ['OK', 'WARNING', 'ERROR'])
         self.assertEqual(result['latest_date'], '2024-01-01')
     
