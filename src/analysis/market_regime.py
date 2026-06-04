@@ -42,6 +42,7 @@ Regime = Literal[
 ]
 
 REGIME_LABELS = {
+    # US-013: 8 状态细分
     'initial_up': '初升',
     'uptrend': '上升中',
     'late_up': '末升',
@@ -51,7 +52,11 @@ REGIME_LABELS = {
     'range_bullish': '震荡偏强',
     'range_bearish': '震荡偏弱',
     'reversal_point': '反转点',
-    'crash': '暴跌',
+    'crash': '暴跌市',
+    # 向后兼容 4 状态别名
+    'trend_up': '趋势市',
+    'range_bound': '震荡市',
+    'trend_down': '下跌市',
 }
 
 REGIME_EMOJI = {
@@ -65,6 +70,10 @@ REGIME_EMOJI = {
     'range_bearish': '📉',
     'reversal_point': '🔄',
     'crash': '🚨',
+    # 向后兼容
+    'trend_up': '📈',
+    'range_bound': '📊',
+    'trend_down': '🔻',
 }
 
 # US-013: 市态 → 策略映射 (8 状态 → 4 策略)
