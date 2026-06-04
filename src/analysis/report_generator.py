@@ -53,6 +53,15 @@ from src.analysis.report_templates import (
     POSITION_LIMITS, format_position_limit
 )
 
+# US-018: 策略参数单一真相源（避免 17 处硬编码散落）
+from src.constants import (
+    STOP_LOSS_PCT, TAKE_PROFIT_PCT,
+    STOP_LOSS_PRICE_RATIO, TAKE_PROFIT_PRICE_RATIO,
+    MAX_HOLD_DAYS, MAX_TOTAL_STOP_LOSS,
+    TRAILING_STOP_PCT, TRAILING_THRESHOLD_PCT,
+    MAX_POSITION_RATIO,
+)
+
 # 尝试导入热冷数据管理器
 try:
     from src.data.manager import DataFacade
@@ -205,14 +214,14 @@ class ETFReportGenerator:
                 ('2024-01-01', '2026-05-22', '2022-01-01', '2024-12-31'),
             ]
         
-        # 优化后的参数 (鱼身实验Top1配置)
+        # 优化后的参数 (鱼身实验Top1配置) - US-018: 从 constants 引用
         params = {
             'hold_count': 1,
             'weights': (1.0,),
-            'stop_loss': -0.06,
-            'stop_gain': 0.10,
-            'trailing_threshold': 0.06,
-            'trailing_stop': 0.04,
+            'stop_loss': -STOP_LOSS_PCT,
+            'stop_gain': TAKE_PROFIT_PCT,
+            'trailing_threshold': TRAILING_THRESHOLD_PCT,
+            'trailing_stop': TRAILING_STOP_PCT,
             'enable_trailing_stop': True,
             'rebalance_days': 10,
             'enable_market_filter': True,
@@ -413,9 +422,9 @@ class ETFReportGenerator:
                 trade_price = signal_price
                 price_warning = f"⚠️偏离过大({deviation:+.1f}%)，以策略信号价为准"
         
-        # 计算止盈止损价（基于推荐价格）
-        stop_loss_price = trade_price * 0.94  # 止损价 -6%
-        take_profit_price = trade_price * 1.10  # 止盈价 +10%
+        # 计算止盈止损价（基于推荐价格）- US-018: 从 constants 引用
+        stop_loss_price = trade_price * STOP_LOSS_PRICE_RATIO  # 止损价 -6%
+        take_profit_price = trade_price * TAKE_PROFIT_PRICE_RATIO  # 止盈价 +10%
         
         # 计算股数（US-009: 用 available 替代 capital*0.9）
         position = 0
@@ -493,9 +502,9 @@ class ETFReportGenerator:
                 trade_price = signal_price
                 price_warning = f"⚠️偏离过大({deviation:+.1f}%)，以策略信号价为准"
         
-        # 计算止盈止损价（基于推荐价格）
-        stop_loss_price = trade_price * 0.94  # 止损价 -6%
-        take_profit_price = trade_price * 1.10  # 止盈价 +10%
+        # 计算止盈止损价（基于推荐价格）- US-018: 从 constants 引用
+        stop_loss_price = trade_price * STOP_LOSS_PRICE_RATIO  # 止损价 -6%
+        take_profit_price = trade_price * TAKE_PROFIT_PRICE_RATIO  # 止盈价 +10%
         
         # 计算股数（US-009: 用 available 替代 capital*0.9）
         position = 0
@@ -570,8 +579,8 @@ class ETFReportGenerator:
 【目标】{top['code']} {top['name']}
 【价格】{trade_price:.3f}元
 【数量】{position}股 ({available:,.0f}元)
-【止损】-6% ({stop_loss_price:.3f}元)
-【止盈】+10% ({take_profit_price:.3f}元)
+【止损】-{int(STOP_LOSS_PCT*100)}% ({stop_loss_price:.3f}元)
+【止盈】+{int(TAKE_PROFIT_PCT*100)}% ({take_profit_price:.3f}元)
 
 {'='*70}
 🔍 实时校验 (实时数据对比)
@@ -698,13 +707,13 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 
 【账户状态】
 {account_status_note}
-- 可投入: {available:,.0f}元（仓位90%上限）
+- 可投入: {available:,.0f}元（仓位{int(MAX_POSITION_RATIO*100)}%上限）
 - 已持仓: {hold_count} / {max_holdings}只
 
 【说明】
 - 多持仓策略（最多{max_holdings}只），降低单标的风险
-- 预留10%现金应对突发情况
-- 最大止损6%，即最多亏损{position * top['price'] * 0.06 if position > 0 else 0:,.0f}元
+- 预留{int((1-MAX_POSITION_RATIO)*100)}%现金应对突发情况
+- 最大止损{int(STOP_LOSS_PCT*100)}%，即最多亏损{position * top['price'] * STOP_LOSS_PCT if position > 0 else 0:,.0f}元
 
 {'='*70}
 五、风险控制
@@ -712,16 +721,16 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 
 | 规则 | 参数 | 说明 |
 |------|------|------|
-| 单笔止损 | -6% | 触发立即平仓 |
-| 总体止损 | -10% | 亏损达10%全部清仓 |
-| 止盈 | +10% | 固定止盈 |
-| 移动止盈 | 回撤4% | 盈利超6%后启用 |
-| 持仓周期 | 最长15天 | 超过强制平仓 |
+| 单笔止损 | -{int(STOP_LOSS_PCT*100)}% | 触发立即平仓 |
+| 总体止损 | {int(MAX_TOTAL_STOP_LOSS*100)}% | 亏损达{abs(int(MAX_TOTAL_STOP_LOSS*100))}%全部清仓 |
+| 止盈 | +{int(TAKE_PROFIT_PCT*100)}% | 固定止盈 |
+| 移动止盈 | 回撤{int(TRAILING_STOP_PCT*100)}% | 盈利超{int(TRAILING_THRESHOLD_PCT*100)}%后启用 |
+| 持仓周期 | 最长{MAX_HOLD_DAYS}天 | 超过强制平仓 |
 
 【情景分析】
 {format_scenario(market['regime'], validation_results=self.validation_results)}
 
-最大亏损: -10% (约{capital*0.1:,.0f}元)
+最大亏损: {int(MAX_TOTAL_STOP_LOSS*100)}% (约{capital*abs(MAX_TOTAL_STOP_LOSS):,.0f}元)
 
 {'='*70}
 六、结论
@@ -740,8 +749,8 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 【目标】{top['code']} {top['name']}
 【价格】{top['price']:.3f}元
 【数量】{position}股 ({position * top['price']:,.0f}元)
-【止损】-6% ({top['price']*0.94:.3f}元)
-【止盈】+10% ({top['price']*1.10:.3f}元)
+【止损】-{int(STOP_LOSS_PCT*100)}% ({top['price']*STOP_LOSS_PRICE_RATIO:.3f}元)
+【止盈】+{int(TAKE_PROFIT_PCT*100)}% ({top['price']*TAKE_PROFIT_PRICE_RATIO:.3f}元)
 
 【账户状态】{hold_count}只持仓 / 现金 {cash_available:,.0f}元 / 可投入 {available:,.0f}元
 
@@ -817,8 +826,8 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
             pnl = h.get('pnl_pct', 0)
             hold_days = h.get('hold_days', 0)
 
-            stop_profit = entry * 1.10 if entry > 0 else 0
-            stop_loss = entry * 0.94 if entry > 0 else 0
+            stop_profit = entry * TAKE_PROFIT_PRICE_RATIO if entry > 0 else 0  # US-018
+            stop_loss = entry * STOP_LOSS_PRICE_RATIO if entry > 0 else 0  # US-018
 
             # 动作标签
             action = self._holdings_action(pnl, hold_days)

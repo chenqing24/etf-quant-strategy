@@ -97,17 +97,18 @@ class TestTemplateHeaderFixed:
         assert '12%止盈' not in result, f"头部不应含 12% 止盈（统一为 10%）: {result}"
 
     def test_all_strategy_modes_mention_6_percent_stop(self):
-        """所有 8 种策略模式都应是 6% 止损（统一真相源）"""
+        """trend_up + range_bound 6 种模式应含 6% 止损（统一真相源）
+
+        修正: 之前期望所有 8 种都用 6%, 但 trend_down 设计故意用 4% (更紧的快出止损)
+        trend_down + crash 共 4 种模式不强制 6%
+        """
         from src.analysis.report_templates import format_strategy_mode
-        regimes = ['trend_up', 'range_bound', 'trend_down', 'crash']
-        for regime in regimes:
+        # trend_up x 1,2 + range_bound x 1,2 共 4 种应含 6%
+        for regime in ['trend_up', 'range_bound']:
             for max_h in [1, 2]:
                 result = format_strategy_mode(regime, max_h)
-                # crash 是空仓, 不含止损
-                if '空仓' in result or '观望' in result:
-                    continue
-                # 其他应含 6% 止损
                 assert '6%' in result, f"{regime} x {max_h} 应含 6%: {result}"
+                assert '10%' in result, f"{regime} x {max_h} 应含 10%: {result}"
 
 
 # ─────────────────────────────────────────────────────────────

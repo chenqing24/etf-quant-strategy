@@ -48,3 +48,21 @@ CACHE_TTL_HOURLY = 300       # 5分钟
 MIN_DATA_ROWS = 300          # 最小数据行数（~1年交易日）
 MIN_PRICE = 0.001            # 最小价格
 MAX_DAILY_CHANGE = 0.20      # 最大日涨跌幅（20%）
+
+# ==================== 策略参数（US-018 单一真相源）====================
+# 止损止盈（持仓段、风控段、实时校验、报告头部统一引用）
+STOP_LOSS_PCT = 0.06           # -6% 止损
+TAKE_PROFIT_PCT = 0.10         # +10% 止盈
+STOP_LOSS_PRICE_RATIO = 1 - STOP_LOSS_PCT      # 0.94 (entry * ratio = 止损价)
+TAKE_PROFIT_PRICE_RATIO = 1 + TAKE_PROFIT_PCT  # 1.10 (entry * ratio = 止盈价)
+
+# 移动止盈
+TRAILING_THRESHOLD_PCT = 0.06  # 盈利 > 6% 启用移动止盈
+TRAILING_STOP_PCT = 0.04       # 回撤 4% 触发平仓
+
+# 持仓
+MAX_HOLD_DAYS = 15             # 强制平仓天数
+
+# 总风险
+MAX_TOTAL_STOP_LOSS = -0.10    # -10% 全仓清仓线
+MAX_POSITION_RATIO = 0.90      # 90% 仓位上限（预留 10% 现金）

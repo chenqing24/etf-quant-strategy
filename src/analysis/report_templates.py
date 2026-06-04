@@ -14,6 +14,9 @@
 """
 from typing import List, Tuple, Optional, Dict, Any
 
+# US-018: 策略参数单一真相源
+from src.constants import STOP_LOSS_PCT, TAKE_PROFIT_PCT
+
 
 # ── US-013: 8 状态细分（initial_up/uptrend/late_up/initial_down/...）──
 # 兼容 4 状态别名（trend_up/range_bound/trend_down/crash）
@@ -48,11 +51,12 @@ def format_regime_label(market_regime: str) -> str:
 
 
 # ── 8 种策略模式（D1+D2: 4 市场 × 2 max_holdings）────────────
+# US-018: 统一从 src.constants 引用, 6% 止损 / 10% 止盈（与持仓段计算一致）
 STRATEGY_MODE_TEMPLATES = {
-    ('trend_up', 1):    '趋势市·单持仓 + 6%止损 + 10%止盈',
-    ('trend_up', 2):    '趋势市·多持仓(最多2) + 5%止损 + 12%止盈',
-    ('range_bound', 1): '震荡市·单持仓 + 4%止损 + 8%止盈（快速止盈）',
-    ('range_bound', 2): '震荡市·多持仓(最多2) + 5%止损 + 8%止盈',
+    ('trend_up', 1):    f'趋势市·单持仓 + {int(STOP_LOSS_PCT*100)}%止损 + {int(TAKE_PROFIT_PCT*100)}%止盈',
+    ('trend_up', 2):    f'趋势市·多持仓(最多2) + {int(STOP_LOSS_PCT*100)}%止损 + {int(TAKE_PROFIT_PCT*100)}%止盈',
+    ('range_bound', 1): f'震荡市·单持仓 + {int(STOP_LOSS_PCT*100)}%止损 + {int(TAKE_PROFIT_PCT*100)}%止盈（快速止盈）',
+    ('range_bound', 2): f'震荡市·多持仓(最多2) + {int(STOP_LOSS_PCT*100)}%止损 + {int(TAKE_PROFIT_PCT*100)}%止盈',
     ('trend_down', 1):  '下跌市·单持仓 + 4%止损（快出）',
     ('trend_down', 2):  '下跌市·观望为主，最多1只',
     ('crash', 1):       '暴跌市·空仓观望',
