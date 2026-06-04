@@ -49,6 +49,7 @@ from src.data.loader import DataLoader, ETFNameLoader
 from src.data.etf_pool_repository import ETFRepository
 from src.analysis.report_templates import (
     format_strategy_mode, format_action_advice, format_scenario,
+    format_regime_label,
     POSITION_LIMITS, format_position_limit
 )
 
@@ -148,6 +149,7 @@ class ETFReportGenerator:
 
         scores = []
         filtered_by_held = []  # US-010: 记录被持仓过滤的标的
+        filtered_by_held_scores = []  # US-017: 持仓也计算分数（不入选 Top N, 但报告展示）
         for code, df in self.data.items():
             # US-003 单一过滤入口:
             # 1. 不在 core 池（包括 510300 等 reference / excluded / unclassified）→ 跳过
@@ -156,14 +158,20 @@ class ETFReportGenerator:
             # 2. 是大盘参考（510300）→ 跳过（虽然 core 池已经过滤了，这里是双保险）
             if code in reference_pool:
                 continue
-            # US-010: 过滤已持仓（不入选 Top N，但记录到 filtered_by_held 供报告展示）
-            if code in held_codes:
-                filtered_by_held.append(code)
-                continue
             if len(df) < 60:
                 continue
             df = indicator.calculate(df)
             s, reasons = selector.evaluate(df, self.latest_date)
+            # US-017: 持仓也计算分数（不入选 Top N, 但报告展示）
+            if code in held_codes:
+                filtered_by_held.append(code)
+                filtered_by_held_scores.append({
+                    'code': code,
+                    'name': get_etf_name(code),
+                    'score': s,
+                    'reasons': reasons,
+                })
+                continue
             if s >= 6:
                 row = df[df['date'] == self.latest_date]
                 if len(row) > 0:
@@ -179,12 +187,14 @@ class ETFReportGenerator:
         scores.sort(key=lambda x: -x['score'])
         self.current_etfs = scores
         self.filtered_by_held = filtered_by_held  # US-010
+        self.held_scores = filtered_by_held_scores  # US-017: 持仓分数
 
         return {
             'total_qualified': len(scores),
             'bullish': len(scores) > 10,
             'top_etfs': scores[:10],
             'filtered_by_held': filtered_by_held,  # US-010
+            'held_scores': filtered_by_held_scores,  # US-017
         }
     
     def validate_strategy(self, periods: List[Tuple] = None) -> List[Dict]:
@@ -318,6 +328,11 @@ class ETFReportGenerator:
         avg_return = sum(r['return'] for r in self.validation_results) / len(self.validation_results)
         avg_drawdown = sum(r['drawdown'] for r in self.validation_results) / len(self.validation_results)
         avg_sharpe = sum(r['sharpe'] for r in self.validation_results) / len(self.validation_results)
+
+        # US-017: 生成持仓管理段 (有 tracker 且有持仓时显示)
+        holdings_section = ""
+        if tracker is not None and hold_count > 0:
+            holdings_section = self._format_holdings_section(account)
         
         # ========== 实时校验：获取实时价格 ==========
         top = self.current_etfs[0] if self.current_etfs else None
@@ -546,6 +561,7 @@ class ETFReportGenerator:
 
 {f"{data_freshness_warning}" if data_freshness_warning else ""}
 {f"{emotion_alerts}" if emotion_alerts else ""}
+{holdings_section}
 {'='*70}
 🚨 今日交易建议 (必读)
 {'='*70}
@@ -586,15 +602,15 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 一、市场环境分析
 {'='*70}
 
-【数据摘要】
-- 符合买入条件ETF数量: {market['total_qualified']}只
-- 市场趋势判断: {'上涨趋势' if market['bullish'] else '震荡或下跌'}
+【数据摘要】(US-017: 评分阈值显式)
+- 符合买入条件（≥6 分）ETF数量: {market['total_qualified']}只
+- 市场状态: {format_regime_label(market['regime'])}
 
 【定性分析】
-当前市场处于{'积极' if market['bullish'] else '中性'}的状态
-条件。从技术面来看，共有{market['total_qualified']}只ETF满足6分以上的选
-股标准，这表明市场中有足够的投资机会。建议{'积极' if market['bullish'] else '审慎'}参与
-市场，选择得分最高的标的进行投资。
+当前市场处于{format_regime_label(market['regime'])}的状态。从技术面来看，共有
+{market['total_qualified']}只ETF满足 6 分以上的选股标准（评分阈值 = 6 分），
+这表明市场中有足够的投资机会。建议审慎参与市场，
+选择得分最高的标的进行投资。
 
 {'='*70}
 二、策略历史表现 (多时段验证)
@@ -712,7 +728,7 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 {'='*70}
 
 【综合评估】
-- 市场环境: {'积极' if market['bullish'] else '中性'} (符合条件{market['total_qualified']}只)
+- 市场环境: {format_regime_label(market['regime'])} (符合买入条件≥6分: {market['total_qualified']}只)
 - 策略表现: {'优秀' if avg_sharpe > 0.5 else '一般'} (夏普{avg_sharpe:.2f})
 - 风险等级: {'中等偏低' if avg_drawdown > -30 else '中等'} (回撤{avg_drawdown:.0f}%)
 
@@ -749,10 +765,11 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
 
     def _detect_market_regime_for_report(self) -> str:
         """
-        US-011: 检测市场环境（trend_up/range_bound/trend_down/crash）
+        US-011/013: 检测市场环境（10 状态细分：initial_up/uptrend/late_up/initial_down/
+                   downtrend/late_down/range_bullish/range_bearish/reversal_point/crash）
 
         Returns:
-            'trend_up' / 'range_bound' / 'trend_down' / 'crash'
+            10 状态之一（默认 'range_bound' 兜底）
         """
         try:
             from src.analysis.market_regime import MarketRegimeDetector
@@ -763,6 +780,80 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
             return MarketRegimeDetector().detect(df_510300)
         except Exception:
             return 'range_bound'  # 数据不足时默认震荡
+
+    # ─────────────────────────────────────────────────────────
+    # US-017: 持仓管理段
+    # ─────────────────────────────────────────────────────────
+
+    def _format_holdings_section(self, account: dict) -> str:
+        """生成持仓管理段: 止盈止损 + 评分 + 动作标签
+
+        Args:
+            account: TradeTracker.get_account_summary() 返回的字典
+        Returns:
+            格式化持仓段字符串
+        """
+        holdings = account.get('holdings', [])
+        if not holdings:
+            return ""
+
+        # 持仓分数映射 (US-017)
+        score_map = {}
+        for hs in getattr(self, 'held_scores', []):
+            score_map[hs['code']] = hs['score']
+
+        lines = ["=" * 70, "📦 持仓管理", "=" * 70, ""]
+        lines.append(f"持仓数量: {len(holdings)}只 | 持仓市值: {account.get('positions_value', 0):,.0f}元")
+        lines.append("")
+        lines.append(f"{'代码':<8} {'名称':<14} {'成本':>7} {'现价':>7} {'盈亏':>7} "
+                      f"{'止盈':>8} {'止损':>8} {'持X天':>7} {'分':>3}  动作")
+        lines.append("-" * 90)
+
+        for h in holdings:
+            code = h['code']
+            name = h.get('name', code)[:10]
+            entry = h.get('entry_price', 0)
+            current = h.get('current_price', 0)
+            pnl = h.get('pnl_pct', 0)
+            hold_days = h.get('hold_days', 0)
+
+            stop_profit = entry * 1.10 if entry > 0 else 0
+            stop_loss = entry * 0.94 if entry > 0 else 0
+
+            # 动作标签
+            action = self._holdings_action(pnl, hold_days)
+
+            # 评分
+            score = score_map.get(code, '-')
+
+            lines.append(
+                f"{code:<8} {name:<14} {entry:>7.3f} {current:>7.3f} {pnl:>+6.1f}% "
+                f"{stop_profit:>7.3f} {stop_loss:>7.3f} 持{hold_days:>2d}天 {str(score):>3}  {action}"
+            )
+
+        return "\n".join(lines) + "\n"
+
+    def _holdings_action(self, pnl_pct: float, hold_days: int) -> str:
+        """根据盈亏和持仓天数生成动作标签
+
+        优先级（SOUL 规则 17）:
+        1. 止损（任意时刻）: pnl <= -6% → 🔴
+        2. 止盈: 持仓 ≥1 天 且 pnl >= +8% → 🟡 接近止盈（接近 +10% 触发线）
+        3. 到期: hold_days >= 15 → ⏰
+        4. 刚建仓: hold_days == 0 → 🆕
+        5. 默认: 🟢 持有
+        """
+        if pnl_pct <= -6:
+            return "🔴 触发止损"
+        if hold_days >= 15:
+            return "⏰ 持仓到期"
+        if hold_days == 0:
+            return "🆕 刚建仓"
+        if pnl_pct >= 8:
+            return "🟡 接近止盈"
+        if pnl_pct >= 5:
+            return "🟢 持有(可止盈)"
+        return "🟢 持有"
 
     def save_report(self, path: str = 'etf_report.txt',
                     tracker: Optional['TradeTracker'] = None):

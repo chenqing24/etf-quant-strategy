@@ -59,6 +59,11 @@ def isolated_env(tmp_path):
             is_real INTEGER, legacy_holding INTEGER,
             is_reference INTEGER, updated_at TEXT
         );
+        CREATE TABLE audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT DEFAULT CURRENT_TIMESTAMP,
+            event TEXT, code TEXT, payload TEXT
+        );
     """)
     # core 池 14 只
     core_codes = ['512170', '512200', '512400', '512480', '512660', '512800',
@@ -91,7 +96,29 @@ def isolated_env(tmp_path):
          '2026-06-04T14:30:00', '2026-06-04 14:30:00'))
     conn.commit()
     conn.close()
-    return {"db_path": db_path, "tmp_path": tmp_path, "core_codes": core_codes}
+
+    # 创建 performance file (TradeTracker 需要)
+    perf_file = tmp_path / "etf_performance.json"
+    perf_file.write_text(json.dumps({
+        "initial_capital": 20000.0,
+        "current_capital": 9170.3,
+        "total_asset": 20174.3,
+    }))
+
+    return {
+        "db_path": db_path,
+        "tmp_path": tmp_path,
+        "core_codes": core_codes,
+    }
+
+
+def _make_tracker(env):
+    """构造测试用 TradeTracker"""
+    from src.trade.tracker import TradeTracker
+    return TradeTracker(
+        data_dir=str(env["tmp_path"]),
+        db_path=env["db_path"],
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -101,9 +128,10 @@ def isolated_env(tmp_path):
 def test_holdings_section_exists(isolated_env):
     """报告必须包含【持仓管理】段"""
     from src.analysis.report_generator import ETFReportGenerator
+    tracker = _make_tracker(isolated_env)
     gen = ETFReportGenerator(data_dir=str(isolated_env["tmp_path"]))
-    report = gen.generate_report(capital=20000)
-    assert "【持仓管理】" in report, "报告缺少【持仓管理】段"
+    report = gen.generate_report(capital=20000, tracker=tracker)
+    assert "持仓管理" in report, "报告缺少持仓管理段"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -113,14 +141,22 @@ def test_holdings_section_exists(isolated_env):
 def test_holdings_stop_profit_loss_displayed(isolated_env):
     """每只持仓必须显示止盈价/止损价"""
     from src.analysis.report_generator import ETFReportGenerator
+    tracker = _make_tracker(isolated_env)
     gen = ETFReportGenerator(data_dir=str(isolated_env["tmp_path"]))
-    report = gen.generate_report(capital=20000)
+    report = gen.generate_report(capital=20000, tracker=tracker)
+    # 锚定到 📦 持仓管理 之后, 匹配到下一个 \n=== 之前
+    holdings_section = re.search(r"📦 持仓管理\n=+\n(.*?)(?=\n=+\n🚨|\Z)", report, re.DOTALL)
+    assert holdings_section, "持仓管理段不存在"
+    section_text = holdings_section.group()
     # 515050: 成本 1.197, 止盈 1.317 (+10%), 止损 1.125 (-6%)
-    assert "止盈1.317" in report, "515050 止盈价缺失或错误"
-    assert "止损1.125" in report, "515050 止损价缺失或错误"
+    assert "1.317" in section_text, "515050 止盈价 1.317 缺失"
+    assert "1.125" in section_text, "515050 止损价 1.125 缺失"
     # 512480: 成本 2.174, 止盈 2.391 (+10%), 止损 2.044 (-6%)
-    assert "止盈2.391" in report, "512480 止盈价缺失或错误"
-    assert "止损2.044" in report, "512480 止损价缺失或错误"
+    assert "2.391" in section_text, "512480 止盈价 2.391 缺失"
+    assert "2.044" in section_text, "512480 止损价 2.044 缺失"
+    # 持仓段表头必须有"止盈"和"止损"列名
+    assert "止盈" in section_text, "持仓段缺少'止盈'列名"
+    assert "止损" in section_text, "持仓段缺少'止损'列名"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -130,12 +166,18 @@ def test_holdings_stop_profit_loss_displayed(isolated_env):
 def test_holdings_score_displayed(isolated_env):
     """每只持仓必须显示评分"""
     from src.analysis.report_generator import ETFReportGenerator
+    tracker = _make_tracker(isolated_env)
     gen = ETFReportGenerator(data_dir=str(isolated_env["tmp_path"]))
-    report = gen.generate_report(capital=20000)
-    # 持仓段每行必须有"分X"模式
-    holdings_section = re.search(r"【持仓管理】.*?(?=\n={5,}|\Z)", report, re.DOTALL)
-    assert holdings_section, "【持仓管理】段不存在"
-    assert re.search(r"分\d+", holdings_section.group()), "持仓段缺少评分"
+    report = gen.generate_report(capital=20000, tracker=tracker)
+    # 锚定到 📦 持仓管理 之后, 匹配到下一个 \n=== 之前
+    holdings_section = re.search(r"📦 持仓管理\n=+\n(.*?)(?=\n=+\n🚨|\Z)", report, re.DOTALL)
+    assert holdings_section, "持仓管理段不存在"
+    section_text = holdings_section.group()
+    # 表头必须有"分"列
+    assert "分" in section_text, "持仓段表头缺少'分'列"
+    # 每行持仓必须有"分X  动作emoji" 模式 (数字 后接 emoji)
+    assert re.search(r"\d+\s+[🟢🟡🔴🆕⏰]", section_text), \
+        "持仓段行格式错误，应为'分X  动作emoji'"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -145,9 +187,11 @@ def test_holdings_score_displayed(isolated_env):
 def test_holdings_action_label(isolated_env):
     """持仓必须显示动作标签 (🆕刚买入/🟢持有/🟡接近止盈/🔴触发止损/⏰到期)"""
     from src.analysis.report_generator import ETFReportGenerator
+    tracker = _make_tracker(isolated_env)
     gen = ETFReportGenerator(data_dir=str(isolated_env["tmp_path"]))
-    report = gen.generate_report(capital=20000)
-    holdings_section = re.search(r"【持仓管理】.*?(?=\n={5,}|\Z)", report, re.DOTALL)
+    report = gen.generate_report(capital=20000, tracker=tracker)
+    # 锚定到 📦 持仓管理 之后, 匹配到下一个 \n=== 之前
+    holdings_section = re.search(r"📦 持仓管理\n=+\n(.*?)(?=\n=+\n🚨|\Z)", report, re.DOTALL)
     assert holdings_section, "【持仓管理】段不存在"
     # 至少包含 1 个动作 emoji
     actions = ['🆕', '🟢', '🟡', '🔴', '⏰']
@@ -162,15 +206,16 @@ def test_holdings_action_label(isolated_env):
 def test_market_regime_8_states_not_neutral(isolated_env):
     """【市场环境】段必须显示 US-013 8 状态细分之一, 不是"中性" """
     from src.analysis.report_generator import ETFReportGenerator
+    tracker = _make_tracker(isolated_env)
     gen = ETFReportGenerator(data_dir=str(isolated_env["tmp_path"]))
-    report = gen.generate_report(capital=20000)
-    # 提取【综合评估】或市场相关段
+    report = gen.generate_report(capital=20000, tracker=tracker)
     # 不应出现孤立的"市场环境: 中性"
     assert not re.search(r"市场环境:\s*中性", report), \
         "市场环境仍是模糊'中性', 应改为 8 状态细分"
-    # 应有 8 状态之一
+    # 应有 8 状态之一 (含 4 状态兼容别名)
     regime_keywords = ['初升', '上升中', '末升', '初降', '下降中', '末降',
-                       '震荡偏强', '震荡偏弱', '反转点', '暴跌']
+                       '震荡偏强', '震荡偏弱', '反转点', '暴跌',
+                       '趋势向上', '震荡市', '趋势向下', '暴跌市']
     assert any(k in report for k in regime_keywords), \
         f"市场环境缺少 8 状态细分标签，应包含 {regime_keywords} 之一"
 
@@ -182,8 +227,9 @@ def test_market_regime_8_states_not_neutral(isolated_env):
 def test_qualified_threshold_explicit(isolated_env):
     """报告必须显式说明"符合买入条件"的评分阈值（≥6 分）"""
     from src.analysis.report_generator import ETFReportGenerator
+    tracker = _make_tracker(isolated_env)
     gen = ETFReportGenerator(data_dir=str(isolated_env["tmp_path"]))
-    report = gen.generate_report(capital=20000)
+    report = gen.generate_report(capital=20000, tracker=tracker)
     # 提取"符合买入条件"行
     qualified_line = re.search(r"符合买入条件[（(]?[≥>=]?6\s*分[）)]?.*?只", report)
     assert qualified_line, \
@@ -197,12 +243,14 @@ def test_qualified_threshold_explicit(isolated_env):
 def test_holdings_hold_days(isolated_env):
     """持仓必须显示持有天数"""
     from src.analysis.report_generator import ETFReportGenerator
+    tracker = _make_tracker(isolated_env)
     gen = ETFReportGenerator(data_dir=str(isolated_env["tmp_path"]))
-    report = gen.generate_report(capital=20000)
-    holdings_section = re.search(r"【持仓管理】.*?(?=\n={5,}|\Z)", report, re.DOTALL)
+    report = gen.generate_report(capital=20000, tracker=tracker)
+    # 锚定到 📦 持仓管理 之后, 匹配到下一个 \n=== 之前
+    holdings_section = re.search(r"📦 持仓管理\n=+\n(.*?)(?=\n=+\n🚨|\Z)", report, re.DOTALL)
     assert holdings_section, "【持仓管理】段不存在"
-    # 至少显示"持X天"
-    assert re.search(r"持\d+天", holdings_section.group()), \
+    # 至少显示"持X天"（X前可能有空格，对齐用）
+    assert re.search(r"持\s*\d+天", holdings_section.group()), \
         "持仓段缺少持有天数，应为'持X天'"
 
 

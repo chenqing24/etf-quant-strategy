@@ -15,6 +15,38 @@
 from typing import List, Tuple, Optional, Dict, Any
 
 
+# ── US-013: 8 状态细分（initial_up/uptrend/late_up/initial_down/...）──
+# 兼容 4 状态别名（trend_up/range_bound/trend_down/crash）
+REGIME_LABELS_FULL = {
+    # 8 状态细分
+    'initial_up':     '初升期',
+    'uptrend':        '上升中',
+    'late_up':        '末升期',
+    'initial_down':   '初降期',
+    'downtrend':      '下降中',
+    'late_down':      '末降期',
+    'range_bullish':  '震荡偏强',
+    'range_bearish':  '震荡偏弱',
+    'reversal_point': '反转点',
+    'crash':          '暴跌市',
+    # 4 状态兼容别名
+    'trend_up':       '趋势向上',
+    'range_bound':    '震荡市',
+    'trend_down':     '趋势向下',
+}
+
+
+def format_regime_label(market_regime: str) -> str:
+    """US-017: 8 状态细分标签 (替代模糊的"中性" / "震荡或下跌")
+
+    Args:
+        market_regime: market_regime.detect() 返回的状态码
+    Returns:
+        中文标签, 找不到时返回原值
+    """
+    return REGIME_LABELS_FULL.get(market_regime, market_regime)
+
+
 # ── 8 种策略模式（D1+D2: 4 市场 × 2 max_holdings）────────────
 STRATEGY_MODE_TEMPLATES = {
     ('trend_up', 1):    '趋势市·单持仓 + 6%止损 + 10%止盈',
