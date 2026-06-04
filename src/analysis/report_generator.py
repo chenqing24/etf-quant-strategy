@@ -39,6 +39,7 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 import json
 import os
+import sqlite3
 from pathlib import Path
 
 from src.utils.config import run_strategy, StrategyConfig
@@ -496,6 +497,40 @@ class ETFReportGenerator:
             elif position > 0:
                 action = f"买入 {top['code']} {top['name']} {position}股"
         
+        # ========== US-016: 近期交易情绪回顾 (FOMO/Fear/Regret 提示) ==========
+        emotion_alerts = ""
+        if tracker is not None:
+            try:
+                # 查询最近 7 天有 emotion 标记的交易
+                conn = sqlite3.connect(tracker.db_path)
+                cur = conn.execute("""
+                    SELECT date, code, name, action, emotion, reason
+                    FROM trade_history
+                    WHERE emotion IN ('fomo', 'fear', 'regret', 'euphoria')
+                      AND is_real = 1
+                      AND date >= date('now', '-7 days')
+                    ORDER BY id DESC
+                    LIMIT 5
+                """)
+                emotion_rows = cur.fetchall()
+                conn.close()
+                if emotion_rows:
+                    emoji_map = {
+                        'fomo': '🟡 FOMO (追高)',
+                        'fear': '🔴 Fear (恐慌)',
+                        'regret': '🟠 Regret (后悔)',
+                        'euphoria': '🟢 Euphoria (兴奋)',
+                    }
+                    lines = ["⚠️ 近期情绪化交易 (实盘/7天内):"]
+                    for r in emotion_rows:
+                        lines.append(f"  - {r[0]} {r[1]} {r[2]} {r[3]} "
+                                     f"[{emoji_map.get(r[4], r[4])}]: {r[5] or '无'}")
+                    lines.append("  💡 建议: 情绪化交易通常胜率低, 严格执行策略")
+                    emotion_alerts = "\n".join(lines) + "\n"
+            except Exception as e:
+                # 不影响主报告
+                pass
+
         # 构建报告 - 交易建议放开头和结尾
         report = f"""
 {'='*70}
@@ -510,6 +545,7 @@ class ETFReportGenerator:
 当前持仓: {hold_count}只 / 现金: {cash_available:,.0f}元
 
 {f"{data_freshness_warning}" if data_freshness_warning else ""}
+{f"{emotion_alerts}" if emotion_alerts else ""}
 {'='*70}
 🚨 今日交易建议 (必读)
 {'='*70}

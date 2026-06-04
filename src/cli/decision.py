@@ -418,13 +418,26 @@ class ETFDecisionEngine:
         tracker = TradeTracker('.')
 
         report = generate_decision_report(self.capital, simple=simple, tracker=tracker)
-        
-        # 保存报告
+
+        # US-016: 报告幂等性 - 今日已生成则默认不覆盖 (除非 --force)
         report_file = f"etf_reports/report_{datetime.now().strftime('%Y%m%d')}.txt"
         os.makedirs('etf_reports', exist_ok=True)
-        with open(report_file, 'w', encoding='utf-8') as f:
-            f.write(report)
-        logger.info(f"  报告已保存: {report_file}")
+        if os.path.exists(report_file) and not getattr(self, 'force', False):
+            # 已存在且未要求覆盖：在报告开头追加"已生成 N 次"标识
+            with open(report_file, 'r', encoding='utf-8') as f:
+                existing = f.read()
+            # 简单策略: 追加生成时间戳到文件末尾
+            with open(report_file, 'a', encoding='utf-8') as f:
+                f.write(f"\n\n[US-016] 再次生成于 {datetime.now().strftime('%Y-%m-%d %H:%M')} "
+                        f"(未覆盖原报告, 用 --force 强制覆盖)\n")
+            logger.info(f"  报告已存在 (未覆盖): {report_file}")
+            logger.info(f"  用 --force 强制覆盖")
+        else:
+            # 生成新报告 (或强制覆盖)
+            with open(report_file, 'w', encoding='utf-8') as f:
+                f.write(report)
+            action_label = "已保存" if not os.path.exists(report_file) else "已覆盖"
+            logger.info(f"  报告{action_label}: {report_file}")
         
         # 2. 提取关键建议（US-004 改进：通用解析，不再硬编码）
         logger.info("[2/3] 分析建议...")
@@ -670,6 +683,7 @@ def main():
     parser.add_argument('--quantity', type=int, help='数量')
     parser.add_argument('--webhook', type=str, help='钉钉Webhook URL')
     parser.add_argument('--silent', action='store_true', help='静默模式（不发送钉钉，由cron响应代替）')
+    parser.add_argument('--force', action='store_true', help='强制覆盖今日报告（默认今日已生成则跳过）')
     parser.add_argument('--simple', action='store_true', help='简版输出（钉钉APP专用）')
     parser.add_argument('--full', action='store_true', help='完整报告（PC端专用）')
     parser.add_argument('--output', choices=['silent', 'brief', 'normal', 'verbose'],
@@ -719,6 +733,8 @@ def main():
     # 设置简版模式（钉钉APP专用）
     if args.simple:
         engine._simple_mode = True
+    if args.force:
+        engine.force = True
     
     # 执行
     if args.mode == 'daily':

@@ -55,24 +55,36 @@ class ETFNameLoader:
         self._name_cache: Dict[str, str] = {}
     
     def get_name(self, code: str) -> str:
-        """获取ETF名称"""
+        """获取ETF名称
+
+        US-016: 优先查 etf_names 表 (1486 条全市场 ETF)，fallback 到 stock_info
+        历史 bug: 只查 stock_info，515070 等不在表里时 fallback 到 name=code,
+                  导致报告显示 "515070 515070" (目标字段重复)
+        """
         if code in self._name_cache:
             return self._name_cache[code]
-        
-        # 从数据库读取
+
         conn = sqlite3.connect(self.db_path)
         try:
-            cur = conn.execute('SELECT name FROM stock_info WHERE code=?', (code,))
+            # US-016: 优先查 etf_names (全市场 ETF 名称)
+            cur = conn.execute('SELECT name FROM etf_names WHERE code=?', (code,))
             row = cur.fetchone()
-            if row:
-                name = row[0] or code
+            if row and row[0]:
+                name = row[0]
             else:
-                name = code
-        except:
+                # Fallback: 查 stock_info (历史数据，可能缺)
+                cur = conn.execute('SELECT name FROM stock_info WHERE code=?', (code,))
+                row = cur.fetchone()
+                if row and row[0]:
+                    name = row[0]
+                else:
+                    # 终极 fallback: 返回 code (虽然丑，但比"目标: code code"好)
+                    name = code
+        except Exception:
             name = code
         finally:
             conn.close()
-        
+
         self._name_cache[code] = name
         return name
     
