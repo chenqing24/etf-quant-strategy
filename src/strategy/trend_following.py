@@ -10,30 +10,32 @@ class TrendFollowingStrategy(BaseStrategy):
     name = '趋势跟踪'
     description = 'MA60 突破 + ADX>25 趋势确认'
     applicable_regimes = ['trend_up']
-    risk_limits = {'max_pos': 0.30, 'stop_loss': -0.08, 'max_hold_days': 20}
+    # US-011: 仓位 0.30→0.40 (主策略权重增加)
+    risk_limits = {'max_pos': 0.40, 'stop_loss': -0.08, 'max_hold_days': 20}
 
     def select_etfs(self, df_dict, regime) -> List[Signal]:
         signals = []
         if regime != 'trend_up':
             return signals
         for code, df in df_dict.items():
-            if df is None or len(df) < 60:
+            # US-011: 数据要求从 60 缩短到 25 (MA20 + MA5)
+            if df is None or len(df) < 25:
                 continue
             closes = df['close'].astype(float).reset_index(drop=True)
-            ma60 = closes.rolling(60).mean().iloc[-1]
+            # US-011: MA60→MA20 突破 (短周期适应大牛市)
+            ma5 = closes.rolling(5).mean().iloc[-1]
             ma20 = closes.rolling(20).mean().iloc[-1]
             current = float(closes.iloc[-1])
-            if pd.isna(ma60) or pd.isna(ma20):
+            if pd.isna(ma5) or pd.isna(ma20):
                 continue
-            # MA20 上穿 MA60 + MA60 上升
-            ma60_prev = closes.rolling(60).mean().iloc[-2]
-            if ma20 > ma60 and ma60 > ma60_prev and current > ma20:
+            # MA5 上穿 MA20 (短周期敏感)
+            if ma5 > ma20 and current > ma5:
                 signals.append(Signal(
                     code=code,
                     action='buy',
                     price=current,
                     confidence=0.7,
-                    reason='趋势跟踪: MA20 上穿 MA60',
+                    reason='趋势跟踪: MA5 上穿 MA20 (US-011 短周期)',
                     stop_loss=current * 0.92,   # -8%
                     take_profit=current * 1.15, # +15%
                     max_hold_days=20,

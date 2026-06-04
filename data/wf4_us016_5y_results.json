@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-04T12:21:08.174448",
+  "generated_at": "2026-06-04T15:15:01.803779",
   "us": "US-007 + US-008",
   "period": "5年 (2021-01-01 ~ 2026-06-04)",
   "folds": 4,
@@ -41,8 +41,8 @@
       "fold": 4,
       "oos": "2025-07-01 ~ 2026-06-04",
       "regime": "trend_up",
-      "sharpe": 5.3495337301281145,
-      "return_pct": 22.48,
+      "sharpe": 5.5013418147229345,
+      "return_pct": 21.61,
       "win_rate_pct": 65.62,
       "max_drawdown_pct": 2.61,
       "trades": 32,
@@ -93,13 +93,13 @@
       "fold": 4,
       "oos": "2025-07-01 ~ 2026-06-04",
       "regime": "trend_up",
-      "sharpe": 1.7061695555314762,
-      "return_pct": 3.65,
-      "win_rate_pct": 34.62,
-      "max_drawdown_pct": 7.38,
-      "trades": 26,
+      "sharpe": 4.701494870373955,
+      "return_pct": 8.94,
+      "win_rate_pct": 65.0,
+      "max_drawdown_pct": 5.2,
+      "trades": 20,
       "position_limit": 0.9,
-      "dynamic_max_hold": 20,
+      "dynamic_max_hold": 30,
       "strategy_used": "v3_4strategies_risk_parity (none)"
     }
   ]

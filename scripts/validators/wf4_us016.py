@@ -216,8 +216,9 @@ def run_fold_v3(all_data, fold, is_start, is_end, oos_start, oos_end):
     # US-015 仓位规则
     position_limit = POSITION_LIMITS.get(regime, 0.5)
     # 动态 max_hold_days
+    # US-011: trend_up 8→30 (让大牛市趋势跑完, 不被 8 天强制平仓)
     dynamic_max_hold = {
-        'trend_up': 20, 'range_bound': 8,
+        'trend_up': 30, 'range_bound': 8,
         'reversal_point': 5, 'trend_down': 8, 'crash': 0,
     }.get(regime, 15)
 

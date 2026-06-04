@@ -71,7 +71,7 @@ class StrategyCombiner:
                 continue
 
         # 风险平价汇总：按 position_size 归一化（避免超 US-015 上限）
-        market_cap = POSITION_LIMITS.get(regime, 0.5)
+        market_cap = self.get_combined_position_size(regime)
         total_pos = sum(s.position_size for s in all_signals)
         if total_pos > market_cap:
             scale = market_cap / total_pos
@@ -80,8 +80,16 @@ class StrategyCombiner:
         return all_signals
 
     def get_combined_position_size(self, regime: str) -> float:
-        """组合仓位（按市态上限）"""
-        return POSITION_LIMITS.get(regime, 0.5)
+        """组合仓位（按市态上限）
+
+        US-011: 动态化
+        - trend_up: 0.85 (接近 US-015 90% 上限，激进利用趋势)
+        - range_bound: 0.50 (US-015 50% 上限)
+        - reversal_point: 0.20 (试探)
+        - trend_down: 0.30
+        - crash: 0.0
+        """
+        return POSITION_LIMITS.get(regime, 0.5)  # 复用 US-015 仓位规则
 
     def list_active_strategies(self) -> List[str]:
         """列出活跃策略"""
