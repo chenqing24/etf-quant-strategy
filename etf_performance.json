@@ -3,9 +3,10 @@
   "positions": [],
   "performance": {
     "initial_capital": 20000,
-    "current_capital": 20000,
+    "current_capital": 9170.3,
     "total_pnl": 0,
     "total_trades": 0,
-    "win_rate": 0
+    "win_rate": 0,
+    "updated": "2026-06-04 09:47:48"
   }
 }

@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-06-02 16:02:38",
+  "data_range": "2023-09-26 ~ 2026-06-02",
+  "pass_criteria": {
+    "sharpe": ">=0.5",
+    "win_rate": ">=40%",
+    "profit_x_win": ">1.0"
+  },
+  "results": {
+    "510300": {
+      "etf_code": "510300",
+      "data_range": "2012-05-28 ~ 2026-06-02",
+      "n_folds": 4,
+      "n_passed": 0,
+      "pass_rate": 0.0,
+      "avg_sharpe": 0.08,
+      "avg_win_rate": 25.0,
+      "avg_profit_loss_ratio": 0.0,
+      "avg_profit_x_win": 0.0,
+      "overall_pass": false,
+      "confidence": "FAIL",
+      "folds": [
+        {
+          "fold": 1,
+          "is_range": "2019-01 ~ 2023-12",
+          "oos_range": "2024-01 ~ 2024-12",
+          "sharpe": 0.32,
+          "win_rate": 100.0,
+          "profit_loss_ratio": 0,
+          "profit_x_win": 0.0,
+          "pass": false,
+          "reason": "Sharpe=0.32<0.5; 盈亏比×胜率=0.00≤1.0"
+        },
+        {
+          "fold": 2,
+          "is_range": "2019-01 ~ 2024-12",
+          "oos_range": "2025-01 ~ 2025-12",
+          "sharpe": 0,
+          "win_rate": 0.0,
+          "profit_loss_ratio": 0,
+          "profit_x_win": 0.0,
+          "pass": false,
+          "reason": "Sharpe=0.00<0.5; 胜率=0.0%<40%; 盈亏比×胜率=0.00≤1.0"
+        },
+        {
+          "fold": 3,
+          "is_range": "2019-01 ~ 2025-12",
+          "oos_range": "2026-01 ~ 2026-03",
+          "sharpe": 0,
+          "win_rate": 0.0,
+          "profit_loss_ratio": 0,
+          "profit_x_win": 0.0,
+          "pass": false,
+          "reason": "Sharpe=0.00<0.5; 胜率=0.0%<40%; 盈亏比×胜率=0.00≤1.0"
+        },
+        {
+          "fold": 4,
+          "is_range": "2019-01 ~ 2026-03",
+          "oos_range": "2026-04 ~ 2026-06",
+          "sharpe": 0,
+          "win_rate": 0.0,
+          "profit_loss_ratio": 0,
+          "profit_x_win": 0.0,
+          "pass": false,
+          "reason": "Sharpe=0.00<0.5; 胜率=0.0%<40%; 盈亏比×胜率=0.00≤1.0"
+        }
+      ]
+    }
+  }
+}

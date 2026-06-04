@@ -10,6 +10,7 @@ data/experiments/
 
 # 备份
 etf_backups/
+.archive/
 
 # 旧数据目录（已迁移到 data/）
 src/etf_data_live/
@@ -22,6 +23,11 @@ __pycache__/
 # 测试
 .pytest_cache/
 .coverage
+
+# memory 软链接（内容在 ../memory/_projects/etf_strategy/，通过父项目 git 管理）
+# 但已经 tracked 的历史文件保留（如 .md 在历史 commit 里的）
+# 注：memory 是软链接，git 显示为 'D' 的原因是历史 tracked 文件不存在了
+# 新建软链接本身用 '?? memory' 标记，应忽略
 
 # IDE
 .vscode/

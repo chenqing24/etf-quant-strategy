@@ -1,0 +1,222 @@
+{
+  "generated_at": "2026-06-02 18:53:37",
+  "etf_pool": {
+    "trade_etfs": [
+      "588000",
+      "512480",
+      "512880",
+      "512170",
+      "520900",
+      "515790",
+      "515050",
+      "512400",
+      "512660",
+      "515070",
+      "512800",
+      "512980",
+      "512200",
+      "515650"
+    ],
+    "market_etf": "510300",
+    "total": 15
+  },
+  "fold_configs": [
+    [
+      1,
+      "2023-09-26",
+      "2024-12-31",
+      "2025-01-01",
+      "2025-06-30"
+    ],
+    [
+      2,
+      "2023-09-26",
+      "2025-06-30",
+      "2025-07-01",
+      "2025-12-31"
+    ],
+    [
+      3,
+      "2023-09-26",
+      "2025-12-31",
+      "2026-01-01",
+      "2026-03-31"
+    ],
+    [
+      4,
+      "2023-09-26",
+      "2026-03-31",
+      "2026-04-01",
+      "2026-06-02"
+    ]
+  ],
+  "pass_criteria": {
+    "sharpe": ">=0.5",
+    "win_rate": ">=40%",
+    "profit_x_win": ">1.0"
+  },
+  "results": {
+    "hold_count_1": {
+      "n_folds": 4,
+      "n_passed": 2,
+      "pass_rate": 50.0,
+      "avg_sharpe": -0.01,
+      "avg_win_rate": 42.5,
+      "overall_pass": false,
+      "folds": [
+        {
+          "fold": 1,
+          "oos_range": "2025-01~2025-06",
+          "sharpe": 6.08,
+          "return": 4.2,
+          "win_rate": 50.0,
+          "profit_loss_ratio": 7.22,
+          "trades": 8,
+          "pass": true,
+          "reason": "通过"
+        },
+        {
+          "fold": 2,
+          "oos_range": "2025-07~2025-12",
+          "sharpe": 8.25,
+          "return": 7.6,
+          "win_rate": 70.0,
+          "profit_loss_ratio": 5.52,
+          "trades": 10,
+          "pass": true,
+          "reason": "通过"
+        },
+        {
+          "fold": 3,
+          "oos_range": "2026-01~2026-03",
+          "sharpe": -16.32,
+          "return": -3.5,
+          "win_rate": 0.0,
+          "profit_loss_ratio": 0.0,
+          "trades": 4,
+          "pass": false,
+          "reason": "Sharpe=-16.32<0.5; 胜率=0.0%<40%; 盈亏比×胜率=0.00≤1.0"
+        },
+        {
+          "fold": 4,
+          "oos_range": "2026-04~2026-06",
+          "sharpe": 1.93,
+          "return": 0.4,
+          "win_rate": 50.0,
+          "profit_loss_ratio": 1.41,
+          "trades": 4,
+          "pass": false,
+          "reason": "盈亏比×胜率=0.70≤1.0"
+        }
+      ]
+    },
+    "hold_count_2": {
+      "n_folds": 4,
+      "n_passed": 2,
+      "pass_rate": 50.0,
+      "avg_sharpe": 1.16,
+      "avg_win_rate": 52.4,
+      "overall_pass": false,
+      "folds": [
+        {
+          "fold": 1,
+          "oos_range": "2025-01~2025-06",
+          "sharpe": 5.7,
+          "return": 12.3,
+          "win_rate": 50.0,
+          "profit_loss_ratio": 8.46,
+          "trades": 14,
+          "pass": true,
+          "reason": "通过"
+        },
+        {
+          "fold": 2,
+          "oos_range": "2025-07~2025-12",
+          "sharpe": 6.98,
+          "return": 22.0,
+          "win_rate": 72.2,
+          "profit_loss_ratio": 4.93,
+          "trades": 18,
+          "pass": true,
+          "reason": "通过"
+        },
+        {
+          "fold": 3,
+          "oos_range": "2026-01~2026-03",
+          "sharpe": -9.08,
+          "return": -16.5,
+          "win_rate": 25.0,
+          "profit_loss_ratio": 0.11,
+          "trades": 8,
+          "pass": false,
+          "reason": "Sharpe=-9.08<0.5; 胜率=25.0%<40%; 盈亏比×胜率=0.03≤1.0"
+        },
+        {
+          "fold": 4,
+          "oos_range": "2026-04~2026-06",
+          "sharpe": 1.04,
+          "return": 0.6,
+          "win_rate": 62.5,
+          "profit_loss_ratio": 0.71,
+          "trades": 8,
+          "pass": false,
+          "reason": "盈亏比×胜率=0.45≤1.0"
+        }
+      ]
+    },
+    "hold_count_3": {
+      "n_folds": 4,
+      "n_passed": 1,
+      "pass_rate": 25.0,
+      "avg_sharpe": -1.11,
+      "avg_win_rate": 45.9,
+      "overall_pass": false,
+      "folds": [
+        {
+          "fold": 1,
+          "oos_range": "2025-01~2025-06",
+          "sharpe": 4.7,
+          "return": 8.0,
+          "win_rate": 40.0,
+          "profit_loss_ratio": 6.23,
+          "trades": 20,
+          "pass": true,
+          "reason": "通过"
+        },
+        {
+          "fold": 2,
+          "oos_range": "2025-07~2025-12",
+          "sharpe": 1.24,
+          "return": 3.6,
+          "win_rate": 51.9,
+          "profit_loss_ratio": 1.25,
+          "trades": 27,
+          "pass": false,
+          "reason": "盈亏比×胜率=0.65≤1.0"
+        },
+        {
+          "fold": 3,
+          "oos_range": "2026-01~2026-03",
+          "sharpe": -8.86,
+          "return": -20.5,
+          "win_rate": 25.0,
+          "profit_loss_ratio": 0.11,
+          "trades": 12,
+          "pass": false,
+          "reason": "Sharpe=-8.86<0.5; 胜率=25.0%<40%; 盈亏比×胜率=0.03≤1.0"
+        },
+        {
+          "fold": 4,
+          "oos_range": "2026-04~2026-06",
+          "sharpe": -1.5,
+          "return": -3.6,
+          "win_rate": 66.7,
+          "profit_loss_ratio": 0.36,
+          "trades": 12,
+          "pass": false,
+          "reason": "Sharpe=-1.50<0.5; 盈亏比×胜率=0.24≤1.0"
+        }
+      ]
+    }
+  }
+}

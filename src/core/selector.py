@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """选股层"""
 import pandas as pd
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Optional
 
 from src.utils.config import StrategyConfig
+
+# US-003: 引入 Repository 用于池过滤
+try:
+    from src.data.etf_pool_repository import ETFRepository
+    _REPO_AVAILABLE = True
+except ImportError:
+    _REPO_AVAILABLE = False
 from src.utils.logger import get_logger
 
 # 配置加载器 - 从配置文件读取因子权重
@@ -84,42 +91,67 @@ class Selector:
         cls._config_cache = None
         cls._ic_weights_cache = None
     
-    def select_etfs(self, data: Dict[str, pd.DataFrame], 
-                    config: StrategyConfig) -> Set[str]:
+    def select_etfs(self, data: Dict[str, pd.DataFrame],
+                    config: StrategyConfig,
+                    held_codes: Optional[Set[str]] = None) -> Set[str]:
         """根据训练期收益选出TopN的ETF
-        
+
         Args:
             data: 原始ETF数据
             config: 策略配置
-            
+            held_codes: 已持仓的代码集合（US-010: 不入选 Top N）
+
         Returns:
-            选中的ETF代码集合
+            选中的ETF代码集合（已过滤 held_codes）
         """
         results = []
-        
-        exclude_codes = config.exclude_codes or set()
-        
+        held_codes = held_codes or set()
+
+        # US-003: 单一过滤入口走 Repository
+        # 1. 优先用 Repository 的 core 池（14 只）
+        # 2. 兼容旧 config.exclude_codes（deprecated）
+        if _REPO_AVAILABLE:
+            repo = ETFRepository()
+            tradable_pool = set(repo.list_codes("core"))
+            reference_pool = set(repo.list_codes("reference"))
+        else:
+            tradable_pool = set()
+            reference_pool = set()
+        legacy_exclude = config.exclude_codes or set()  # deprecated
+
         for code, df in data.items():
-            # 排除规则
-            if code in exclude_codes:
+            # US-003 主过滤：必须在 core 池，不在 reference 池
+            if tradable_pool and code not in tradable_pool:
                 continue
-            
+            if code in reference_pool:
+                continue
+            # 兼容旧逻辑（US-003 完成后可删除）
+            if code in legacy_exclude:
+                continue
+            # US-010: 过滤已持仓
+            if code in held_codes:
+                continue
+
             # 训练期筛选
-            d = df[(df['date'] >= config.train_start) & 
+            d = df[(df['date'] >= config.train_start) &
                    (df['date'] <= config.train_end)]
-            
+
             if len(d) < 100:
                 continue
-            
+
             # 计算收益率
             ret = (d.iloc[-1]['close'] / d.iloc[0]['close']) - 1
             results.append({'code': code, 'return': ret})
-        
+
         results.sort(key=lambda x: -x['return'])
         selected = {r['code'] for r in results[:config.top_n]}
-        
+
         if not getattr(Selector, '_simple_mode', False):
-            logger.info(f"选出 {len(selected)} 只ETF (训练期: {config.train_start} ~ {config.train_end})")
+            logger.info(
+                f"选出 {len(selected)} 只ETF "
+                f"(训练期: {config.train_start} ~ {config.train_end}, "
+                f"过滤已持仓 {len(held_codes & {r['code'] for r in results}) if held_codes else 0} 只)"
+            )
         return selected
     
     def score(self, df: pd.DataFrame, date: str) -> Tuple[int, List[str]]:

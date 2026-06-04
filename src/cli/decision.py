@@ -183,6 +183,124 @@ class ETFDecisionEngine:
         
         return "未知"
     
+    def _parse_recommendation(self, report: str):
+        """US-004: 通用报告解析器
+
+        输入: report 文本
+        输出: (action, code, name, price, quantity, stop_loss, stop_profit)
+
+        解析规则：
+        1. 【操作】买入 510300 沪深300ETF华泰柏瑞 3600股 → action=买入, code=510300, name=沪深300ETF华泰柏瑞, quantity=3600
+        2. 【价格】4.966元 → price=4.966
+        3. 【止损】-6% (4.668元) → stop_loss=4.668
+        4. 【止盈】+10% (5.463元) → stop_profit=5.463
+
+        通用：r'\b\d{6}\b' 匹配 6 位数字代码
+        价格：r'\d+\.\d+' 匹配小数
+        数量：r'\d+股' 匹配 N股
+        """
+        import re
+        action = '观望'
+        new_code = ''
+        new_name = ''
+        new_price = 0.0
+        new_quantity = 0
+        stop_loss_price = 0.0
+        stop_profit_price = 0.0
+
+        # 找到"今日交易建议"区块（US-004: 兼容多种报告格式）
+        lines = report.split('\n')
+        in_recommendation = False
+        for i, line in enumerate(lines):
+            # 进入建议区：遇到 今日交易建议 行 或 第一个 【操作】行
+            if '今日交易建议' in line or ('【操作】' in line and not in_recommendation):
+                in_recommendation = True
+            if not in_recommendation:
+                continue
+            # US-004: 不在循环里 break（避免误判）
+            # 改为：找到【价格】后立即记录（first-match-wins）
+
+            # 1. 解析【操作】行
+            if '【操作】' in line and '买入' in line:
+                action = '买入'
+                # 提取 6 位代码（US-004: 通用正则，移除硬编码）
+                code_match = re.search(r'\b(\d{6})\b', line)
+                if code_match:
+                    new_code = code_match.group(1)
+                # 提取名称（代码后到 NNNN股 之间的部分）
+                name_match = re.search(r'\b\d{6}\b\s+(.+?)\s+\d+股', line)
+                if name_match:
+                    new_name = name_match.group(1).strip()
+                # 提取数量
+                qty_match = re.search(r'\d+股', line)
+                if qty_match:
+                    new_quantity = int(re.search(r'\d+', qty_match.group(0)).group(0))
+                continue
+
+            # 2. 解析【价格】行（US-004: first-match-wins，避免被实时价覆盖）
+            if '【价格】' in line and new_price == 0.0:
+                price_match = re.search(r'(\d+\.\d+)', line)
+                if price_match:
+                    new_price = float(price_match.group(1))
+                continue
+
+            # 3. 解析【止损】行（first-match-wins）
+            if '【止损】' in line and stop_loss_price == 0.0:
+                sl_match = re.search(r'\((\d+\.\d+)元\)', line)
+                if sl_match:
+                    stop_loss_price = float(sl_match.group(1))
+                continue
+
+            # 4. 解析【止盈】行（first-match-wins）
+            if '【止盈】' in line and stop_profit_price == 0.0:
+                sp_match = re.search(r'\((\d+\.\d+)元\)', line)
+                if sp_match:
+                    stop_profit_price = float(sp_match.group(1))
+                continue
+
+        # 5. 如果没找到名称，从 Repository 查（数据库是单一来源）
+        if new_code and not new_name:
+            try:
+                from src.data.etf_pool_repository import ETFRepository
+                new_name = ETFRepository().get_name(new_code) or new_code
+            except Exception:
+                new_name = new_code
+
+        return action, new_code, new_name, new_price, new_quantity, stop_loss_price, stop_profit_price
+
+
+    def _detect_market_mode(self) -> str:
+        """US-006: 用 MarketRegimeDetector 基于市场结构判断
+
+        Returns:
+            'trend_up' | 'range_bound' | 'trend_down' | 'crash'
+        """
+        try:
+            from src.analysis.market_regime import MarketRegimeDetector
+            from src.data.loader import DataLoader
+
+            # 走 DataLoader 统一入口
+            loader = DataLoader()
+            df = loader.load_single('510300', min_rows=1)
+
+            if df is None or df.empty or len(df) < 130:
+                logger.warning("510300 数据不足 130 天，默认震荡市")
+                return 'range_bound'
+
+            detector = MarketRegimeDetector()
+            regime = detector.detect(df)
+            return regime
+        except Exception as e:
+            logger.error(f"_detect_market_mode 失败: {e}")
+            return 'range_bound'
+
+    def _regime_to_label(self, regime: str) -> str:
+        """US-006: 把 regime 翻译为中文标签"""
+        from src.analysis.market_regime import REGIME_LABELS, REGIME_EMOJI
+        label = REGIME_LABELS.get(regime, '震荡市')
+        emoji = REGIME_EMOJI.get(regime, '📊')
+        return f"{emoji} {label}"
+
     def run_full_evaluation(self, silent: bool = False, simple: bool = False):
         """完整策略评估
         
@@ -290,12 +408,16 @@ class ETFDecisionEngine:
         
         # 1. 生成决策报告
         logger.info("[1/3] 生成决策报告...")
-        
+
         # 设置简版模式（传递给report_generator内部组件）
         from src.core.selector import Selector
         Selector._simple_mode = simple
-        
-        report = generate_decision_report(self.capital, simple=simple)
+
+        # US-009: 传入 TradeTracker 让报告查持仓+现金
+        from src.trade.tracker import TradeTracker
+        tracker = TradeTracker('.')
+
+        report = generate_decision_report(self.capital, simple=simple, tracker=tracker)
         
         # 保存报告
         report_file = f"etf_reports/report_{datetime.now().strftime('%Y%m%d')}.txt"
@@ -304,44 +426,9 @@ class ETFDecisionEngine:
             f.write(report)
         logger.info(f"  报告已保存: {report_file}")
         
-        # 2. 提取关键建议
+        # 2. 提取关键建议（US-004 改进：通用解析，不再硬编码）
         logger.info("[2/3] 分析建议...")
-        # 简化解析，提取买入建议
-        action = '观望'
-        new_code = ''
-        new_name = ''
-        new_price = 0
-        
-        # 从报告中提取交易建议
-        lines = report.split('\n')
-        for i, line in enumerate(lines):
-            if '今日交易建议' in line:
-                # 往下找操作信息
-                for j in range(i, min(i+10, len(lines))):
-                    if '买入' in lines[j]:
-                        action = '买入'
-                        # 提取代码和名称
-                        for k in range(j, min(j+5, len(lines))):
-                            if '516050' in lines[k] or '515050' in lines[k] or '159' in lines[k]:
-                                parts = lines[k].split()
-                                for p in parts:
-                                    if p.isdigit() and len(p) == 6:
-                                        new_code = p
-                                        # 找名称
-                                        if k+1 < len(lines):
-                                            name_line = lines[k+1]
-                                            if '科创' in name_line or '科技' in name_line or '创新' in name_line or '工业' in name_line or '稀土' in name_line or '计算机' in name_line or '新能源' in name_line:
-                                                new_name = name_line.strip()
-                                # 找价格
-                                for m in range(j, min(j+10, len(lines))):
-                                    if '价格' in lines[m]:
-                                        try:
-                                            price_str = ''.join(c for c in lines[m] if c.isdigit() or c == '.')
-                                            new_price = float(price_str) if price_str else 0
-                                        except:
-                                            pass
-                        break
-                break
+        action, new_code, new_name, new_price, new_quantity, stop_loss_price, stop_profit_price =             self._parse_recommendation(report)
         
         if action == '买入':
             positions = self.tracker.get_holdings()
@@ -403,6 +490,7 @@ class ETFDecisionEngine:
                     'ma120': latest.get('ma120', 0),
                     'rsi_14': latest.get('rsi_14', 0),
                     'vol_ratio': latest.get('vol_ratio', 0),
+                    'adx_14': latest.get('adx_14', 0),  # v9 双模式
                 }
             except Exception as e:
                 logger.warn(f"  ⚠ 数据处理失败: {e}")
@@ -425,11 +513,16 @@ class ETFDecisionEngine:
                 data_warning = line.strip()
         
         # 构建结果数据（供ScenarioAdapter使用）
+        # US-006: 用 MarketRegimeDetector 基于市场结构判断
+        market_mode_regime = self._detect_market_mode()
+        market_mode = self._regime_to_label(market_mode_regime)
+        
         results = {
             'action': action,
             'code': new_code,
             'name': new_name,
             'price': new_price,
+            'market_mode': market_mode,  # v9 双模式标注
             'realtime': realtime,
             'indicators': indicators,
             'data_timestamp': data_timestamp,
@@ -466,18 +559,60 @@ class ETFDecisionEngine:
             'report': report,
         }
     
-    def execute_trade(self, code: str, action: str, price: float, quantity: int):
-        """执行交易"""
+    def execute_trade(self, code: str, action: str, price: float, quantity: int,
+                     reason: str = "", actual_pnl: float = 0, name: str = None,
+                     signal_time: str = "", signal_price: float = 0,
+                     signal_rsi: float = 0, signal_adx: float = 0,
+                     signal_score: int = 0, trade_time: str = "",
+                     emotion: str = "", session: str = ""):
+        """执行交易（SOP-06 v2.0: 信号快照 + 情绪 + 时段）
+        
+        Args:
+            code:           ETF代码
+            action:         'buy' 或 'sell'
+            price:          成交价格
+            quantity:       成交数量
+            reason:         交易原因
+            actual_pnl:     实际盈亏（仅卖出时）
+            name:           ETF名称（自动查找）
+            signal_time:    信号发出时间
+            signal_price:   信号价格
+            signal_rsi:     信号RSI(14)
+            signal_adx:     信号ADX(14)
+            signal_score:   信号评分
+            trade_time:     实际成交时间
+            emotion:        交易情绪
+            session:        交易时段
+        """
         from src.utils.industry import INDUSTRY_MAPPING
         
-        name = INDUSTRY_MAPPING.get(code, code)
+        # 自动获取名称
+        if name is None:
+            name = INDUSTRY_MAPPING.get(code, code)
         
         if action == 'buy':
-            self.tracker.record_buy(code, name, price, quantity, '策略推荐')
+            self.tracker.record_buy(
+                code=code,
+                name=name,
+                price=price,
+                quantity=quantity,
+                reason=reason or '手动买入',
+                signal_price=signal_price,
+                signal_time=signal_time,
+                signal_rsi=signal_rsi,
+                signal_adx=signal_adx,
+                signal_score=signal_score,
+                trade_time=trade_time,
+                emotion=emotion,
+                session=session,
+            )
             logger.info(f"✓ 已记录买入: {code} {name}")
         else:
-            pnl = (price - 1.0) * quantity  # TODO: 准确计算
-            self.tracker.record_sell(code, price, pnl)
+            self.tracker.record_sell(
+                code=code,
+                price=price,
+                actual_pnl=actual_pnl,
+            )
             logger.info(f"✓ 已记录卖出: {code} {name}")
     
     def input_actual_result(self, code: str):
@@ -525,7 +660,7 @@ class ETFDecisionEngine:
 def main():
     parser = argparse.ArgumentParser(description='ETF量化决策引擎')
     parser.add_argument('--mode', '-m', 
-                       choices=['daily', 'eval', 'trade', 'history', 'perf', 'update_pool', 'export'],
+                       choices=['daily', 'eval', 'trade', 'history', 'perf', 'update_pool', 'export', 'account'],
                        default='daily', help='运行模式')
     parser.add_argument('--capital', '-c', type=float, default=20000,
                        help='本金')
@@ -545,6 +680,24 @@ def main():
                        help='查询日期 (YYYY-MM-DD / YYYY-MM / YYYY)')
     parser.add_argument('--filepath', type=str,
                        help='CSV导出路径 (mode=export)')
+    # ─────────────────────────────────────────────────────────────
+    
+    # ── SOP-06 v2.0: 交易参数 ───────────────────────────────────
+    parser.add_argument('--name', type=str, help='ETF名称（可选）')
+    parser.add_argument('--reason', type=str, help='交易原因')
+    parser.add_argument('--actual_pnl', type=float, default=0, help='实际盈亏（仅卖出时）')
+    parser.add_argument('--signal_time', type=str, help='信号发出时间 (YYYY-MM-DD HH:MM)')
+    parser.add_argument('--signal_price', type=float, help='信号价格')
+    parser.add_argument('--signal_rsi', type=float, help='信号RSI(14)')
+    parser.add_argument('--signal_adx', type=float, help='信号ADX(14)')
+    parser.add_argument('--signal_score', type=int, help='信号评分')
+    parser.add_argument('--trade_time', type=str, help='实际成交时间 (YYYY-MM-DD HH:MM)')
+    parser.add_argument('--emotion', type=str, 
+                       choices=['calm', 'euphoria', 'fear', 'fomo', 'regret'],
+                       help='交易情绪 (calm/euphoria/fear/fomo/regret)')
+    parser.add_argument('--session', type=str,
+                       choices=['A', 'B', 'C', 'D', 'E', 'F'],
+                       help='交易时段 (A-F，对应UTC 00-24)')
     # ─────────────────────────────────────────────────────────────
     
     args = parser.parse_args()
@@ -574,7 +727,14 @@ def main():
         engine.run_full_evaluation(silent=args.silent, simple=args.simple)
     elif args.mode == 'trade':
         if args.code and args.action and args.price and args.quantity:
-            engine.execute_trade(args.code, args.action, args.price, args.quantity)
+            engine.execute_trade(
+                args.code, args.action, args.price, args.quantity,
+                reason=args.reason, actual_pnl=args.actual_pnl, name=args.name,
+                signal_time=args.signal_time, signal_price=args.signal_price,
+                signal_rsi=args.signal_rsi, signal_adx=args.signal_adx,
+                signal_score=args.signal_score, trade_time=args.trade_time,
+                emotion=args.emotion, session=args.session
+            )
         else:
             logger.error("错误: 需要指定 --code --action --price --quantity")
     elif args.mode == 'history':
@@ -585,6 +745,9 @@ def main():
     elif args.mode == 'export':
         # US-005: CSV导出
         _run_export(engine, args)
+    elif args.mode == 'account':
+        # US-012: 统一账户视图
+        _run_account_view(engine, args)
     elif args.mode == 'update_pool':
         from src.etf_pool_updater import ETFListUpdater
         updater = ETFListUpdater('etf_pool.json')
@@ -593,21 +756,48 @@ def main():
 
 # ── US-005: 新增 CLI 子命令实现 ─────────────────────────────────
 
+def _run_account_view(engine: ETFDecisionEngine, args):
+    """
+    US-012: 统一账户视图（-m account）
+
+    Examples:
+        python -m src.cli.decision -m account
+        python -m src.cli.decision -m account --webhook https://oapi.dingtalk.com/robot/send?access_token=xxx
+    """
+    from src.analysis.account_view import AccountView
+    webhook = getattr(args, 'webhook', None) or engine.webhook_url
+    view = AccountView(webhook_url=webhook)
+    print(view.generate())
+
+
 def _run_history_query(engine: ETFDecisionEngine, args):
     """
     US-005: 查询交易记录
-    
+    US-007: 增加"持仓策略指导"段
+
     Examples:
         python -m src.decision_cli -m history
         python -m src.decision_cli -m history --date 20260525
         python -m src.decision_cli -m history --date 2026-05 --code 510300
     """
+    # US-007: 持仓策略指导（在交易历史之前显示）
+    try:
+        from src.analysis.position_guide import PositionGuideAnalyzer
+        # 用 US-006 的 market_regime 检测
+        market_regime = engine._detect_market_mode() if hasattr(engine, '_detect_market_mode') else 'range_bound'
+        analyzer = PositionGuideAnalyzer()
+        guides = analyzer.analyze_portfolio(market_regime=market_regime)
+        if guides:
+            _print_position_guides(guides, market_regime)
+    except Exception as e:
+        print(f"[WARN] US-007 持仓策略指导失败: {e}")
+
     trades = engine.tracker.query_trades(
         date=args.date,
         code=args.code,
         action=args.action,
     )
-    
+
     print(f"\n{'=' * 80}")
     filter_note = f"(过滤: date={args.date}, code={args.code}, action={args.action})" if (args.date or args.code or args.action) else ""
     print(f"📜 交易历史 {filter_note}")
@@ -615,11 +805,11 @@ def _run_history_query(engine: ETFDecisionEngine, args):
     print(f"{'日期':<12} {'代码':<10} {'名称':<8} {'行为':<6} {'成交价':>8} {'数量':>6} "
           f"{'金额':>10} {'实时价':>8} {'偏差%':>7} {'RSI14':>7} {'涨幅%':>7} {'评分':>5}")
     print("-"*80)
-    
+
     if not trades:
         print("  (无记录)")
         return
-    
+
     for t in trades:
         note_pnl = f" 盈亏:{t.actual_pnl:+.2f}" if t.action == 'sell' else ""
         note_rt = (f" 实时:{t.realtime_price:.3f}" if t.realtime_price > 0
@@ -630,13 +820,49 @@ def _run_history_query(engine: ETFDecisionEngine, args):
         note_chng = (f" 涨幅:{t.day_change_pct:+.2f}%" if t.day_change_pct != 0
                      else "")
         note_score = f" 评分:{t.score}" if t.score > 0 else ""
-        
+
         print(f"  {t.date:<10} {t.code:<10} {t.name:<8} {t.action:<6} "
               f"{t.price:>8.3f} {t.quantity:>6} {t.amount:>10.1f}"
               f"{note_rt}{note_dev}{note_rsi}{note_chng}{note_score}{note_pnl}")
-    
+
     print("-"*80)
     print(f"  共 {len(trades)} 笔记录")
+
+
+def _print_position_guides(guides, market_regime: str = 'range_bound'):
+    """US-007: 打印持仓策略指导"""
+    print(f"\n{'=' * 80}")
+    print(f"📊 持仓策略指导 (US-007) | 市场: {market_regime}")
+    print(f"{'=' * 80}")
+
+    if not guides:
+        print("  (无持仓)")
+        return
+
+    REGIME_LABEL = {
+        'trend_up': '📈 趋势市',
+        'range_bound': '📊 震荡市',
+        'trend_down': '🔻 下跌市',
+        'crash': '🚨 暴跌市',
+    }
+
+    for g in guides:
+        legacy_tag = '  [legacy]' if g.action == '清仓（用户决策）' else ''
+        print(f"\n  【{g.code} {g.name}】{legacy_tag}")
+        print(f"    持仓 {g.hold_days} 天 | {g.quantity} 股 @ {g.entry_price:.3f}")
+        print(f"    当前 {g.current_price:.3f} | 盈亏 {g.pnl_pct:+.2%}")
+        from src.analysis.position_guide import DEFAULT_STOP_LOSS_PCT, DEFAULT_TAKE_PROFIT_PCT
+        print(f"    止损 {g.stop_loss_price:.3f} ({DEFAULT_STOP_LOSS_PCT:+.0%}) | "
+              f"止盈 {g.take_profit_price:.3f} ({DEFAULT_TAKE_PROFIT_PCT:+.0%}) | "
+              f"到期 {g.expire_in_days} 天")
+        if g.min_hold_remaining > 0:
+            print(f"    min_hold 剩余 {g.min_hold_remaining} 天")
+        emotion_warn = f" | 情绪: {g.emotion_flag} ⚠️" if g.emotion_flag in ('fear', 'fomo', 'euphoria') else ""
+        print(f"    评分 {g.current_score} | 市场 {REGIME_LABEL.get(g.market_regime, g.market_regime)}{emotion_warn}")
+        print(f"    决策：{g.action}")
+        print(f"    理由：{g.reason}")
+
+    print()
 
 
 def _run_export(engine: ETFDecisionEngine, args):

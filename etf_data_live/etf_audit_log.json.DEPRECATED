@@ -1,0 +1,4 @@
+DEPRECATED: 此文件已被 audit_log 表替代（US-008）
+迁移日期: 2026-06-03
+保留期限: 1 周（2026-06-10 后可删除）
+替代表: audit_log (SQLite)
