@@ -10,7 +10,7 @@
 # - scripts/maintenance/  运维工具（备份/迁移/初始化/修复）
 # - scripts/analysis/     一次性分析（待重构走 DataLoader，TODO）
 # - scripts/filter/       一次性筛选（待重构走 DataLoader，TODO）
-# 业务代码在 src/，必须走 DataLoader/DataWriter
+# src/strategy/ 包含新业务层（US-003+）的 sqlite3.connect 写入是设计内
 
 set -e
 
@@ -19,9 +19,10 @@ echo "🔍 pre-commit 检查..."
 # 1. 检查 sqlite3.connect 绕过（仅业务代码）
 # 检查范围：src/ 下除 data/ trade/ analysis/ 外的所有 .py（业务代码必须走 DataLoader/DataWriter）
 # 豁免：src/data/（行情数据层）、src/trade/（交易数据层，US-008 新增）
+#      src/strategy/        (新业务层: 策略注册 US-003)
 #      src/analysis/（分析层，US-007 PositionGuide 等直读 trade_history/positions）
 #      scripts/maintenance/、scripts/analysis/、scripts/filter/
-violations=$(git diff --cached --name-only | grep -E "^src/.*\.py$" | grep -vE "^src/data/|^src/trade/|^src/analysis/" || true)
+violations=$(git diff --cached --name-only | grep -E "^src/.*\.py$" | grep -vE "^src/data/|^src/trade/|^src/analysis/|^src/strategy/" || true)
 if [ -n "$violations" ]; then
     bypass=$(grep -l "sqlite3.connect" $violations 2>/dev/null || true)
     if [ -n "$bypass" ]; then
