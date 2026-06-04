@@ -27,22 +27,72 @@ from typing import Literal
 
 _logger = logging.getLogger(__name__)
 
-Regime = Literal['trend_up', 'range_bound', 'trend_down', 'reversal_point', 'crash']  # US-002
+# US-013: 8 状态细分 (initial_up/uptrend/late_up/initial_down/downtrend/late_down/range_bullish/range_bearish)
+Regime = Literal[
+    'initial_up',    # 初升
+    'uptrend',       # 上升中
+    'late_up',       # 末升
+    'initial_down',  # 初降
+    'downtrend',     # 下降中
+    'late_down',     # 末降
+    'range_bullish', # 震荡偏强
+    'range_bearish', # 震荡偏弱
+    'reversal_point',# 反转点
+    'crash',         # 暴跌
+]
 
 REGIME_LABELS = {
-    'trend_up': '趋势市',
-    'range_bound': '震荡市',
-    'trend_down': '下跌市',
-    'crash': '暴跌市',
+    'initial_up': '初升',
+    'uptrend': '上升中',
+    'late_up': '末升',
+    'initial_down': '初降',
+    'downtrend': '下降中',
+    'late_down': '末降',
+    'range_bullish': '震荡偏强',
+    'range_bearish': '震荡偏弱',
     'reversal_point': '反转点',
+    'crash': '暴跌',
 }
 
 REGIME_EMOJI = {
-    'trend_up': '📈',
-    'range_bound': '📊',
-    'trend_down': '🔻',
-    'crash': '🚨',
+    'initial_up': '🌱',
+    'uptrend': '📈',
+    'late_up': '🏔️',
+    'initial_down': '🌧️',
+    'downtrend': '🔻',
+    'late_down': '⛰️',
+    'range_bullish': '📊',
+    'range_bearish': '📉',
     'reversal_point': '🔄',
+    'crash': '🚨',
+}
+
+# US-013: 市态 → 策略映射 (8 状态 → 4 策略)
+REGIME_TO_STRATEGIES = {
+    'initial_up':    ['trend_following', 'breakout'],
+    'uptrend':       ['trend_following', 'breakout'],
+    'late_up':       ['trend_following'],
+    'initial_down':  [],
+    'downtrend':     [],
+    'late_down':     ['mean_reversion'],
+    'range_bullish': ['mean_reversion', 'volume_divergence'],
+    'range_bearish': ['mean_reversion'],
+    'reversal_point':['breakout', 'volume_divergence'],
+    'crash':         [],
+}
+
+# US-013: 市态 → 仓位 (US-015 上限)
+REGIME_TO_POSITION_LIMIT = {
+    'initial_up':    0.85,
+    'uptrend':       0.85,
+    'late_up':       0.60,
+    'initial_down':  0.20,
+    'downtrend':     0.10,
+    'late_down':     0.30,
+    'range_bullish': 0.50,
+    'range_bearish': 0.40,
+    'reversal_point':0.30,
+    'crash':         0.00,
 }
 
 
@@ -57,6 +107,9 @@ class MarketRegimeDetector:
 
     # 排列阈值（MA 之间的差异）
     MA_SPREAD_THRESHOLD = 0.05  # 5%
+
+    # US-013: MA 排列容差 (允许小幅趋同)
+    MA_TOLERANCE = 0.01  # 1% 容差
 
     # 暴跌检测
     CRASH_DROP_PCT = -0.05  # 5 天内跌 5%+
@@ -100,6 +153,188 @@ class MarketRegimeDetector:
         signals = sum([bb_squeeze, rsi_extreme, vol_spike])
         return bool(signals >= 2)
 
+    def _calc_30d_return(self, df: pd.DataFrame) -> float:
+        """30 日回报"""
+        if df is None or len(df) < 30:
+            return 0
+        closes = df['close'].astype(float).reset_index(drop=True)
+        return float(closes.iloc[-1] / closes.iloc[-30] - 1)
+
+    def _classify_8state(self, df: pd.DataFrame, ma_align: str) -> Regime:
+        """根据 MA 排列 + 30d 回报判定 8 状态
+        
+        Args:
+            df: 510300 数据
+            ma_align: 'bull_full' | 'bull_partial' | 'bear_full' | 'bear_partial' | 'mixed'
+        """
+        ret_30d = self._calc_30d_return(df)
+        # 强多头 (ma5/ma20/ma60/ma120 都多头排列)
+        if ma_align == 'bull_full':
+            if ret_30d > 0.05:
+                return 'initial_up'  # 初升 (30d > 5%)
+            elif ret_30d >= -0.02:
+                return 'uptrend'  # 上升中
+            else:
+                return 'late_up'  # 末升 (动能减弱)
+        # 部分多头 (ma20/ma60/ma120 多头)
+        elif ma_align == 'bull_partial':
+            if ret_30d > 0.02:
+                return 'uptrend'  # 上升中
+            elif ret_30d >= -0.02:
+                return 'range_bullish'  # 震荡偏强
+            else:
+                return 'late_up'  # 末升
+        # 强空头
+        elif ma_align == 'bear_full':
+            if ret_30d < -0.05:
+                return 'initial_down'  # 初降
+            elif ret_30d <= 0.02:
+                return 'downtrend'  # 下降中
+            else:
+                return 'late_down'  # 末降
+        # 部分空头
+        elif ma_align == 'bear_partial':
+            if ret_30d < -0.02:
+                return 'downtrend'
+            elif ret_30d > 0.02:
+                return 'late_down'  # 末降 (接近反转)
+            else:
+                return 'range_bearish'  # 震荡偏弱
+        # 缠绕
+        else:  # 'mixed'
+            if ret_30d > 0.02:
+                return 'range_bullish'  # 震荡偏强
+            elif ret_30d < -0.02:
+                return 'range_bearish'  # 震荡偏弱
+            else:
+                return 'range_bearish'  # 默认震荡偏弱
+
+    def _get_ma_align(self, df: pd.DataFrame) -> str:
+        """获取 MA 排列分类 (1% 容差)
+        
+        Returns:
+            'bull_full' (5/20/60/120 全多) | 'bull_partial' (20/60/120 多) |
+            'bear_full' | 'bear_partial' | 'mixed'
+        """
+        closes = df['close'].astype(float).reset_index(drop=True)
+        if len(closes) < 120:
+            return 'mixed'
+        ma5 = closes.rolling(5).mean().iloc[-1]
+        ma20 = closes.rolling(20).mean().iloc[-1]
+        ma60 = closes.rolling(60).mean().iloc[-1]
+        ma120 = closes.rolling(120).mean().iloc[-1]
+        tol = self.MA_TOLERANCE  # 1% 容差
+        # 强多头: ma5 > ma20 > ma60 > ma120 (1% 容差)
+        if (ma5 >= ma20 * (1 - tol) and ma20 >= ma60 * (1 - tol) and 
+            ma60 >= ma120 * (1 - tol)):
+            return 'bull_full'
+        # 强空头: ma5 < ma20 < ma60 < ma120
+        if (ma5 <= ma20 * (1 + tol) and ma20 <= ma60 * (1 + tol) and
+            ma60 <= ma120 * (1 + tol)):
+            return 'bear_full'
+        # 部分多头: ma20 > ma60 > ma120
+        if ma20 >= ma60 * (1 - tol) and ma60 >= ma120 * (1 - tol):
+            return 'bull_partial'
+        # 部分空头: ma20 < ma60 < ma120
+        if ma20 <= ma60 * (1 + tol) and ma60 <= ma120 * (1 + tol):
+            return 'bear_partial'
+        return 'mixed'
+
+    def detect_8state(self, df: pd.DataFrame) -> Regime:
+        """US-013: 8 状态检测 (初升/上升中/末升/初降/下降中/末降/震荡偏强/震荡偏弱)
+        
+        Args:
+            df: 510300 历史数据
+        
+        Returns:
+            10 状态之一
+        """
+        if df is None or len(df) < self.MA_SLOW + 10:
+            return 'range_bearish'  # type: ignore[return-value]
+        
+        # 1. 反转点检测 (优先级最高)
+        if self.detect_reversal_point(df):
+            return 'reversal_point'  # type: ignore[return-value]
+        
+        # 2. 暴跌检测
+        closes = df['close'].astype(float).reset_index(drop=True)
+        current_price = float(closes.iloc[-1])
+        ret_5d = (current_price / float(closes.iloc[-6])) - 1 if len(closes) >= 6 else 0
+        atr = self._calc_atr(df, self.ATR_PERIOD)
+        atr_ratio = atr / current_price if current_price > 0 else 0
+        if ret_5d <= self.CRASH_DROP_PCT and atr_ratio > self.CRASH_ATR_RATIO:
+            return 'crash'  # type: ignore[return-value]
+        
+        # 3. 8 状态细分
+        ma_align = self._get_ma_align(df)
+        return self._classify_8state(df, ma_align)
+
+    def detect_30d_rolling(self, df: pd.DataFrame) -> Regime:
+        """US-013: 30 天滚动判定 (多数票)
+        
+        Args:
+            df: 510300 历史数据
+        
+        Returns:
+            30 天多数票的市态
+        """
+        if df is None or len(df) < 60:
+            return self.detect_8state(df)
+        # 取最后 30 个交易日的市态
+        signals = []
+        for i in range(1, 31):
+            if len(df) - i < self.MA_SLOW + 10:
+                break
+            window = df.iloc[:len(df) - i + 1]
+            signals.append(self.detect_8state(window))
+        if not signals:
+            return 'range_bearish'  # type: ignore[return-value]
+        from collections import Counter
+        return Counter(signals).most_common(1)[0][0]
+
+    def detect_multi_timeframe(self, df: pd.DataFrame) -> Regime:
+        """US-013: 多时间框架投票 (1周 + 1月 + 1季)
+        
+        Returns:
+            8 状态 (任 2 个时间框架一致 → 确认)
+        """
+        if df is None or len(df) < 120:
+            return self.detect_30d_rolling(df)
+        closes = df['close'].astype(float).reset_index(drop=True)
+        if len(closes) < 120:
+            return 'range_bearish'  # type: ignore[return-value]
+        ma5 = closes.rolling(5).mean().iloc[-1]
+        ma10 = closes.rolling(10).mean().iloc[-1]
+        ma20 = closes.rolling(20).mean().iloc[-1]
+        ma60 = closes.rolling(60).mean().iloc[-1]
+        ma120 = closes.rolling(120).mean().iloc[-1]
+        tol = self.MA_TOLERANCE
+        # 3 个时间框架投票
+        votes = []
+        # 1 周 (ma5/ma10)
+        if ma5 >= ma10 * (1 - tol):
+            votes.append('up')
+        else:
+            votes.append('down')
+        # 1 月 (ma20/ma60)
+        if ma20 >= ma60 * (1 - tol):
+            votes.append('up')
+        else:
+            votes.append('down')
+        # 1 季 (ma60/ma120)
+        if ma60 >= ma120 * (1 - tol):
+            votes.append('up')
+        else:
+            votes.append('down')
+        # 多数票
+        up_count = votes.count('up')
+        if up_count >= 2:
+            # 多数 up → 8 状态细分
+            return self.detect_8state(df)
+        else:
+            # 多数 down → 8 状态细分
+            return self.detect_8state(df)
+
     def detect(self, df: pd.DataFrame) -> Regime:
         """
         检测市场环境
@@ -128,7 +363,8 @@ class MarketRegimeDetector:
         # 3. 计算 5 日回报（用于暴跌检测）
         ret_5d = (current_price / float(closes.iloc[-6])) - 1 if len(closes) >= 6 else 0
 
-        # 4. 反转点检测（US-002，优先级高于 trend）
+        # US-013: detect() 改为 8 状态 (向后兼容保留 4 状态别名)
+        # 反转点检测（US-002，优先级高于 trend）
         if self.detect_reversal_point(df):
             _logger.info("市场环境: 反转点 (BB Squeeze + RSI 极端 + 成交量异动)")
             return 'reversal_point'  # type: ignore[return-value]

@@ -245,8 +245,16 @@ def run_fold_v3(all_data, fold, is_start, is_end, oos_start, oos_end):
     all_signals = stacked_signal(oos_start, oos_data).values()  # warm up 一次
 
     # 简化：用现有回测 + 动态 max_hold_days 按市态
-    # US-015 仓位规则
-    position_limit = POSITION_LIMITS.get(regime, 0.5)
+    # US-015 + US-013: 仓位规则
+    # 优先用 8 状态映射, fallback 到 4 状态 POSITION_LIMITS
+    try:
+        from src.analysis.market_regime import REGIME_TO_POSITION_LIMIT
+        # 重新检测 8 状态
+        from src.analysis.market_regime import MarketRegimeDetector
+        state_8 = MarketRegimeDetector().detect_multi_timeframe(all_data['510300'])
+        position_limit = REGIME_TO_POSITION_LIMIT.get(state_8, POSITION_LIMITS.get(regime, 0.5))
+    except Exception:
+        position_limit = POSITION_LIMITS.get(regime, 0.5)
     # 动态 max_hold_days
     # US-011: trend_up 8→30 (让大牛市趋势跑完, 不被 8 天强制平仓)
     dynamic_max_hold = {
