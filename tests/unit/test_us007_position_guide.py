@@ -14,10 +14,10 @@ sys.path.insert(0, str(ROOT))
 
 @pytest.fixture
 def analyzer(isolated_tracker):
-    """US-014: 用 conftest 全局 fixture"""
+    """US-015: 插 positions + trade_history (让 _rebuild_positions_from_trades 能重建)"""
     from src.analysis.position_guide import PositionGuideAnalyzer
     tracker, tmpdir, tmp_db = isolated_tracker
-    # 插入测试持仓
+    # 插 positions (供 fallback 模式用)
     conn = sqlite3.connect(tmp_db)
     conn.executemany("""
         INSERT INTO positions (code, name, entry_date, entry_price, quantity, status, is_real, legacy_holding, is_reference)
@@ -26,6 +26,15 @@ def analyzer(isolated_tracker):
         ('A', 'ETF_A', str(date.today() - timedelta(days=1)), 1.0, 1000, 'HOLDING', 1, 0, 0),
         ('B', 'ETF_B', str(date.today() - timedelta(days=10)), 1.0, 500, 'HOLDING', 1, 0, 0),
         ('LEGACY', 'Legacy ETF', str(date.today()), 1.0, 100, 'HOLDING', 1, 1, 0),
+    ])
+    # US-015: 也插 trade_history (让 _rebuild_positions_from_trades 找到)
+    conn.executemany("""
+        INSERT INTO trade_history (date, code, name, action, price, quantity, amount, is_real, emotion)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """, [
+        (str(date.today() - timedelta(days=1)), 'A', 'ETF_A', 'buy', 1.0, 1000, 1000, 1, None),
+        (str(date.today() - timedelta(days=10)), 'B', 'ETF_B', 'buy', 1.0, 500, 500, 1, None),
+        (str(date.today()), 'LEGACY', 'Legacy ETF', 'buy', 1.0, 100, 100, 1, None),
     ])
     conn.commit()
     conn.close()
@@ -165,7 +174,10 @@ class TestUS007Boundaries:
         """hold_days = min_hold：可触发止盈"""
         import sqlite3
         conn = sqlite3.connect(analyzer.db_path)
+        # US-015: 同时更新 trade_history (因为 _load_position 从 trade_history 重建)
         conn.execute("UPDATE positions SET entry_date=? WHERE code='A'",
+                     (str(date.today() - timedelta(days=3)),))
+        conn.execute("UPDATE trade_history SET date=? WHERE code='A'",
                      (str(date.today() - timedelta(days=3)),))
         conn.commit()
         conn.close()
@@ -178,6 +190,8 @@ class TestUS007Boundaries:
         import sqlite3
         conn = sqlite3.connect(analyzer.db_path)
         conn.execute("UPDATE positions SET entry_date=? WHERE code='A'",
+                     (str(date.today() - timedelta(days=4)),))
+        conn.execute("UPDATE trade_history SET date=? WHERE code='A'",
                      (str(date.today() - timedelta(days=4)),))
         conn.commit()
         conn.close()

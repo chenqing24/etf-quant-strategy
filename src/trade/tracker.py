@@ -827,6 +827,17 @@ class TradeTracker:
         except Exception:
             pass
 
+        # US-015: 加载 positions 表的 legacy_holding 标记 (用户手动标)
+        legacy_holdings = {}
+        try:
+            import sqlite3
+            conn = sqlite3.connect(self.db_path)
+            for row in conn.execute("SELECT code, legacy_holding FROM positions WHERE legacy_holding=1").fetchall():
+                legacy_holdings[row[0]] = row[1]
+            conn.close()
+        except Exception:
+            pass
+
         # US-015: 修 buy_records 覆盖式 bug → 改用 list 累加
         buy_records = {}  # code -> list of {date, name, price, quantity}
         sell_records = {}  # code -> [(date, quantity), ...]
@@ -865,6 +876,7 @@ class TradeTracker:
                 # 最早入场日 (hold_days 计算用)
                 earliest_date = min(b['date'] for b in buys)
                 is_reference = 1 if code in reference_pool else 0
+                is_legacy = legacy_holdings.get(code, 0)  # US-015: 从原 positions 读
                 positions.append(Position(
                     code=code,
                     name=info['name'],
@@ -875,6 +887,7 @@ class TradeTracker:
                     pnl_pct=0,
                     hold_days=0,
                     is_reference=is_reference,  # US-014 R2
+                    legacy_holding=is_legacy,   # US-015
                 ))
 
         return positions

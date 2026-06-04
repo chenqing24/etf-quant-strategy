@@ -278,6 +278,23 @@ class PositionGuideAnalyzer:
         return sqlite3.connect(self.db_path)
 
     def _load_position(self, code: str) -> Optional[dict]:
+        """US-015: 优先从 trade_history (事实源) 重建, 不读 positions 缓存"""
+        try:
+            from src.trade.tracker import TradeTracker
+            tracker = TradeTracker(data_dir=os.path.dirname(self.db_path) or '.', db_path=self.db_path)
+            positions = tracker._rebuild_positions_from_trades()
+            for p in positions:
+                if p.code == code:
+                    return {
+                        'code': p.code, 'name': p.name, 'entry_date': p.entry_date,
+                        'entry_price': p.entry_price, 'quantity': p.quantity,
+                        'status': 'HOLDING', 'is_real': 1,
+                        'legacy_holding': p.legacy_holding,
+                    }
+            return None  # trade_history 里没该持仓
+        except Exception:
+            pass
+        # Fallback: 读 positions 缓存
         conn = self._get_conn()
         try:
             row = conn.execute("""
@@ -296,6 +313,25 @@ class PositionGuideAnalyzer:
         }
 
     def _load_all_positions(self) -> List[dict]:
+        """US-015: 优先从 trade_history (事实源) 重建, 不读 positions 缓存
+
+        流程:
+        1. 用 TradeTracker._rebuild_positions_from_trades() 重建持仓 (复用 self.db_path)
+        2. 如果空, 才 fallback 到 positions 缓存
+        """
+        try:
+            from src.trade.tracker import TradeTracker
+            tracker = TradeTracker(data_dir=os.path.dirname(self.db_path) or '.', db_path=self.db_path)
+            positions = tracker._rebuild_positions_from_trades()
+            if positions:
+                return [{
+                    'code': p.code, 'name': p.name, 'entry_date': p.entry_date,
+                    'entry_price': p.entry_price, 'quantity': p.quantity,
+                    'status': 'HOLDING', 'is_real': 1, 'legacy_holding': p.legacy_holding,
+                } for p in positions]
+        except Exception:
+            pass
+        # Fallback: 读 positions 缓存
         conn = self._get_conn()
         try:
             rows = conn.execute("""
