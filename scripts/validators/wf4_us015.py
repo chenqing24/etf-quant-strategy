@@ -129,8 +129,8 @@ def run_single_fold(
 
     config = BacktestConfig(
         max_positions=hold_count,
-        score_threshold=6,
-        use_selector=True,
+        
+        
         enable_signal_persistence=True,
         signal_consecutive_days=2,
         min_hold_days=3,
