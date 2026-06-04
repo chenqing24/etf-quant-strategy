@@ -876,6 +876,12 @@ class TradeTracker:
                 # 最早入场日 (hold_days 计算用)
                 earliest_date = min(b['date'] for b in buys)
                 is_reference = 1 if code in reference_pool else 0
+                # US-016: reference 池（大盘参考如 510300）不计入 get_holdings() 持仓
+                # 原因: 510300 在 selector/report_generator 中已被排除，
+                # 若 trade_history 残留脏数据（含 510300 买入），get_holdings() 会
+                # 误判为"已持仓"，导致 new buy 被改成"持仓"。
+                if is_reference:
+                    continue
                 is_legacy = legacy_holdings.get(code, 0)  # US-015: 从原 positions 读
                 positions.append(Position(
                     code=code,
@@ -1079,31 +1085,72 @@ class TradeTracker:
         return False
     
     def get_performance_summary(self) -> Dict:
-        """获取绩效汇总"""
-        if os.path.exists(self.performance_file):
-            with open(self.performance_file, 'r') as f:
-                data = json.load(f)
-                return data.get('performance', {})
-        return {
+        """获取绩效汇总
+
+        US-016: current_capital 改为从 trade_history 重算（事实源）
+        etf_performance.json 仅作缓存（last_recompute_time）
+        """
+        perf = {
             'initial_capital': 20000,
-            'current_capital': 20000,
-            'total_pnl': 0,
+            'current_capital': self.recompute_cash(),  # US-016: 重算
+            'total_pnl': 0,  # 由调用方从 actual_pnl 求和
             'total_trades': 0,
             'win_rate': 0,
         }
-    
+        # 尝试从 cache 读 last_recompute_time
+        if os.path.exists(self.performance_file):
+            try:
+                with open(self.performance_file, 'r') as f:
+                    cached = json.load(f).get('performance', {})
+                if cached.get('last_recompute_time'):
+                    perf['last_recompute_time'] = cached['last_recompute_time']
+            except Exception:
+                pass
+        return perf
+
+    def recompute_cash(self) -> float:
+        """
+        US-016: 现金 = initial_capital - sum(buy.amount) + sum(sell.amount)
+
+        数据源: trade_history (事实源)
+        公式: cash = 20000 - 5879.7 - 2319.9 - 3112.2 - 7609 + 5719.9 + 2371.2 = 9170.3
+
+        与 _update_performance_capital 增量逻辑不同：
+        - 增量逻辑：每次 trade 累加 delta，文件不存在时静默失败
+        - 重算逻辑：每次都从 trade_history 算真相，文件可有可无
+        """
+        initial = 20000
+        conn = self._get_conn()
+        try:
+            cur = conn.execute("""
+                SELECT
+                    COALESCE(SUM(CASE WHEN action='buy' THEN amount ELSE 0 END), 0) AS buy_sum,
+                    COALESCE(SUM(CASE WHEN action='sell' THEN amount ELSE 0 END), 0) AS sell_sum
+                FROM trade_history
+            """)
+            row = cur.fetchone()
+            buy_sum = row[0] or 0
+            sell_sum = row[1] or 0
+        finally:
+            conn.close()
+        return round(initial - buy_sum + sell_sum, 2)
+
     def update_performance(self, capital: float, pnl: float,
                            total_trades: int, win_rate: float):
-        """更新绩效"""
-        with open(self.performance_file, 'r') as f:
-            data = json.load(f)
+        """更新绩效 (US-016: current_capital 由 recompute_cash 提供)"""
+        if os.path.exists(self.performance_file):
+            with open(self.performance_file, 'r') as f:
+                data = json.load(f)
+        else:
+            data = {'performance': {}}
 
+        # US-016: current_capital 总是从 trade_history 重算（不存进 file）
         data['performance'].update({
-            'current_capital': capital,
+            'current_capital': self.recompute_cash(),  # US-016: 重算
             'total_pnl': pnl,
             'total_trades': total_trades,
             'win_rate': win_rate,
-            'updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'last_recompute_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         })
 
         with open(self.performance_file, 'w') as f:
@@ -1111,22 +1158,24 @@ class TradeTracker:
 
     def _update_performance_capital(self, delta: float):
         """
-        US-014 R1: 增量更新 current_capital
-        每次 record_buy/record_sell 调用，atomic 调整现金余额
+        ⚠️ US-016 标记 deprecated: 增量更新 current_capital 容易写脏（参见事故 US-016）
+        请改用 recompute_cash() - 从 trade_history 重算
 
-        Args:
-            delta: +amount 表示回款（卖），-amount 表示支出（买）
+        保留此方法仅为向后兼容（其他模块可能仍调用）
         """
+        _logger = logging.getLogger(__name__)
+        _logger.warning(
+            "_update_performance_capital 已 deprecated, 请改用 recompute_cash()"
+        )
         if not os.path.exists(self.performance_file):
             return
         try:
             with open(self.performance_file, 'r') as f:
                 data = json.load(f)
             perf = data.get('performance', {})
-            old = float(perf.get('current_capital', 20000))
-            new = max(0, old + delta)
-            perf['current_capital'] = new
-            perf['updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            # US-016: 即使调用此方法,current_capital 也由 recompute_cash 覆盖
+            perf['current_capital'] = self.recompute_cash()
+            perf['last_recompute_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             data['performance'] = perf
             # SOUL 规则 18: json.dump + 立即验证
             with open(self.performance_file, 'w') as f:
@@ -1135,7 +1184,6 @@ class TradeTracker:
             with open(self.performance_file, 'r') as f:
                 json.load(f)  # 失败立即抛错
         except Exception as e:
-            _logger = logging.getLogger(__name__)
             _logger.warning(f"_update_performance_capital 失败: {e}")
 
     def get_account_summary(self, max_holdings: int = 2) -> dict:
