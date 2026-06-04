@@ -27,13 +27,14 @@ from typing import Literal
 
 _logger = logging.getLogger(__name__)
 
-Regime = Literal['trend_up', 'range_bound', 'trend_down', 'crash']
+Regime = Literal['trend_up', 'range_bound', 'trend_down', 'reversal_point', 'crash']  # US-002
 
 REGIME_LABELS = {
     'trend_up': '趋势市',
     'range_bound': '震荡市',
     'trend_down': '下跌市',
     'crash': '暴跌市',
+    'reversal_point': '反转点',
 }
 
 REGIME_EMOJI = {
@@ -41,6 +42,7 @@ REGIME_EMOJI = {
     'range_bound': '📊',
     'trend_down': '🔻',
     'crash': '🚨',
+    'reversal_point': '🔄',
 }
 
 
@@ -60,6 +62,44 @@ class MarketRegimeDetector:
     CRASH_DROP_PCT = -0.05  # 5 天内跌 5%+
     CRASH_ATR_RATIO = 0.05  # ATR/Price > 5%
 
+    def detect_reversal_point(self, df: pd.DataFrame) -> bool:
+        """
+        US-002: 反转点检测（业界综合）
+        - BB Squeeze (BB Width < 5%)
+        - RSI 极端 (< 30 或 > 70)
+        - 成交量异动 (vol_ratio > 1.5)
+        至少 2 个信号触发
+        """
+        if df is None or len(df) < 30:
+            return False
+        closes = df['close'].astype(float).reset_index(drop=True)
+        # 1. BB Width
+        ma20 = closes.rolling(20).mean()
+        std20 = closes.rolling(20).std()
+        bb_upper = ma20 + 2 * std20
+        bb_lower = ma20 - 2 * std20
+        bb_width = (bb_upper - bb_lower) / ma20
+        bb_squeeze = bool(bb_width.iloc[-1] < 0.05) if not pd.isna(bb_width.iloc[-1]) else False
+        # 2. RSI
+        delta = closes.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        rsi_val = rsi.iloc[-1]
+        rsi_extreme = (rsi_val < 30 or rsi_val > 70) if not pd.isna(rsi_val) else False
+        # 3. 成交量异动
+        vol_spike = False
+        if 'volume' in df.columns and len(df) >= 20:
+            volumes = df['volume'].astype(float).reset_index(drop=True)
+            vol_ma20 = volumes.rolling(20).mean()
+            if not pd.isna(vol_ma20.iloc[-1]) and vol_ma20.iloc[-1] > 0:
+                vol_ratio = volumes.iloc[-1] / vol_ma20.iloc[-1]
+                vol_spike = vol_ratio > 1.5
+        # 综合判断: 至少 2 个信号
+        signals = sum([bb_squeeze, rsi_extreme, vol_spike])
+        return bool(signals >= 2)
+
     def detect(self, df: pd.DataFrame) -> Regime:
         """
         检测市场环境
@@ -71,7 +111,7 @@ class MarketRegimeDetector:
             'trend_up' | 'range_bound' | 'trend_down' | 'crash'
         """
         if df is None or len(df) < self.MA_SLOW + 10:
-            return 'range_bound'  # 数据不足时默认震荡
+            return 'range_bound'  # type: ignore[return-value]  # 数据不足时默认震荡 # type: ignore[return-value]
 
         closes = df['close'].astype(float).reset_index(drop=True)
 
@@ -88,7 +128,12 @@ class MarketRegimeDetector:
         # 3. 计算 5 日回报（用于暴跌检测）
         ret_5d = (current_price / float(closes.iloc[-6])) - 1 if len(closes) >= 6 else 0
 
-        # 4. 暴跌检测（优先级最高）
+        # 4. 反转点检测（US-002，优先级高于 trend）
+        if self.detect_reversal_point(df):
+            _logger.info("市场环境: 反转点 (BB Squeeze + RSI 极端 + 成交量异动)")
+            return 'reversal_point'  # type: ignore[return-value]
+
+        # 4. 暴跌检测（保留为子状态，紧急用）
         if ret_5d <= self.CRASH_DROP_PCT and atr_ratio > self.CRASH_ATR_RATIO:
             _logger.info(f"市场环境: 暴跌 (5d ret={ret_5d:.2%}, ATR={atr_ratio:.2%})")
             return 'crash'
@@ -104,12 +149,12 @@ class MarketRegimeDetector:
         # 多头排列：MA20 > MA60 > MA120，且 spread > 阈值
         if ma20 > ma60 > ma120 and ma_spread > self.MA_SPREAD_THRESHOLD:
             _logger.info(f"市场环境: 趋势向上 (MA20={ma20:.3f} > MA60={ma60:.3f} > MA120={ma120:.3f}, spread={ma_spread:.2%})")
-            return 'trend_up'
+            return 'trend_up'  # type: ignore[return-value]
 
         # 空头排列：MA20 < MA60 < MA120
         if ma20 < ma60 < ma120 and ma_spread < -self.MA_SPREAD_THRESHOLD:
             _logger.info(f"市场环境: 下跌趋势 (MA20={ma20:.3f} < MA60={ma60:.3f} < MA120={ma120:.3f}, spread={ma_spread:.2%})")
-            return 'trend_down'
+            return 'trend_down'  # type: ignore[return-value]
 
         # 6. 默认震荡市（MA 部分排列但 spread 不足）
         _logger.info(f"市场环境: 震荡市 (MA 排列弱，spread={ma_spread:.2%})")
