@@ -94,3 +94,77 @@ class StrategyCombiner:
     def list_active_strategies(self) -> List[str]:
         """列出活跃策略"""
         return list(self.strategies.keys())
+
+    def select_signals_with_baseline(
+        self,
+        df_dict,
+        regime: str,
+        baseline_score_func=None,
+        baseline_threshold: int = 6,
+        confidence_boost: float = 0.20,
+    ):
+        """
+        US-012: 仓位叠加（baseline 评分 + Combiner 信号）
+
+        Args:
+            df_dict: ETF 价格数据
+            regime: market_state
+            baseline_score_func: 外部评分函数 (code, df, date) -> score
+            baseline_threshold: baseline 评分阈值
+            confidence_boost: 双满足时 confidence 加成
+
+        Returns:
+            叠加后的信号列表（按 US-015 市态上限归一化仓位）
+        """
+        from src.strategy.base import Signal
+
+        # 1. Combiner 信号（按市态）
+        combiner_signals = self.select_signals(df_dict, regime=regime)
+        combiner_codes = {s.code: s for s in combiner_signals}
+
+        # 2. Baseline 评分信号
+        baseline_signals = {}
+        if baseline_score_func is not None:
+            for code, df in df_dict.items():
+                if df is None or len(df) < 60:
+                    continue
+                try:
+                    last_date = df['date'].iloc[-1]
+                    score = baseline_score_func(code, df, last_date)
+                    if score >= baseline_threshold:
+                        baseline_signals[code] = Signal(
+                            code=code,
+                            action='buy',
+                            price=float(df['close'].iloc[-1]),
+                            confidence=score / 10.0,
+                            reason=f'baseline_score={score}',
+                        )
+                except Exception:
+                    pass
+
+        # 3. 叠加 (union)
+        all_codes = set(combiner_codes.keys()) | set(baseline_signals.keys())
+        signals = []
+        for code in all_codes:
+            in_combiner = code in combiner_codes
+            in_baseline = code in baseline_signals
+
+            if in_combiner and in_baseline:
+                # 双满足: 仓位加成
+                sig = combiner_codes[code]
+                sig.confidence = min(1.0, sig.confidence + confidence_boost)
+                sig.reason = sig.reason + f' + baseline_score (双满足)'
+            elif in_combiner:
+                sig = combiner_codes[code]
+            else:
+                sig = baseline_signals[code]
+            signals.append(sig)
+
+        # 4. 仓位归一化（不超 US-015 市态上限）
+        market_cap = self.get_combined_position_size(regime)
+        total_pos = sum(s.position_size for s in signals)
+        if total_pos > market_cap and total_pos > 0:
+            scale = market_cap / total_pos
+            for s in signals:
+                s.position_size = round(s.position_size * scale, 4)
+        return signals

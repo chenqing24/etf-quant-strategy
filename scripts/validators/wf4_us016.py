@@ -63,10 +63,27 @@ def score_signal_func(date, df_dict):
     return signals
 
 
+def _baseline_score_func(code, df, date):
+    """US-012: baseline 评分函数（模拟原 use_selector 评分）"""
+    from src.core.selector import Selector
+    try:
+        sel = Selector()
+        score, _ = sel.evaluate(df, date)
+        return score
+    except Exception:
+        return 0
+
+
 def combiner_signal_func(combiner):
-    """US-009: Combiner 信号函数（v3 真按市态切换）"""
+    """US-012: Combiner 信号 + baseline 评分（仓位叠加）
+
+    US-009 用 select_signals（按市态）易误判
+    US-012 用 select_signals_with_baseline（叠加 baseline 评分）
+    - 任一满足即可入场（不依赖市态）
+    - 双满足时 confidence +20%
+    """
     def signals_for_date(date, df_dict):
-        # 用 510300 简易检测市态
+        # 用 510300 简易检测市态（仍依赖市态，但作为软信号）
         market_510300 = df_dict.get('510300')
         if market_510300 is not None:
             oos = market_510300[market_510300['date'] <= date]
@@ -74,7 +91,13 @@ def combiner_signal_func(combiner):
         else:
             regime = 'range_bound'
         try:
-            sigs = combiner.select_signals(df_dict, regime=regime)
+            sigs = combiner.select_signals_with_baseline(
+                df_dict,
+                regime=regime,
+                baseline_score_func=_baseline_score_func,
+                baseline_threshold=6,
+                confidence_boost=0.20,
+            )
             return {s.code: s for s in sigs if s.action == 'buy'}
         except Exception:
             return {}
@@ -161,7 +184,7 @@ def run_fold_baseline(all_data, fold, is_start, is_end, oos_start, oos_end, hold
     try:
         result = backtester.backtest(
             price_data=oos_data,
-            signal_func=score_signal_func,  # US-009: 解耦后必传
+            signal_func=score_signal_func,  # baseline: 评分 ≥ 6
             start_date=oos_start, end_date=oos_end,
             valid_factors=[],
         )
@@ -208,9 +231,18 @@ def run_fold_v3(all_data, fold, is_start, is_end, oos_start, oos_end):
     else:
         regime = 'range_bound'
 
-    # 模拟 4 策略组合（按市态筛）
+    # US-012: 仓位叠加 (baseline 评分 + Combiner 信号)
     combiner = StrategyCombiner()
-    all_signals = combiner.select_signals(oos_data, regime=regime)
+    _v3_regime = regime  # 提前绑定避免闭包 bug
+    def stacked_signal(date, df_dict):
+        sigs = combiner.select_signals_with_baseline(
+            df_dict, regime=_v3_regime,
+            baseline_score_func=_baseline_score_func,
+            baseline_threshold=6,
+            confidence_boost=0.20,
+        )
+        return {s.code: s for s in sigs if s.action == 'buy'}
+    all_signals = stacked_signal(oos_start, oos_data).values()  # warm up 一次
 
     # 简化：用现有回测 + 动态 max_hold_days 按市态
     # US-015 仓位规则
@@ -249,9 +281,19 @@ def run_fold_v3(all_data, fold, is_start, is_end, oos_start, oos_end):
     backtester._full_data = all_data
     backtester._exclude_codes = {MARKET_ETF}
     try:
+        # US-012: 用 select_signals_with_baseline 包装为 signal_func
+        def stacked_signal(date, df_dict):
+            reg = regime  # 简化用 fold 市态
+            sigs = combiner.select_signals_with_baseline(
+                df_dict, regime=reg,
+                baseline_score_func=_baseline_score_func,
+                baseline_threshold=6,
+                confidence_boost=0.20,
+            )
+            return {s.code: s for s in sigs if s.action == 'buy'}
         result = backtester.backtest(
             price_data=oos_data,
-            signal_func=score_signal_func,  # US-009: 解耦后必传
+            signal_func=stacked_signal,  # US-012: 仓位叠加信号
             start_date=oos_start, end_date=oos_end,
             valid_factors=[],
         )
