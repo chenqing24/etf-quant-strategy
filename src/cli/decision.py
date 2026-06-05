@@ -577,9 +577,10 @@ class ETFDecisionEngine:
                      signal_time: str = "", signal_price: float = 0,
                      signal_rsi: float = 0, signal_adx: float = 0,
                      signal_score: int = 0, trade_time: str = "",
-                     emotion: str = "", session: str = ""):
-        """执行交易（SOP-06 v2.0: 信号快照 + 情绪 + 时段）
-        
+                     emotion: str = "", session: str = "",
+                     is_real: int = 0):  # 🆕 US-024: 默认 0（向后兼容）
+        """执行交易（SOP-06 v2.0: 信号快照 + 情绪 + 时段 + US-024: is_real 传递）
+
         Args:
             code:           ETF代码
             action:         'buy' 或 'sell'
@@ -596,13 +597,14 @@ class ETFDecisionEngine:
             trade_time:     实际成交时间
             emotion:        交易情绪
             session:        交易时段
+            is_real:        1=实盘, 0=模拟（默认 0，向后兼容）— US-024
         """
         from src.utils.industry import INDUSTRY_MAPPING
-        
+
         # 自动获取名称
         if name is None:
             name = INDUSTRY_MAPPING.get(code, code)
-        
+
         if action == 'buy':
             self.tracker.record_buy(
                 code=code,
@@ -618,15 +620,20 @@ class ETFDecisionEngine:
                 trade_time=trade_time,
                 emotion=emotion,
                 session=session,
+                is_real=is_real,  # 🆕 US-024: 显式传递
             )
-            logger.info(f"✓ 已记录买入: {code} {name}")
+            logger.info(f"✓ 已记录买入: {code} {name} (is_real={is_real})")
         else:
             self.tracker.record_sell(
                 code=code,
                 price=price,
                 actual_pnl=actual_pnl,
+                quantity=quantity,  # 🆕 US-024: 传 quantity 支持部分卖
+                is_real=is_real,    # 🆕 US-024
+                emotion=emotion,
+                session=session,
             )
-            logger.info(f"✓ 已记录卖出: {code} {name}")
+            logger.info(f"✓ 已记录卖出: {code} {name} (is_real={is_real})")
     
     def input_actual_result(self, code: str):
         """要求用户输入实际结果"""
@@ -712,6 +719,9 @@ def main():
     parser.add_argument('--session', type=str,
                        choices=['A', 'B', 'C', 'D', 'E', 'F'],
                        help='交易时段 (A-F，对应UTC 00-24)')
+    # 🆕 US-024: 实盘标记（US-016 设计的"实盘必填"落地）
+    parser.add_argument('--is_real', type=int, choices=[0, 1], default=0,
+                       help='是否实盘（1=实盘, 0=模拟，默认 0）。实盘必传 1（US-016 设计）')
     # ─────────────────────────────────────────────────────────────
     
     args = parser.parse_args()
@@ -749,7 +759,8 @@ def main():
                 signal_time=args.signal_time, signal_price=args.signal_price,
                 signal_rsi=args.signal_rsi, signal_adx=args.signal_adx,
                 signal_score=args.signal_score, trade_time=args.trade_time,
-                emotion=args.emotion, session=args.session
+                emotion=args.emotion, session=args.session,
+                is_real=args.is_real,  # 🆕 US-024: 传递 CLI 参数
             )
         else:
             logger.error("错误: 需要指定 --code --action --price --quantity")
