@@ -1,6 +1,0 @@
-DEPRECATED: 此文件已被 trade_history 表替代（US-008）
-迁移日期: 2026-06-03
-保留期限: 1 周（2026-06-10 后可删除）
-替代表: trade_history (SQLite)
-迁移脚本: scripts/migrate_trade_to_db.py
-回滚方案: cp .archive/us008-pre-trade-db-20260603_160657/etf_trades.json etf_data_live/
