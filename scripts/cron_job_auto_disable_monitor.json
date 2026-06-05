@@ -1,0 +1,42 @@
+{
+  "name": "持仓恢复检测-auto-disable",
+  "enabled": true,
+  "schedule": {
+    "type": "cron",
+    "cron": "30 15 * * mon-fri",
+    "timezone": "Asia/Shanghai"
+  },
+  "task_type": "agent",
+  "request": {
+    "input": [
+      {
+        "content": [
+          {
+            "text": "cd /home/qwenpaw/.qwenpaw/workspaces/default/etf_strategy && python scripts/auto_disable_monitor_when_normal.py",
+            "type": "text"
+          }
+        ],
+        "role": "user",
+        "type": "message"
+      }
+    ],
+    "session_id": "TukxwR4=",
+    "user_id": "陈庆#3g=="
+  },
+  "dispatch": {
+    "type": "channel",
+    "channel": "dingtalk",
+    "target": {
+      "user_id": "陈庆#3g==",
+      "session_id": "TukxwR4="
+    }
+  },
+  "mode": "final",
+  "save_result_to_inbox": true,
+  "runtime": {
+    "max_concurrency": 1,
+    "timeout_seconds": 60,
+    "misfire_grace_seconds": 60,
+    "share_session": true
+  }
+}

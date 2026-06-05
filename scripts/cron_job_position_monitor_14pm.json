@@ -1,0 +1,42 @@
+{
+  "name": "持仓偏离监控-14:00",
+  "enabled": true,
+  "schedule": {
+    "type": "cron",
+    "cron": "0 14 * * mon-fri",
+    "timezone": "Asia/Shanghai"
+  },
+  "task_type": "agent",
+  "request": {
+    "input": [
+      {
+        "content": [
+          {
+            "text": "cd /home/qwenpaw/.qwenpaw/workspaces/default/etf_strategy && python scripts/monitor_position_deviation.py --dingtalk",
+            "type": "text"
+          }
+        ],
+        "role": "user",
+        "type": "message"
+      }
+    ],
+    "session_id": "TukxwR4=",
+    "user_id": "陈庆#3g=="
+  },
+  "dispatch": {
+    "type": "channel",
+    "channel": "dingtalk",
+    "target": {
+      "user_id": "陈庆#3g==",
+      "session_id": "TukxwR4="
+    }
+  },
+  "mode": "final",
+  "save_result_to_inbox": true,
+  "runtime": {
+    "max_concurrency": 1,
+    "timeout_seconds": 120,
+    "misfire_grace_seconds": 60,
+    "share_session": true
+  }
+}
