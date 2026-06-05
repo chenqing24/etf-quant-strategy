@@ -52,10 +52,12 @@ class TestUS015GetHoldingsConsistency:
         codes = [h.code for h in holdings]
         assert '159611' not in codes, f"159611 不应出现, 实际: {codes}"
 
-    def test_512480_net_holding_3500(self, tracker):
-        """512480 净持仓 3500 (6/4 buy 3500, sell 0)"""
+    def test_512480_net_holding_zero_after_sell(self, tracker):
+        """US-024 后: 512480 已于 6/5 14:32 卖空 (sell 3500 @ 2.078)
+        6/4 buy 3500 - 6/5 sell 3500 = 0 净持仓
+        """
         net = _get_net_holding_from_trade_history('512480')
-        assert net == 3500, f"trade_history 512480 净持仓 {net}, 期望 3500"
+        assert net == 0, f"trade_history 512480 净持仓 {net}, 期望 0 (6/5 已清仓)"
 
     def test_515050_net_holding_2600(self, tracker):
         """515050 净持仓 2600 (6/2 buy 2600, sell 0)"""
@@ -70,10 +72,13 @@ class TestUS015GetHoldingsConsistency:
             assert h.quantity == net, f"{h.code} get_holdings={h.quantity} trade_history={net}"
 
     def test_get_holdings_returns_only_2_codes(self, tracker):
-        """get_holdings() 应只返回 515050 + 512480 (159611 不应出现)"""
+        """get_holdings() 应只返回 515050 + 515070 (159611/512480 已清仓)
+
+        US-024: 512480 6/5 清仓后, 新增 515070, 当前持仓 = 515050 + 515070
+        """
         holdings = tracker.get_holdings()
         codes = sorted([h.code for h in holdings])
-        assert codes == ['512480', '515050'], f"实际: {codes}"
+        assert codes == ['515050', '515070'], f"实际: {codes}"
 
 
 class TestUS015RebuildFromTrades:
@@ -93,9 +98,7 @@ class TestUS015RebuildFromTrades:
         assert abs(h_515050.entry_price - 1.197) < 0.01
 
     def test_512480_entry_price(self, tracker):
-        """512480 buy 1 次 @ 2.174 * 3500"""
+        """US-024 后: 512480 已清仓, get_holdings() 不应包含 512480"""
         holdings = tracker.get_holdings()
         h_512480 = next((h for h in holdings if h.code == '512480'), None)
-        assert h_512480 is not None
-        assert abs(h_512480.entry_price - 2.174) < 0.01
-        assert h_512480.quantity == 3500
+        assert h_512480 is None, f"512480 应已清仓, 但出现在 get_holdings: {holdings}"

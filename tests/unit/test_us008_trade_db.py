@@ -296,15 +296,21 @@ class TestUS008CanBuyDefault:
         assert ok is True, f"max_holdings=2 应允许第 2 只，实际 ok={ok}, reason={reason}"
 
     def test_max_holdings_2_rejects_3rd(self, tracker):
-        """默认 max_holdings=2 拒绝第 3 只"""
-        from src.trade.tracker import Position
-        # 2 个持仓
-        tracker.save_positions([
-            Position(code='588000', name='a', entry_date='2026-06-01',
-                     entry_price=1.0, quantity=100, status='HOLDING'),
-            Position(code='515050', name='b', entry_date='2026-06-01',
-                     entry_price=1.0, quantity=200, status='HOLDING'),
-        ])
+        """默认 max_holdings=2 拒绝第 3 只
+
+        US-024: can_buy 用 _rebuild_positions_from_trades()（真相源）
+        改用 save_trade 写 trade_history 模拟持仓（不再用 save_positions 写派生表）
+        """
+        from src.trade.tracker import TradeRecord
+        # 2 个持仓（用 save_trade 写 trade_history，让 _rebuild 能重建出）
+        tracker.save_trade(TradeRecord(
+            date='2026-06-01', code='588000', name='a', action='buy',
+            price=1.0, quantity=100, amount=100, reason='test', is_real=1
+        ))
+        tracker.save_trade(TradeRecord(
+            date='2026-06-01', code='515050', name='b', action='buy',
+            price=1.0, quantity=200, amount=200, reason='test', is_real=1
+        ))
         # 第 3 个应被拒
         ok, reason = tracker.can_buy('512480')
         assert ok is False
