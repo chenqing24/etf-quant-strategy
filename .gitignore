@@ -4,6 +4,14 @@ etf_data_live/*.json
 etf_data_live/hot/
 etf_data_live/csv/
 
+# 顶层冷数据层 db (US-021: 不应入 git, 由实跑自动重建)
+# 注释: etf.db 与 etf_data_live/etf.db 角色不同
+# - etf_data_live/etf.db: 主 db (trade_history, etf_names 等)
+# - etf.db: 冷数据层 (daily, stock_info, etf_names) - src/data/manager.py:172
+# 历史原因: 顶层 etf.db 已被 git 跟踪 (24e005d US-016), Group C 已用 git rm --cached 处理
+# 注: Group B 误判为"旧 db 副本"实际是数据源, 不删
+etf.db
+
 # 因子数据库
 data/*.db
 data/experiments/

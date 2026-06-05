@@ -53,9 +53,26 @@ class TestGroupBTopLevelCleaned:
         assert not path.exists(), f"应删除 {path}"
 
     def test_top_level_etf_db_removed(self):
-        """顶层 etf.db (28KB) 应已删除 (etf_data_live/etf.db 19MB 主 db)"""
+        """顶层 etf.db 实际是冷数据层 (src/data/manager.py:172), 不应删除!
+
+        US-021 TDD 红发现: 实跑决策 (python -m src.cli.decision -m eval) 会自动重建
+        etf.db (与 HEAD MD5 一致). Group B commit message 写错 ("6 个" 实际 5 个).
+
+        修正: etf.db 是数据源, 应保留. 改为断言存在 + 校验 schema.
+        """
         path = ROOT / 'etf.db'
-        assert not path.exists(), f"应删除 {path}"
+        assert path.exists(), f"etf.db 是数据源, 应保留 {path}"
+        # 校验是冷数据层 db
+        import sqlite3
+        try:
+            conn = sqlite3.connect(str(path))
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [t[0] for t in cursor.fetchall()]
+            # 冷数据层应至少含 etf_names 表
+            assert 'etf_names' in tables, f"etf.db 应含 etf_names 表, 实际: {tables}"
+        finally:
+            conn.close()
 
 
 # ─────────────────────────────────────────────────────────────
