@@ -514,7 +514,8 @@ class TradeTracker:
         rsi_14 = rt.get('rsi_14', 50.0)
         
         # 偏差率: (实时价 - 信号价) / 信号价 * 100
-        if signal_price > 0 and realtime_price > 0:
+        # US-024: realtime_price 可能是 None（API 失败时），用 0 fallback
+        if signal_price and signal_price > 0 and realtime_price and realtime_price > 0:
             price_deviation = (realtime_price - signal_price) / signal_price * 100
         else:
             price_deviation = 0.0
@@ -568,16 +569,26 @@ class TradeTracker:
             snapshot_ref=snapshot_ref,
         )
 
-        self.save_trade(trade)
-
-        # 更新持仓
-        positions = self.load_positions()
-        # US-005: 事务保护 - 检查是否可买入
+        # ── US-024: 事务重构（先 can_buy 后 save_trade）────────────
+        # US-005 旧顺序：save_trade → can_buy → 失败 return None（数据已污染）
+        # US-024 新顺序：can_buy → 失败抛 BusinessConstraintError → 通过才 save_trade
+        # 关键: can_buy 用真相源 _rebuild_positions_from_trades（US-024 bug #2）
         ok, reason = self.can_buy(code)
         if not ok:
             _logger = logging.getLogger(__name__)
             _logger.warning(f"record_buy 拒绝: {code} - {reason}")
-            return None
+            # US-024: 抛 BusinessConstraintError 替代 return None（教训 47）
+            from src.trade.exceptions import BusinessConstraintError
+            raise BusinessConstraintError(
+                code=code, action='buy', reason=reason,
+                hint='持仓数已达上限或已持仓'
+            )
+
+        # 检查通过后才入库（事务原子性）
+        self.save_trade(trade)
+
+        # 更新持仓
+        positions = self._rebuild_positions_from_trades()  # US-024: 真相源
         new_pos = Position(
             code=code,
             name=name,
@@ -611,6 +622,8 @@ class TradeTracker:
         """
         记录卖出（US-005: 填充实时快照字段，sell端留0 + US-008: 部分卖 + Q-009: 决策上下文）
 
+        US-024: 事务重构（先 can_sell 后 save_trade，失败抛 BusinessConstraintError）
+
         Args:
             code:           ETF代码
             price:          成交价格
@@ -621,8 +634,20 @@ class TradeTracker:
             is_real:        1=实盘, 0=模拟
             emotion/session/model/strategy/evaluation/snapshot_ref: Q-009/SOP-06 字段
         """
-        positions = self.load_positions()
-        pos = next((p for p in positions if p.code == code), None)
+        # ── US-024: 事务重构（先 can_sell 后 save_trade）────────────
+        # US-005 旧顺序: load_positions (脏数据) → save_trade → can_sell → 失败 return None
+        # US-024 新顺序: can_sell (真相源) → 失败抛异常 → 通过才 save_trade
+        # 关键: can_sell 用 _rebuild_positions_from_trades（US-024 bug #2）
+        ok, reason, pos = self.can_sell(code, quantity)
+        if not ok or pos is None:
+            _logger = logging.getLogger(__name__)
+            _logger.warning(f"record_sell 拒绝: {code} - {reason}")
+            # US-024: 抛 BusinessConstraintError 替代 return None（教训 47）
+            from src.trade.exceptions import BusinessConstraintError
+            raise BusinessConstraintError(
+                code=code, action='sell', reason=reason,
+                hint='未持有该标的或持仓状态不允许卖出'
+            )
 
         if pos:
             # US-008: 部分卖出支持（quantity=None 表示全仓）
@@ -652,20 +677,15 @@ class TradeTracker:
                 session=session,
                 # US-008 字段
                 is_real=is_real,
-                # Q-009 字段
+                # Q-009 决策上下文
                 model=model,
                 strategy=strategy,
                 evaluation=evaluation,
                 snapshot_ref=snapshot_ref,
             )
+
+            # US-024: 检查通过后才入库（事务原子性）
             self.save_trade(trade)
-            
-            # US-005: 事务保护 - 检查是否可卖出
-            ok, reason, pos_checked = self.can_sell(code)
-            if not ok:
-                _logger = logging.getLogger(__name__)
-                _logger.warning(f"record_sell 拒绝: {code} - {reason}")
-                return None
 
             # 状态转换：HOLDING → CLOSING → EMPTY
             self.transition_position(code, 'CLOSING', f"准备卖出 @ {price}")
@@ -687,6 +707,7 @@ class TradeTracker:
                 self._audit(code, 'HOLDING', 'HOLDING', f"部分卖出 {sell_qty}股 @ {price}，剩余 {pos.quantity - sell_qty}")
             else:
                 # 全仓卖：移除持仓
+                positions = self._rebuild_positions_from_trades()  # US-024: 真相源
                 positions = [p for p in positions if p.code != code]
                 self.save_positions(positions)
                 # US-016: 不再调 _update_performance_capital (deprecaed)
@@ -839,7 +860,8 @@ class TradeTracker:
             pass
 
         # US-015: 修 buy_records 覆盖式 bug → 改用 list 累加
-        buy_records = {}  # code -> list of {date, name, price, quantity}
+        # US-024: buys 列表也存 is_real（让 _rebuild 能传 is_real 到 Position）
+        buy_records = {}  # code -> list of {date, name, price, quantity, is_real}
         sell_records = {}  # code -> [(date, quantity), ...]
 
         for trade in trades:
@@ -853,6 +875,7 @@ class TradeTracker:
                     'date': trade.date,
                     'price': trade.price,
                     'quantity': trade.quantity,
+                    'is_real': trade.is_real,  # US-024: 保留 is_real 字段
                 })
             elif trade.action == 'sell':
                 if trade.code not in sell_records:
@@ -883,6 +906,9 @@ class TradeTracker:
                 if is_reference:
                     continue
                 is_legacy = legacy_holdings.get(code, 0)  # US-015: 从原 positions 读
+                # US-024: 重建持仓的 is_real = 任何一笔 buy is_real=1 则为 1
+                # （保守处理：只要有实盘买入就标实盘持仓）
+                is_real_for_position = 1 if any(b.get('is_real', 0) == 1 for b in buys) else 0
                 positions.append(Position(
                     code=code,
                     name=info['name'],
@@ -892,6 +918,8 @@ class TradeTracker:
                     current_price=avg_price,
                     pnl_pct=0,
                     hold_days=0,
+                    status='HOLDING',  # US-024: 重建持仓应是 HOLDING 状态（can_buy 过滤）
+                    is_real=is_real_for_position,  # US-024: bug #2 修复
                     is_reference=is_reference,  # US-014 R2
                     legacy_holding=is_legacy,   # US-015
                 ))
@@ -927,10 +955,12 @@ class TradeTracker:
     def can_buy(self, code: str, max_holdings: int = 2) -> tuple:  # US-008: 默认 2（沿用 v8 POSITION_MANAGEMENT.md + 用户 B 决策）
         """检查是否能买入（事务前置检查）
 
+        US-024: 用真相源 _rebuild_positions_from_trades()（不用脏 positions 表）
+
         Returns:
             (ok, reason) - ok=True 可买入, ok=False 不可买入及原因
         """
-        positions = self.load_positions()
+        positions = self._rebuild_positions_from_trades()  # US-024: 真相源
 
         # 1. 检查持仓数量上限
         active = [p for p in positions if p.status in ('PENDING', 'HOLDING', 'REBALANCING', 'CLOSING')]
@@ -947,6 +977,8 @@ class TradeTracker:
     def can_sell(self, code: str, quantity: int = None) -> tuple:
         """检查是否能卖出
 
+        US-024: 用真相源 _rebuild_positions_from_trades()（不用脏 positions 表）
+
         Args:
             code: ETF 代码
             quantity: 要卖出的数量（None = 全部）
@@ -954,7 +986,7 @@ class TradeTracker:
         Returns:
             (ok, reason, position) - position 是当前持仓
         """
-        positions = self.load_positions()
+        positions = self._rebuild_positions_from_trades()  # US-024: 真相源
         pos = next((p for p in positions if p.code == code), None)
 
         if pos is None:
