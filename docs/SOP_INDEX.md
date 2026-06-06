@@ -1,6 +1,6 @@
 # SOP文档索引
 
-> 版本: 1.0 | 创建: 2026-05-31
+> 版本: 1.1 | 创建: 2026-05-31 | 更新: 2026-06-07 (新增 SOP-07)
 
 ---
 
@@ -14,6 +14,7 @@
 | **SOP-04** | [数据源接入与验证标准流程](./SOP_04_DATA_SOURCE.md) | 接入新数据源 | 新API/数据源验证 |
 | **SOP-05** | [双模式决策标准流程](./SOP_05_DUAL_MODE.md) | v9双模式决策 | 每日检查/趋势/震荡市 |
 | **SOP-06** | [用户手动交易记录](./SOP_06_MANUAL_TRADE.md) | 手动记录买卖 | 用户手动交易后 |
+| **SOP-07** | [v9 mission 因子集成标准流程](./SOP_07_V9_MISSION_INTEGRATION.md) | 新因子集成 v9 | US-026 W4/W3/W2 集成 |
 
 ---
 
@@ -32,6 +33,7 @@
 | 我要回测验证策略 | [SOP-01 Step 6](./SOP_01_DATA_MINING.md#step-6-回测验证-⚠️-核心检查点) |
 | 我手动买卖了ETF，需要记录 | [SOP-06: 手动交易记录](./SOP_06_MANUAL_TRADE.md) |
 | 每日ETF检查/双模式决策 | [SOP-05: 双模式决策](./SOP_05_DUAL_MODE.md) |
+| **v9 mission 集成新因子（如 W4/W3/W2）** | [SOP-07: v9 集成](./SOP_07_V9_MISSION_INTEGRATION.md) |
 
 ---
 
