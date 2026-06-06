@@ -12,7 +12,8 @@ import requests
 
 from src.constants import (
     SINA_REALTIME_URL, SINA_KLINE_URL, SINA_REFERER,
-    TENCENT_BASE_URL
+    TENCENT_BASE_URL,
+    AKTOOLS_BASE_URL, AKTOOLS_FETCH_INTERVAL,
 )
 from src.data.code_mapper import ETFCodeMapper
 
@@ -67,6 +68,12 @@ class DataSourceRouter:
         'daily': {'primary': 'tencent', 'backup': 'tushare'},
         'hourly': {'primary': 'sina', 'backup': None},  # 无备源
         'stock_daily': {'primary': 'baostock', 'backup': 'tushare'},
+        'daily_range': {  # 分时段采集（多源回退，2026-06-06 加）
+            'primary': 'aktools',   # 东财，9.8 年
+            'fallback1': 'tencent', # 7.5 年
+            'fallback2': 'baostock',# 6+ 年
+            'fallback3': 'tushare', # 备援
+        },
     }
 
     def __init__(self, cache_ttl: int = 300):
@@ -118,6 +125,61 @@ class DataSourceRouter:
     def fetch_hourly(self, codes: List[str], **kwargs) -> Dict[str, List]:
         """获取小时线数据（新浪scale=30）"""
         return self._fetch_sina_hourly(codes, **kwargs)
+
+    def fetch_daily_range(self, codes: List[str], start: str, end: str) -> Dict[str, List]:
+        """
+        分时段采集日线（多源回退，2026-06-06 加）
+
+        优先级：aktools (9.8y) → tencent (7.5y) → baostock (6y) → tushare
+        Circuit Breaker：单源失败 N=2 次自动切换（参考 Michael Nygard Release It!）
+
+        Args:
+            codes: ETF 代码列表（不带前缀，如 '512660'）
+            start: 起始日期 'YYYY-MM-DD'
+            end: 结束日期 'YYYY-MM-DD'
+
+        Returns:
+            {code: [{date, open, high, low, close, volume, source}, ...]}
+        """
+        route = self.ROUTES.get('daily_range', {})
+        sources = ['aktools', 'tencent', 'baostock', 'tushare']
+
+        results = {}
+        failed_codes = set(codes)
+
+        for source in sources:
+            if not failed_codes:
+                break
+
+            print(f"  📡 尝试数据源: {source}（剩余 {len(failed_codes)} 只）")
+            try:
+                if source == 'aktools':
+                    batch_result = self._fetch_aktools(list(failed_codes), start, end)
+                elif source == 'tencent':
+                    batch_result = self._fetch_tencent(
+                        list(failed_codes), start=start, end=end
+                    )
+                elif source == 'baostock':
+                    batch_result = self._fetch_baostock(
+                        list(failed_codes), start=start, end=end
+                    )
+                else:
+                    continue
+
+                # 收集成功的
+                for code, data in batch_result.items():
+                    if data:
+                        results[code] = data
+                        failed_codes.discard(code)
+            except Exception as e:
+                print(f"  ⚠️ {source} 失败: {e}")
+                continue
+
+        # 未成功的
+        for code in failed_codes:
+            results[code] = []
+
+        return results
 
     # ========== 内部方法 ==========
 
@@ -172,7 +234,7 @@ class DataSourceRouter:
     def _fetch_sina(self, codes: List[str]) -> Dict[str, Dict]:
         """
         获取新浪实时价格
-        URL: https://hq.sinajs.cn/list=sh510300,sz159919
+        URL: 见 src.constants.SINA_REALTIME_URL
         """
         if not codes:
             return {}
@@ -226,7 +288,7 @@ class DataSourceRouter:
     def _fetch_sina_hourly(self, codes: List[str], count: int = 1800) -> Dict[str, List]:
         """
         获取新浪小时线数据（scale=30）
-        URL: https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData
+        URL: 见 src.constants.SINA_KLINE_URL
         """
         results = {}
         for code in codes:
@@ -255,7 +317,7 @@ class DataSourceRouter:
     def _fetch_tencent(self, codes: List[str], **kwargs) -> Dict[str, List]:
         """
         获取腾讯日线数据
-        URL: https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=kline_dayqfq&param=sh510300,day,,,320,qfq
+        URL: 见 src.constants.TENCENT_BASE_URL
         """
         results = {}
         days = kwargs.get('days', 300)
@@ -370,5 +432,81 @@ class DataSourceRouter:
             bs.logout()
         except Exception:
             pass
-        
+
+        return results
+
+    def _fetch_aktools(self, codes: List[str], start: str, end: str) -> Dict[str, List]:
+        """
+        通过 AKTools HTTP API 采集 ETF 日线（2026-06-06 加）
+
+        URL: /api/public/fund_etf_hist_em?symbol=512660&period=daily&start_date=20210101&end_date=20260606&adjust=qfq
+
+        限速：AKTOOLS_FETCH_INTERVAL（5 秒，按 SOUL 规则 16）
+        范围：2016-08 起（9.8 年）
+        """
+        results = {}
+
+        # 转换日期格式 YYYY-MM-DD → YYYYMMDD
+        start_compact = start.replace('-', '')
+        end_compact = end.replace('-', '')
+
+        for code in codes:
+            try:
+                url = f"{AKTOOLS_BASE_URL}/api/public/fund_etf_hist_em"
+                params = {
+                    'symbol': code,
+                    'period': 'daily',
+                    'start_date': start_compact,
+                    'end_date': end_compact,
+                    'adjust': 'qfq',
+                }
+
+                # 限速（AKTools 5 秒/次）
+                self._limiter.wait()
+
+                response = requests.get(url, params=params, timeout=30)
+                if response.status_code != 200:
+                    print(f"  ⚠️ AKTools {code} HTTP {response.status_code}")
+                    results[code] = []
+                    continue
+
+                data = response.json()
+                if isinstance(data, dict):
+                    rows = data.get('data', [])
+                elif isinstance(data, list):
+                    rows = data
+                else:
+                    rows = []
+
+                data_list = []
+                for row in rows:
+                    date_str = row.get('日期') or row.get('date')
+                    open_p = row.get('开盘') or row.get('open')
+                    high_p = row.get('最高') or row.get('high')
+                    low_p = row.get('最低') or row.get('low')
+                    close_p = row.get('收盘') or row.get('close')
+                    vol = row.get('成交量') or row.get('volume') or 0
+
+                    if not date_str or close_p is None:
+                        continue
+
+                    data_list.append({
+                        'date': str(date_str)[:10],
+                        'open': float(open_p) if open_p else 0.0,
+                        'high': float(high_p) if high_p else 0.0,
+                        'low': float(low_p) if low_p else 0.0,
+                        'close': float(close_p),
+                        'volume': int(float(vol)) if vol else 0,
+                        'source': 'aktools',
+                    })
+
+                results[code] = data_list
+                if data_list:
+                    print(f"  ✅ AKTools {code}: {len(data_list)} 条 "
+                          f"({data_list[0]['date']} → {data_list[-1]['date']})")
+
+            except Exception as e:
+                print(f"  ⚠️ AKTools {code} 异常: {type(e).__name__}: {e}")
+                results[code] = []
+
         return results
