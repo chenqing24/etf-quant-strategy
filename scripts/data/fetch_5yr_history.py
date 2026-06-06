@@ -23,6 +23,7 @@ os.chdir(str(_ROOT))
 import requests
 import pandas as pd
 import sqlite3
+from src.constants import TENCENT_BASE_URL
 
 def get_db_info(code: str) -> tuple:
     """查本地数据范围"""
@@ -43,20 +44,29 @@ logger = logging.getLogger(__name__)
 # 需要采集的 9 只 ETF
 FETCH_ETFS = [
     ('510300', 'sh'),  # 沪深300
-    ('512400', 'sh'),  # 有色金属
-    ('512480', 'sh'),  # 半导体
-    ('588000', 'sh'),  # 科创50
-    ('520900', 'sh'),  # 光伏
     ('512170', 'sh'),  # 医疗
     ('512200', 'sh'),  # 房地产
+    ('512400', 'sh'),  # 有色金属
+    ('512480', 'sh'),  # 半导体
+    ('512660', 'sh'),  # 军工
     ('512800', 'sh'),  # 银行
+    ('512880', 'sh'),  # 证券
+    ('512980', 'sh'),  # 传媒
     ('515050', 'sh'),  # 5G
+    ('515070', 'sh'),  # 人工智能
+    ('515650', 'sh'),  # 消费50
+    ('515790', 'sh'),  # 光伏
+    ('520900', 'sh'),  # 港股通红利
+    ('588000', 'sh'),  # 科创50
 ]
 
-TARGET_DATE = '2021-01-01'
-MAX_DAYS = 3000  # 腾讯最多约 3000 条（留缓冲）
+# 5 年范围（按用户 A = 今天倒推 5 年）
+START_DATE = '2021-06-06'
+END_DATE = '2026-06-06'
+TARGET_DATE = END_DATE  # 保持兼容
+MAX_DAYS = 2000  # 5 年约 1260 条（按 252 交易日/年）
 AKTOOLS_URL = 'http://127.0.0.1:8080/api/public/fund_etf_hist_sina'
-TENCENT_URL = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get'
+TENCENT_URL = TENCENT_BASE_URL  # 从 src.constants 引用 (避免硬编码)
 
 
 def fetch_from_tencent(code: str, days: int = 3000) -> pd.DataFrame:
@@ -134,13 +144,13 @@ def fetch_with_retry(code: str, days: int = 3000) -> pd.DataFrame:
     return df2
 
 
-def main():
+def main(force: bool = False):
     from src.data.writer import DataWriter
     writer = DataWriter()
     results = {}
 
-    logger.info(f"目标: 扩展数据到 {TARGET_DATE} 之前 | 共 {len(FETCH_ETFS)} 只 ETF")
-    logger.info("=" * 55)
+    logger.info(f"目标: 扩展数据到 {TARGET_DATE} 之前 | 共 {len(FETCH_ETFS)} 只 ETF | force={force}")
+    logger.info("=" * 70)
 
     for i, (code, prefix) in enumerate(FETCH_ETFS, 1):
         full_code = f'{prefix}{code}'
@@ -148,7 +158,17 @@ def main():
 
         logger.info(f"[{i}/{len(FETCH_ETFS)}] {code} | 本地: {local_earliest} ~ {local_latest} ({local_count}条)")
 
-        if local_earliest and local_earliest <= TARGET_DATE:
+        # --force 模式：先 DELETE 旧数据（覆盖）
+        if force and local_count and local_count > 0:
+            logger.info(f"  🔄 --force 模式: 先 DELETE 旧数据 ({local_count} 条)")
+            conn = sqlite3.connect(str(_ROOT / "etf_data_live" / "etf.db"))
+            conn.execute(f"DELETE FROM daily WHERE code='{code}'")
+            conn.commit()
+            deleted = conn.execute(f"SELECT changes()").fetchone()[0]
+            conn.close()
+            logger.info(f"     已 DELETE {deleted} 条")
+
+        if local_earliest and local_earliest <= TARGET_DATE and not force:
             logger.info(f"  ✅ 已有 {TARGET_DATE} 前数据，跳过")
             results[code] = {'status': 'skipped', 'reason': f'已有{local_earliest}'}
             continue
@@ -161,9 +181,9 @@ def main():
             results[code] = {'status': 'failed', 'error': '两源均返回空'}
             continue
 
-        # 按日期过滤到 TARGET_DATE
-        df = df[df['date'] <= TARGET_DATE].copy()
-        logger.info(f"  📥 获取 {len(df)} 条 (截至 {TARGET_DATE})")
+        # 按日期过滤 5 年范围（START_DATE → END_DATE）
+        df = df[(df['date'] >= START_DATE) & (df['date'] <= END_DATE)].copy()
+        logger.info(f"  📥 获取 {len(df)} 条 ({START_DATE} → {END_DATE})")
 
         # 去重（防重复）
         df = df.drop_duplicates(subset=['date'], keep='first')
@@ -209,7 +229,7 @@ def main():
     logger.info("")
     logger.info("--- 全部 15 只 ETF 范围 ---")
     conn = sqlite3.connect(str(_ROOT / "etf_data_live" / "etf.db"))
-    all_etfs = [c for c, _ in FETCH_ETFS] + ['512880', '512660', '512980', '515650', '515070', '515790']
+    all_etfs = [c for c, _ in FETCH_ETFS]
     cur = conn.execute('''
         SELECT code, MIN(date), MAX(date), COUNT(*) 
         FROM daily WHERE code IN (%s)
@@ -251,4 +271,8 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    import argparse
+    parser = argparse.ArgumentParser(description='采集 ETF 5 年历史数据')
+    parser.add_argument('--force', action='store_true', help='强制覆盖已有数据（先 DELETE 再写入）')
+    args = parser.parse_args()
+    sys.exit(main(force=args.force))
