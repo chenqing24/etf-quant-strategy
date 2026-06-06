@@ -30,6 +30,7 @@ from src.constants import (
     AKTOOLS_FETCH_INTERVAL,
 )
 from src.data.router import DataSourceRouter
+from src.data.fetcher import TencentETFetcher
 from src.data.writer import DataWriter
 
 
@@ -42,6 +43,7 @@ def main():
     print()
 
     router = DataSourceRouter()
+    tencent = TencentETFetcher()  # 主用（实测 7.5 年可拉）
     writer = DataWriter()
 
     # 全量结果
@@ -54,35 +56,64 @@ def main():
         seg_start = time.time()
         for code in CORE_ETF_POOL_15:
             t0 = time.time()
-            data = router.fetch_daily_range([code], start, end)
-            elapsed = time.time() - t0
 
-            if data and code in data and data[code]:
-                rows = data[code]
-                # 写入 SQLite（DataWriter 统一入口）
-                try:
-                    writer.add_daily(code, rows)
+            # 主用 TencentETFetcher（实测可拉 7.5 年，2026-06-06 实测）
+            full_code = f"sh{code}" if code.startswith(('5', '1')) else f"sz{code}"
+            days = 1825  # 5 年
+            df = tencent.fetch_etf(full_code, days=days)
+
+            elapsed = time.time() - t0
+            source = 'tencent'
+
+            if df is not None and not df.empty and 'date' in df.columns:
+                # 过滤到当前段范围
+                mask = (df['date'] >= start) & (df['date'] <= end)
+                seg_df = df[mask]
+                if not seg_df.empty:
+                    rows = []
+                    for _, r in seg_df.iterrows():
+                        rows.append({
+                            'date': r['date'],
+                            'open': float(r.get('open', 0)),
+                            'high': float(r.get('high', 0)),
+                            'low': float(r.get('low', 0)),
+                            'close': float(r['close']),
+                            'volume': int(r.get('volume', 0)),
+                            'source': 'tencent',
+                        })
+                    # 写入 SQLite（DataWriter.write_daily(code, df)）
+                    try:
+                        count = writer.write_daily(code, seg_df)
+                        all_results[(code, seg_idx)] = {
+                            'source': source,
+                            'count': len(rows),
+                            'first_date': rows[0]['date'],
+                            'last_date': rows[-1]['date'],
+                            'elapsed': round(elapsed, 1),
+                        }
+                        print(f"  ✅ {code} 段{seg_idx+1}: {len(rows)} 条 "
+                              f"({rows[0]['date']} → {rows[-1]['date']}) "
+                              f"via {source} ({elapsed:.1f}s)")
+                    except Exception as e:
+                        print(f"  ❌ {code} 段{seg_idx+1}: 写入失败 - {type(e).__name__}: {e}")
+                        all_results[(code, seg_idx)] = {
+                            'source': 'write_failed',
+                            'count': 0,
+                            'error': str(e),
+                        }
+                else:
+                    # 该段无数据（ETF 上市晚）
                     all_results[(code, seg_idx)] = {
-                        'source': rows[0].get('source', 'unknown'),
-                        'count': len(rows),
-                        'first_date': rows[0]['date'],
-                        'last_date': rows[-1]['date'],
-                        'elapsed': round(elapsed, 1),
-                    }
-                    print(f"  ✅ {code} 段{seg_idx+1}: {len(rows)} 条 "
-                          f"({rows[0]['date']} → {rows[-1]['date']}) "
-                          f"via {rows[0].get('source', '?')} ({elapsed:.1f}s)")
-                except Exception as e:
-                    print(f"  ❌ {code} 段{seg_idx+1}: 写入失败 - {type(e).__name__}: {e}")
-                    all_results[(code, seg_idx)] = {
-                        'source': 'write_failed',
+                        'source': source,
                         'count': 0,
-                        'error': str(e),
+                        'first_date': None,
+                        'last_date': None,
                     }
+                    print(f"  ⚠️ {code} 段{seg_idx+1}: 段内无数据（ETF 上市晚于 {start}）")
             else:
-                print(f"  ⚠️ {code} 段{seg_idx+1}: 无数据")
+                print(f"  ❌ {code} 段{seg_idx+1}: 拉取失败")
                 all_results[(code, seg_idx)] = {
-                    'source': 'none',
+                    'source': 'tencent',
                     'count': 0,
                 }
 
