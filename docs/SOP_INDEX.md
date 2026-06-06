@@ -120,8 +120,39 @@
 |------|------|------|
 | 1.0 | 2026-05-31 | 初始版本，4个SOP |
 | 1.1 | 2026-06-02 | 增加 SOP-05 双模式决策、SOP-06 手动交易记录 |
+| 1.2 | 2026-06-06 | **SOP-01 v1.1**：加 Step 0 业务理解 + Step 5.0 相关性 + Step 6 扣成本 + Step 7 引用 WalkForward |
 
 ---
 
-*SOP索引版本: 1.0 | 创建: 2026-05-31*
+## 六、SOP-01 v1.1 升级说明
+
+> **升级日期**：2026-06-06（US-024 后）  
+> **触发原因**：评估发现 v9 任务以"v9 维护"为主，但 SOP-01 应为"未来挖新因子"服务  
+> **方案评分**：5/100 分（4 项验证 1 项强、3 项已存在）
+
+### 4 处改动
+1. **Step 0** 业务理解 2 问（CRISP-DM 第 1 阶段）— 必填门槛
+2. **Step 5.0** 因子相关性检查 — 防伪分散
+3. **Step 6** 验收扣交易成本 — 引用 `BacktestConfig` 默认 0.1% 单边
+4. **Step 7** 引用 `WalkForwardEngine` — min_windows=6
+
+### 配套交付物
+- [SOP-01 文档](./SOP_01_DATA_MINING.md) - 402 行（v1.0 266 行）
+- [Step 0 模板](./sop01_step0_template.md) - 112 行
+- [Step 5.0 工具](../../scripts/sop01_factor_correlation.py) - 238 行
+- [示例业务理解](../../data/business_understanding/v1_northbound_flow_20260606.md) - 走 1 遍验证
+- [相关性检查报告](../../data/business_understanding/factor_correlation_report.md) - v9 5-8 因子跑结果
+
+### 验证结果（v1.1 内嵌）
+| 验证项 | 评分 | 备注 |
+|--------|:----:|------|
+| 验证 1（Step 0 走 1 遍）| 5/5 | 决策犹豫 ~15 分钟，2 问都填了 |
+| 验证 2（v9 5-8 因子相关性）| 0/10 | 0 发现（mock 数据）|
+| 验证 3（v9 BacktestConfig 成本）| 0 分 | 已默认扣成本（文档补漏）|
+| 验证 4（v9 WalkForward min_windows）| 0 分 | 已 min_windows=6（文档补漏）|
+| **总分** | **5/100** | 实质 = Step 0 业务理解 + Step 5.0 工具（新增）|
+
+---
+
+*SOP索引版本: 1.2 | 创建: 2026-05-31 | 升级: 2026-06-06*
 *相关文档: SOUL.md（行为规则）, AGENTS.md（工作流指南）*
