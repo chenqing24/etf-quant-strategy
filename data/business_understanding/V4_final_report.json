@@ -1,0 +1,13 @@
+{
+  "factor": "V4_volume_ratio_5",
+  "step_1_business_understanding": "data/business_understanding/V4_volume_ratio_20260606.md",
+  "step_2_factor_computed": true,
+  "step_3_ic_pass": true,
+  "ic_mean": 0.028319366765196752,
+  "ic_median": 0.03697119508554112,
+  "etf_pass_count": 9,
+  "step_4_backtest_passed": true,
+  "comprehensive_score": "N/A",
+  "comprehensive_warnings": 15,
+  "recommendation": "✅ V4 量比通过 SOP-01 v1.1 4 步，可进入批 1 第 2 个因子 (V5)"
+}

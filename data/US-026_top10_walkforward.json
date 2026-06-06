@@ -1,0 +1,92 @@
+{
+  "W5_Garman_Klass": {
+    "avg_train_return": -0.02907605465188612,
+    "avg_test_return": 0.0006960738703881174,
+    "avg_decay": 0.7007368138967432,
+    "pass_rate": 0.35294117647058826,
+    "n_windows": 17,
+    "n_passed": 6,
+    "confidence": "high"
+  },
+  "W6_Keltner": {
+    "avg_train_return": -0.0006091783577864584,
+    "avg_test_return": 0.011509276052565302,
+    "avg_decay": 1.0499925690147631,
+    "pass_rate": 0.17647058823529413,
+    "n_windows": 17,
+    "n_passed": 3,
+    "confidence": "high"
+  },
+  "W2_BB_Width_Change": {
+    "avg_train_return": -0.04909610036885771,
+    "avg_test_return": -0.01192595907456689,
+    "avg_decay": 0.04616048117274059,
+    "pass_rate": 0.17647058823529413,
+    "n_windows": 17,
+    "n_passed": 3,
+    "confidence": "high"
+  },
+  "W3_Hist_Vol_Change": {
+    "avg_train_return": -0.01220760281787185,
+    "avg_test_return": -0.0002523609003379256,
+    "avg_decay": 3.6785238643971376,
+    "pass_rate": 0.17647058823529413,
+    "n_windows": 17,
+    "n_passed": 3,
+    "confidence": "high"
+  },
+  "W4_RV_Change": {
+    "avg_train_return": 0.011205308005387868,
+    "avg_test_return": 0.01009490469074195,
+    "avg_decay": -0.8711077183787941,
+    "pass_rate": 0.17647058823529413,
+    "n_windows": 17,
+    "n_passed": 3,
+    "confidence": "high"
+  },
+  "C2_Weighted_Combo": {
+    "avg_train_return": -0.0039028856003044234,
+    "avg_test_return": 0.0025498132943936715,
+    "avg_decay": 0.06348832476695646,
+    "pass_rate": 0.0,
+    "n_windows": 17,
+    "n_passed": 0,
+    "confidence": "high"
+  },
+  "C1_Multi_Factor_Vote": {
+    "avg_train_return": -0.0039028856003044234,
+    "avg_test_return": 0.0025498132943936715,
+    "avg_decay": 0.06348832476695646,
+    "pass_rate": 0.0,
+    "n_windows": 17,
+    "n_passed": 0,
+    "confidence": "high"
+  },
+  "M7_CCI_Momentum": {
+    "avg_train_return": -0.045309474323843295,
+    "avg_test_return": -0.003973415706279254,
+    "avg_decay": 0.4645533027840994,
+    "pass_rate": 0.11764705882352941,
+    "n_windows": 17,
+    "n_passed": 2,
+    "confidence": "high"
+  },
+  "M9_WR": {
+    "avg_train_return": 0.0,
+    "avg_test_return": 0.0,
+    "avg_decay": 0.0,
+    "pass_rate": 0.0,
+    "n_windows": 17,
+    "n_passed": 0,
+    "confidence": "high"
+  },
+  "B3_Consolidation_Breakout": {
+    "avg_train_return": -0.0030082525661770353,
+    "avg_test_return": 0.010848387208592642,
+    "avg_decay": 0.5764813806376891,
+    "pass_rate": 0.11764705882352941,
+    "n_windows": 17,
+    "n_passed": 2,
+    "confidence": "high"
+  }
+}

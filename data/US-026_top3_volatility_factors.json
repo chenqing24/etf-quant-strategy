@@ -1,0 +1,56 @@
+{
+  "title": "US-026 3 因子配置（v9 mission 待集成候选）",
+  "version": "1.0",
+  "created": "2026-06-07",
+  "background": "US-026 完整因子挖掘 36 因子 → A3+A2+A4 联合验证 → 3 因子稳健通过",
+  "factors": {
+    "W4_RV_Change": {
+      "rank": 1,
+      "category": "波动类",
+      "formula": "RV = sqrt(Σ log_return²) × sqrt(252); RV_change = RV(today) - RV(t-20)",
+      "signal": "RV_change > 0 → buy",
+      "ic_5d": 0.0859,
+      "ic_20d": 0.0371,
+      "etf_pass_rate_15": "9/15 (60%)",
+      "wf_oos_is": 0.77,
+      "wf_is_to_oos": "0.1148 → 0.1425",
+      "weight_in_combo": 0.40
+    },
+    "W3_Hist_Vol_Change": {
+      "rank": 2,
+      "category": "波动类",
+      "formula": "Hist_Vol = std(log_return, 20) × sqrt(252); change = Vol(today) - Vol(t-20)",
+      "signal": "change > 0 → buy",
+      "ic_5d": 0.0766,
+      "ic_20d": 0.0276,
+      "etf_pass_rate_15": "4/15 (27%)",
+      "wf_oos_is": 0.28,
+      "wf_is_to_oos": "0.1012 → 0.1145",
+      "weight_in_combo": 0.30
+    },
+    "W2_BB_Width_Change": {
+      "rank": 3,
+      "category": "波动类",
+      "formula": "BB_width = (μ+2σ) - (μ-2σ); change = width(t) - width(t-20)",
+      "signal": "change > 0 → buy",
+      "ic_5d": 0.0990,
+      "ic_20d": 0.1407,
+      "etf_pass_rate_15": "6/15 (40%)",
+      "wf_oos_is": 1.10,
+      "wf_is_to_oos": "0.0536 → 0.0576",
+      "weight_in_combo": 0.30
+    }
+  },
+  "combo": {
+    "method": "weighted_average",
+    "formula": "combo_signal = 0.40 * W4 + 0.30 * W3 + 0.30 * W2",
+    "expected_ic_5d": 0.26,
+    "expected_ic_20d": 0.21
+  },
+  "v9_integration_plan": {
+    "step_1": "配置登记（当前）→ data/US-026_top3_volatility_factors.json",
+    "step_2": "monitor_cron（当前）→ 每日 14:00 计算 3 因子 IC 报告",
+    "step_3": "等 v9 mission 集成时机（需重新设计 decision.py 才不破坏现有 v9）",
+    "note": "v9 现有核心是 v9_v1_single_factor.py 15 因子，与 W4/W3/W2 不重叠。建议先 monitor，1 月后确认稳健后再集成"
+  }
+}
