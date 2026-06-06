@@ -437,32 +437,33 @@ class DataSourceRouter:
 
     def _fetch_aktools(self, codes: List[str], start: str, end: str) -> Dict[str, List]:
         """
-        通过 AKTools HTTP API 采集 ETF 日线（2026-06-06 加）
+        通过 AKTools HTTP API 采集 ETF 日线（2026-06-06 加，500 修复）
 
-        URL: /api/public/fund_etf_hist_em?symbol=512660&period=daily&start_date=20210101&end_date=20260606&adjust=qfq
+        历史：
+        - v1: 用 fund_etf_hist_em (东财) — ❌ 2026-06-06 ConnectionError（东财服务器拒绝）
+        - v2: 改用 fund_etf_hist_sina (新浪) — ✅ 2026-06-06 实测 9.8 年
+
+        URL: /api/public/fund_etf_hist_sina?symbol=sh512660
 
         限速：AKTOOLS_FETCH_INTERVAL（5 秒，按 SOUL 规则 16）
         范围：2016-08 起（9.8 年）
         """
         results = {}
 
-        # 转换日期格式 YYYY-MM-DD → YYYYMMDD
-        start_compact = start.replace('-', '')
-        end_compact = end.replace('-', '')
-
         for code in codes:
             try:
-                url = f"{AKTOOLS_BASE_URL}/api/public/fund_etf_hist_em"
-                params = {
-                    'symbol': code,
-                    'period': 'daily',
-                    'start_date': start_compact,
-                    'end_date': end_compact,
-                    'adjust': 'qfq',
-                }
-
                 # 限速（AKTools 5 秒/次）
                 self._limiter.wait()
+
+                # 转换代码：'512660' → 'sh512660'（新浪接口需要带前缀）
+                if code.startswith(('5', '1')):
+                    full_code = f"sh{code}"
+                else:
+                    full_code = f"sz{code}"
+
+                # 用 fund_etf_hist_sina（新浪），不用 fund_etf_hist_em（东财已挂）
+                url = f"{AKTOOLS_BASE_URL}/api/public/fund_etf_hist_sina"
+                params = {'symbol': full_code}
 
                 response = requests.get(url, params=params, timeout=30)
                 if response.status_code != 200:
@@ -471,33 +472,30 @@ class DataSourceRouter:
                     continue
 
                 data = response.json()
-                if isinstance(data, dict):
-                    rows = data.get('data', [])
-                elif isinstance(data, list):
-                    rows = data
-                else:
-                    rows = []
+                if not isinstance(data, list):
+                    results[code] = []
+                    continue
 
                 data_list = []
-                for row in rows:
-                    date_str = row.get('日期') or row.get('date')
-                    open_p = row.get('开盘') or row.get('open')
-                    high_p = row.get('最高') or row.get('high')
-                    low_p = row.get('最低') or row.get('low')
-                    close_p = row.get('收盘') or row.get('close')
-                    vol = row.get('成交量') or row.get('volume') or 0
-
+                for row in data:
+                    date_str = row.get('date')
+                    close_p = row.get('close')
                     if not date_str or close_p is None:
+                        continue
+
+                    # 过滤日期范围
+                    if date_str[:10] < start or date_str[:10] > end:
                         continue
 
                     data_list.append({
                         'date': str(date_str)[:10],
-                        'open': float(open_p) if open_p else 0.0,
-                        'high': float(high_p) if high_p else 0.0,
-                        'low': float(low_p) if low_p else 0.0,
+                        'open': float(row.get('open', 0) or 0),
+                        'high': float(row.get('high', 0) or 0),
+                        'low': float(row.get('low', 0) or 0),
                         'close': float(close_p),
-                        'volume': int(float(vol)) if vol else 0,
-                        'source': 'aktools',
+                        'volume': int(float(row.get('volume', 0) or 0)),
+                        'amount': float(row.get('amount', 0) or 0),
+                        'source': 'akshare_sina',  # 改标记
                     })
 
                 results[code] = data_list
