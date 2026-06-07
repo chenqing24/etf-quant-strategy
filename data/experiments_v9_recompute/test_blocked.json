@@ -1,7 +1,0 @@
-{
-  "results": [
-    {"code": "510300", "composite_score": 0.15, "factors": ["T1_MACD红柱"]},
-    {"code": "510300", "composite_score": 0.20, "factors": ["T2_MA多头"]},
-    {"code": "510300", "composite_score": 0.10, "factors": ["M1_动量3日"]}
-  ]
-}

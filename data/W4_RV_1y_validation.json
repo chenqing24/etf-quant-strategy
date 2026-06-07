@@ -1,0 +1,179 @@
+{
+  "verify_date": "2026-06-07",
+  "start_date": "2025-06-07",
+  "n_etfs": 15,
+  "total_triggers": 1433,
+  "total_days": 3555,
+  "avg_trigger_rate": 0.4030942334739803,
+  "avg_trigger_return": 0.010668648185801653,
+  "avg_baseline": 0.007392457079268692,
+  "n_profitable": 13,
+  "n_above_baseline": 12,
+  "detail": [
+    {
+      "code": "510300",
+      "n_days": 242,
+      "n_triggers": 96,
+      "n_total": 237,
+      "trigger_rate": 0.4050632911392405,
+      "trigger_return_mean": 0.008208652740059113,
+      "baseline_return_mean": 0.0056924633084508,
+      "trigger_cum_return": 1.1494305119994834,
+      "last_close": 4.843
+    },
+    {
+      "code": "512170",
+      "n_days": 242,
+      "n_triggers": 85,
+      "n_total": 237,
+      "trigger_rate": 0.35864978902953587,
+      "trigger_return_mean": 0.003416888100238715,
+      "baseline_return_mean": -0.0014710932956798536,
+      "trigger_cum_return": 0.2906592967320085,
+      "last_close": 0.3
+    },
+    {
+      "code": "512200",
+      "n_days": 242,
+      "n_triggers": 89,
+      "n_total": 237,
+      "trigger_rate": 0.3755274261603376,
+      "trigger_return_mean": 0.0031956648048896345,
+      "baseline_return_mean": 1.9188189332633525e-05,
+      "trigger_cum_return": 0.27583064350221087,
+      "last_close": 1.297
+    },
+    {
+      "code": "512400",
+      "n_days": 242,
+      "n_triggers": 104,
+      "n_total": 237,
+      "trigger_rate": 0.4388185654008439,
+      "trigger_return_mean": 0.014762324105369758,
+      "baseline_return_mean": 0.014257767418280602,
+      "trigger_cum_return": 2.8471683577310594,
+      "last_close": 1.926
+    },
+    {
+      "code": "512480",
+      "n_days": 242,
+      "n_triggers": 108,
+      "n_total": 237,
+      "trigger_rate": 0.45569620253164556,
+      "trigger_return_mean": 0.025923412743860945,
+      "baseline_return_mean": 0.01723040591490279,
+      "trigger_cum_return": 11.867706921477714,
+      "last_close": 2.091
+    },
+    {
+      "code": "512660",
+      "n_days": 242,
+      "n_triggers": 97,
+      "n_total": 237,
+      "trigger_rate": 0.4092827004219409,
+      "trigger_return_mean": 0.005771601067196563,
+      "baseline_return_mean": 0.004979921384110153,
+      "trigger_cum_return": 0.5656490948172868,
+      "last_close": 1.274
+    },
+    {
+      "code": "512800",
+      "n_days": 242,
+      "n_triggers": 80,
+      "n_total": 237,
+      "trigger_rate": 0.33755274261603374,
+      "trigger_return_mean": 0.0004315534337561072,
+      "baseline_return_mean": -0.0009623318407172884,
+      "trigger_cum_return": 0.021529015367134585,
+      "last_close": 0.784
+    },
+    {
+      "code": "512880",
+      "n_days": 242,
+      "n_triggers": 92,
+      "n_total": 237,
+      "trigger_rate": 0.3881856540084388,
+      "trigger_return_mean": -0.006801125616233373,
+      "baseline_return_mean": -0.0006466743147642272,
+      "trigger_cum_return": -0.4838237603207537,
+      "last_close": 1.016
+    },
+    {
+      "code": "512980",
+      "n_days": 242,
+      "n_triggers": 93,
+      "n_total": 237,
+      "trigger_rate": 0.3924050632911392,
+      "trigger_return_mean": 0.00732306041332004,
+      "baseline_return_mean": 0.00275961214174628,
+      "trigger_cum_return": 0.7135021812895417,
+      "last_close": 0.874
+    },
+    {
+      "code": "515050",
+      "n_days": 242,
+      "n_triggers": 97,
+      "n_total": 237,
+      "trigger_rate": 0.4092827004219409,
+      "trigger_return_mean": 0.031228826911252033,
+      "baseline_return_mean": 0.027787541009879242,
+      "trigger_cum_return": 15.435972254377848,
+      "last_close": 1.233
+    },
+    {
+      "code": "515070",
+      "n_days": 242,
+      "n_triggers": 100,
+      "n_total": 237,
+      "trigger_rate": 0.4219409282700422,
+      "trigger_return_mean": 0.02879338778414155,
+      "baseline_return_mean": 0.01733044254387638,
+      "trigger_cum_return": 13.374902842938283,
+      "last_close": 2.477
+    },
+    {
+      "code": "515650",
+      "n_days": 242,
+      "n_triggers": 103,
+      "n_total": 237,
+      "trigger_rate": 0.4345991561181435,
+      "trigger_return_mean": -0.002402359932538112,
+      "baseline_return_mean": -0.0021199228549391037,
+      "trigger_cum_return": -0.23288308811989178,
+      "last_close": 1.019
+    },
+    {
+      "code": "515790",
+      "n_days": 242,
+      "n_triggers": 87,
+      "n_total": 237,
+      "trigger_rate": 0.3670886075949367,
+      "trigger_return_mean": 0.008881795005879134,
+      "baseline_return_mean": 0.011155305263897653,
+      "trigger_cum_return": 0.99842735150598,
+      "last_close": 1.04
+    },
+    {
+      "code": "520900",
+      "n_days": 242,
+      "n_triggers": 90,
+      "n_total": 237,
+      "trigger_rate": 0.379746835443038,
+      "trigger_return_mean": 0.00556845080855655,
+      "baseline_return_mean": 0.002027857724557861,
+      "trigger_cum_return": 0.6133193585564318,
+      "last_close": 1.056
+    },
+    {
+      "code": "588000",
+      "n_days": 242,
+      "n_triggers": 112,
+      "n_total": 237,
+      "trigger_rate": 0.47257383966244726,
+      "trigger_return_mean": 0.025727590417276115,
+      "baseline_return_mean": 0.012846373596096463,
+      "trigger_cum_return": 13.547393081384035,
+      "last_close": 1.763
+    }
+  ]
+}

@@ -1,0 +1,872 @@
+{
+  "C1_multi_factor_vote": {
+    "avg_oos_is": -1.5080934845198626,
+    "median_oos_is": -0.23739129362668493,
+    "avg_test_return": -0.02042629995392485,
+    "etfs_oos_gt_0.5": 1,
+    "etfs_pass_gt_0.5": 3,
+    "total_etfs": 15,
+    "detail": [
+      {
+        "code": "510300",
+        "avg_test_return": -0.03325177979167552,
+        "avg_train_return": -0.07293162792800761,
+        "oos_is": -0.455930859304266,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512170",
+        "avg_test_return": -0.04721969679849911,
+        "avg_train_return": -0.05206509748132132,
+        "oos_is": -0.9069357224470669,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512200",
+        "avg_test_return": -0.08411676268340305,
+        "avg_train_return": 0.004354194998964778,
+        "oos_is": -19.318556634097014,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512400",
+        "avg_test_return": -0.03805147264254812,
+        "avg_train_return": 0.03846713189230453,
+        "oos_is": -0.9891944309515948,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      },
+      {
+        "code": "512480",
+        "avg_test_return": 0.032773586002439126,
+        "avg_train_return": 0.17727701449452374,
+        "oos_is": 0.1848721679789544,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512660",
+        "avg_test_return": -0.015016355111532447,
+        "avg_train_return": -0.10557605442854494,
+        "oos_is": -0.14223258477324216,
+        "pass_rate": 0.2,
+        "n_passed": 3,
+        "n_windows": 15
+      },
+      {
+        "code": "512800",
+        "avg_test_return": -0.034951747729639694,
+        "avg_train_return": -0.08935390601081694,
+        "oos_is": -0.39116082653855705,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512880",
+        "avg_test_return": -0.058004046996578046,
+        "avg_train_return": -0.17016458741734394,
+        "oos_is": -0.3408702590646426,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "512980",
+        "avg_test_return": -0.020983705645790086,
+        "avg_train_return": -0.09068791592055443,
+        "oos_is": -0.23138370126591612,
+        "pass_rate": 0.4,
+        "n_passed": 6,
+        "n_windows": 15
+      },
+      {
+        "code": "515050",
+        "avg_test_return": 0.050371570168742275,
+        "avg_train_return": 0.10072873904493836,
+        "oos_is": 0.5000714855198365,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      },
+      {
+        "code": "515070",
+        "avg_test_return": 0.006126137414002142,
+        "avg_train_return": -0.10533860150142112,
+        "oos_is": 0.05815662375126078,
+        "pass_rate": 0.26666666666666666,
+        "n_passed": 4,
+        "n_windows": 15
+      },
+      {
+        "code": "515650",
+        "avg_test_return": -0.018155993752075588,
+        "avg_train_return": -0.12563509789513505,
+        "oos_is": -0.14451370720648468,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "515790",
+        "avg_test_return": -0.0315987465560026,
+        "avg_train_return": -0.1331082790495844,
+        "oos_is": -0.23739129362668493,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 5,
+        "n_windows": 15
+      },
+      {
+        "code": "520900",
+        "avg_test_return": -0.04721967971805341,
+        "avg_train_return": -0.1003849348440979,
+        "oos_is": -0.4703861171139633,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 3
+      },
+      {
+        "code": "588000",
+        "avg_test_return": 0.03290419453174135,
+        "avg_train_return": 0.12461180461353245,
+        "oos_is": 0.2640535913414423,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      }
+    ]
+  },
+  "W4_RV_Change": {
+    "avg_oos_is": 0.17844989968311908,
+    "median_oos_is": 0.11661140544407196,
+    "avg_test_return": 0.006488513023710617,
+    "etfs_oos_gt_0.5": 2,
+    "etfs_pass_gt_0.5": 1,
+    "total_etfs": 15,
+    "detail": [
+      {
+        "code": "510300",
+        "avg_test_return": -0.008839163905481432,
+        "avg_train_return": 0.013728470504174231,
+        "oos_is": -0.6438564225194515,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512170",
+        "avg_test_return": -0.01653862220006271,
+        "avg_train_return": -0.05293824304665029,
+        "oos_is": -0.3124135076694655,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512200",
+        "avg_test_return": -0.0022559239146962193,
+        "avg_train_return": 0.15510936724106095,
+        "oos_is": -0.014544085601163007,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512400",
+        "avg_test_return": 0.004691415174889709,
+        "avg_train_return": 0.02119344029793004,
+        "oos_is": 0.22136166233227922,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512480",
+        "avg_test_return": 0.035968600969725206,
+        "avg_train_return": 0.32026182939088327,
+        "oos_is": 0.1123099841093617,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512660",
+        "avg_test_return": 0.01038828222123523,
+        "avg_train_return": 0.005214790787914166,
+        "oos_is": 1.99208034295665,
+        "pass_rate": 0.06666666666666667,
+        "n_passed": 1,
+        "n_windows": 15
+      },
+      {
+        "code": "512800",
+        "avg_test_return": -0.015191021782972713,
+        "avg_train_return": -0.06291417331038852,
+        "oos_is": -0.2414562726275915,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512880",
+        "avg_test_return": 0.008558282814665715,
+        "avg_train_return": -0.06843992821777832,
+        "oos_is": 0.12504809747071843,
+        "pass_rate": 0.2,
+        "n_passed": 3,
+        "n_windows": 15
+      },
+      {
+        "code": "512980",
+        "avg_test_return": 0.00455864220132185,
+        "avg_train_return": 0.005136254779057555,
+        "oos_is": 0.8875420705197784,
+        "pass_rate": 0.26666666666666666,
+        "n_passed": 4,
+        "n_windows": 15
+      },
+      {
+        "code": "515050",
+        "avg_test_return": 0.05229157957094547,
+        "avg_train_return": 0.23124077063404716,
+        "oos_is": 0.22613477470934454,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      },
+      {
+        "code": "515070",
+        "avg_test_return": 0.010773462524096552,
+        "avg_train_return": -0.04374288602645054,
+        "oos_is": 0.2462906200926485,
+        "pass_rate": 0.26666666666666666,
+        "n_passed": 4,
+        "n_windows": 15
+      },
+      {
+        "code": "515650",
+        "avg_test_return": -0.010402494792829124,
+        "avg_train_return": -0.17335290528004002,
+        "oos_is": -0.06000761727081867,
+        "pass_rate": 0.2,
+        "n_passed": 3,
+        "n_windows": 15
+      },
+      {
+        "code": "515790",
+        "avg_test_return": -0.012893383170726006,
+        "avg_train_return": -0.12551553611927468,
+        "oos_is": -0.10272340436385265,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "520900",
+        "avg_test_return": 0.008742741007069363,
+        "avg_train_return": -0.07029574189820835,
+        "oos_is": 0.1243708476642764,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 1,
+        "n_windows": 3
+      },
+      {
+        "code": "588000",
+        "avg_test_return": 0.027475298638478363,
+        "avg_train_return": 0.2356141625585312,
+        "oos_is": 0.11661140544407196,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      }
+    ]
+  },
+  "V6_turnover_rate": {
+    "avg_oos_is": -0.22905908039312245,
+    "median_oos_is": -0.13525917164954013,
+    "avg_test_return": -0.00686142452389853,
+    "etfs_oos_gt_0.5": 0,
+    "etfs_pass_gt_0.5": 2,
+    "total_etfs": 15,
+    "detail": [
+      {
+        "code": "510300",
+        "avg_test_return": -0.028890690103902567,
+        "avg_train_return": -0.07839653702095462,
+        "oos_is": -0.36851997807225045,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512170",
+        "avg_test_return": -0.012910620117064417,
+        "avg_train_return": 0.04570799951501653,
+        "oos_is": -0.2824586561226087,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512200",
+        "avg_test_return": -0.029244194291870362,
+        "avg_train_return": -0.0802041934056713,
+        "oos_is": -0.3646217616571964,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512400",
+        "avg_test_return": 3.1975835616500824e-05,
+        "avg_train_return": -0.15847892335318384,
+        "oos_is": 0.00020176711792292996,
+        "pass_rate": 0.6666666666666666,
+        "n_passed": 4,
+        "n_windows": 6
+      },
+      {
+        "code": "512480",
+        "avg_test_return": 0.05823859160775219,
+        "avg_train_return": 0.21921145490472568,
+        "oos_is": 0.265673122023044,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      },
+      {
+        "code": "512660",
+        "avg_test_return": -0.0029159479263007586,
+        "avg_train_return": 0.03046214114654572,
+        "oos_is": -0.09572366933344785,
+        "pass_rate": 0.26666666666666666,
+        "n_passed": 4,
+        "n_windows": 15
+      },
+      {
+        "code": "512800",
+        "avg_test_return": -0.0288925270876374,
+        "avg_train_return": -0.10632544841572124,
+        "oos_is": -0.27173670572891145,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512880",
+        "avg_test_return": -0.017984822908819982,
+        "avg_train_return": -0.06396383113799815,
+        "oos_is": -0.2811717589276164,
+        "pass_rate": 0.2,
+        "n_passed": 3,
+        "n_windows": 15
+      },
+      {
+        "code": "512980",
+        "avg_test_return": -0.007379585147088401,
+        "avg_train_return": -0.09619449379274667,
+        "oos_is": -0.07671525527217694,
+        "pass_rate": 0.26666666666666666,
+        "n_passed": 4,
+        "n_windows": 15
+      },
+      {
+        "code": "515050",
+        "avg_test_return": -0.021035029247321202,
+        "avg_train_return": -0.0797119848267136,
+        "oos_is": -0.2638879121257536,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "515070",
+        "avg_test_return": 0.006193000270244772,
+        "avg_train_return": 0.06093490405615987,
+        "oos_is": 0.10163305196209174,
+        "pass_rate": 0.26666666666666666,
+        "n_passed": 4,
+        "n_windows": 15
+      },
+      {
+        "code": "515650",
+        "avg_test_return": -0.0091257066644772,
+        "avg_train_return": -0.08502060963122013,
+        "oos_is": -0.10733522970560047,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "515790",
+        "avg_test_return": -0.004980279363924496,
+        "avg_train_return": -0.0368202710632335,
+        "oos_is": -0.13525917164954013,
+        "pass_rate": 0.2,
+        "n_passed": 3,
+        "n_windows": 15
+      },
+      {
+        "code": "520900",
+        "avg_test_return": -0.02660446436352722,
+        "avg_train_return": -0.016053487442896957,
+        "oos_is": -1.6572389306784963,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 3
+      },
+      {
+        "code": "588000",
+        "avg_test_return": 0.022578931649842576,
+        "avg_train_return": 0.22294700465631082,
+        "oos_is": 0.10127488227370292,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      }
+    ]
+  },
+  "T9_dmi": {
+    "avg_oos_is": -0.2196942707583077,
+    "median_oos_is": -0.25643910525900976,
+    "avg_test_return": -0.049886359066582814,
+    "etfs_oos_gt_0.5": 3,
+    "etfs_pass_gt_0.5": 4,
+    "total_etfs": 15,
+    "detail": [
+      {
+        "code": "510300",
+        "avg_test_return": -0.05950170313432266,
+        "avg_train_return": -0.1856264318287252,
+        "oos_is": -0.32054542312823214,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512170",
+        "avg_test_return": -0.06892540209326196,
+        "avg_train_return": -0.27332918555286473,
+        "oos_is": -0.25216993184919534,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512200",
+        "avg_test_return": -0.10104868011689873,
+        "avg_train_return": -0.19274338959727721,
+        "oos_is": -0.524265347455144,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512400",
+        "avg_test_return": -0.054885007349556224,
+        "avg_train_return": -0.02280919811007685,
+        "oos_is": -2.406266414307158,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      },
+      {
+        "code": "512480",
+        "avg_test_return": 0.02078083532787724,
+        "avg_train_return": -0.02557371466477411,
+        "oos_is": 0.8125857193715114,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      },
+      {
+        "code": "512660",
+        "avg_test_return": -0.05129590960285911,
+        "avg_train_return": -0.258782909949872,
+        "oos_is": -0.19821985003876597,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "512800",
+        "avg_test_return": -0.07721132844926344,
+        "avg_train_return": -0.18768006807000268,
+        "oos_is": -0.41139865966195427,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512880",
+        "avg_test_return": -0.07969966512163955,
+        "avg_train_return": -0.31079372641368774,
+        "oos_is": -0.25643910525900976,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "512980",
+        "avg_test_return": -0.060946459662842976,
+        "avg_train_return": -0.23892314896025973,
+        "oos_is": -0.25508813159406435,
+        "pass_rate": 0.2,
+        "n_passed": 3,
+        "n_windows": 15
+      },
+      {
+        "code": "515050",
+        "avg_test_return": 0.058897432737137156,
+        "avg_train_return": -0.07468100333485052,
+        "oos_is": 0.7886534742048943,
+        "pass_rate": 0.6666666666666666,
+        "n_passed": 4,
+        "n_windows": 6
+      },
+      {
+        "code": "515070",
+        "avg_test_return": -0.03374952334642494,
+        "avg_train_return": -0.23329904219141057,
+        "oos_is": -0.14466207417489135,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 5,
+        "n_windows": 15
+      },
+      {
+        "code": "515650",
+        "avg_test_return": -0.09049885992943778,
+        "avg_train_return": -0.35028550630558236,
+        "oos_is": -0.2583574207334982,
+        "pass_rate": 0.06666666666666667,
+        "n_passed": 1,
+        "n_windows": 15
+      },
+      {
+        "code": "515790",
+        "avg_test_return": -0.10076032328188612,
+        "avg_train_return": -0.33918275151130445,
+        "oos_is": -0.2970679459168428,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "520900",
+        "avg_test_return": -0.05473252585368512,
+        "avg_train_return": -0.16432105768641067,
+        "oos_is": -0.33308284783643705,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 3
+      },
+      {
+        "code": "588000",
+        "avg_test_return": 0.005281733878321963,
+        "avg_train_return": 0.00694133943994818,
+        "oos_is": 0.7609098970041716,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      }
+    ]
+  },
+  "M5_roc": {
+    "avg_oos_is": 0.8358094567655373,
+    "median_oos_is": -0.2697222539812302,
+    "avg_test_return": -0.02737246011035088,
+    "etfs_oos_gt_0.5": 2,
+    "etfs_pass_gt_0.5": 1,
+    "total_etfs": 15,
+    "detail": [
+      {
+        "code": "510300",
+        "avg_test_return": -0.04764034126415043,
+        "avg_train_return": -0.1193754442385922,
+        "oos_is": -0.39907990766453677,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512170",
+        "avg_test_return": -0.06530576352122287,
+        "avg_train_return": -0.1201284458790935,
+        "oos_is": -0.5436328010682133,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512200",
+        "avg_test_return": -0.07298637079728416,
+        "avg_train_return": -0.13493825265515155,
+        "oos_is": -0.540887178847708,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512400",
+        "avg_test_return": -0.025594189156960434,
+        "avg_train_return": -0.08670660160120504,
+        "oos_is": -0.2951815511658195,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512480",
+        "avg_test_return": 0.024995195910078555,
+        "avg_train_return": 0.08859057075953074,
+        "oos_is": 0.2821428476618041,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512660",
+        "avg_test_return": -0.031727575225404384,
+        "avg_train_return": -0.1755024818108961,
+        "oos_is": -0.18078134792185357,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 5,
+        "n_windows": 15
+      },
+      {
+        "code": "512800",
+        "avg_test_return": -0.034707589713389685,
+        "avg_train_return": -0.11216927822662442,
+        "oos_is": -0.3094215302274408,
+        "pass_rate": 0.16666666666666666,
+        "n_passed": 1,
+        "n_windows": 6
+      },
+      {
+        "code": "512880",
+        "avg_test_return": -0.05836126943418604,
+        "avg_train_return": -0.16121827660386986,
+        "oos_is": -0.36200157118405235,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "512980",
+        "avg_test_return": -0.039448565116699814,
+        "avg_train_return": -0.16184941256684582,
+        "oos_is": -0.24373622672499393,
+        "pass_rate": 0.26666666666666666,
+        "n_passed": 4,
+        "n_windows": 15
+      },
+      {
+        "code": "515050",
+        "avg_test_return": 0.06945558934614808,
+        "avg_train_return": 0.13636885324911555,
+        "oos_is": 0.5093215033440823,
+        "pass_rate": 0.5,
+        "n_passed": 3,
+        "n_windows": 6
+      },
+      {
+        "code": "515070",
+        "avg_test_return": -0.006074858670359588,
+        "avg_train_return": -0.11294966084888682,
+        "oos_is": -0.053783770794026776,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 5,
+        "n_windows": 15
+      },
+      {
+        "code": "515650",
+        "avg_test_return": -0.045786995275157234,
+        "avg_train_return": -0.19641571202122315,
+        "oos_is": -0.2331126914643664,
+        "pass_rate": 0.06666666666666667,
+        "n_passed": 1,
+        "n_windows": 15
+      },
+      {
+        "code": "515790",
+        "avg_test_return": -0.03308064622903919,
+        "avg_train_return": -0.12264707765396789,
+        "oos_is": -0.2697222539812302,
+        "pass_rate": 0.26666666666666666,
+        "n_passed": 4,
+        "n_windows": 15
+      },
+      {
+        "code": "520900",
+        "avg_test_return": -0.06558565658197009,
+        "avg_train_return": -0.14732571080538173,
+        "oos_is": -0.4451745470864158,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 3
+      },
+      {
+        "code": "588000",
+        "avg_test_return": 0.021262134074334044,
+        "avg_train_return": -0.0013610210960491493,
+        "oos_is": 15.62219287860783,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      }
+    ]
+  },
+  "T7_ema": {
+    "avg_oos_is": -2.881165431303935,
+    "median_oos_is": -0.31280324440282614,
+    "avg_test_return": -0.032974370534049884,
+    "etfs_oos_gt_0.5": 0,
+    "etfs_pass_gt_0.5": 0,
+    "total_etfs": 15,
+    "detail": [
+      {
+        "code": "510300",
+        "avg_test_return": -0.054837235507454785,
+        "avg_train_return": -0.12070223031793688,
+        "oos_is": -0.4543183283607124,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512170",
+        "avg_test_return": -0.05781660135641677,
+        "avg_train_return": -0.09155366191000906,
+        "oos_is": -0.6315050665395177,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512200",
+        "avg_test_return": -0.06204062637489336,
+        "avg_train_return": -0.1356224538093504,
+        "oos_is": -0.45745099452415316,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512400",
+        "avg_test_return": -0.027094109240630493,
+        "avg_train_return": -0.0007085641630491338,
+        "oos_is": -38.23804625404363,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512480",
+        "avg_test_return": -0.012480208945823967,
+        "avg_train_return": -0.007609439639024292,
+        "oos_is": -1.6400956624743293,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "512660",
+        "avg_test_return": -0.031540564404006835,
+        "avg_train_return": -0.1662960688980007,
+        "oos_is": -0.18966512325286863,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "512800",
+        "avg_test_return": -0.05818793841875882,
+        "avg_train_return": -0.15480160469696957,
+        "oos_is": -0.3758871785125488,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 6
+      },
+      {
+        "code": "512880",
+        "avg_test_return": -0.05701116837734274,
+        "avg_train_return": -0.20615277772155427,
+        "oos_is": -0.27654814554255674,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "512980",
+        "avg_test_return": -0.04771622083232087,
+        "avg_train_return": -0.1101885567368386,
+        "oos_is": -0.4330415266830356,
+        "pass_rate": 0.2,
+        "n_passed": 3,
+        "n_windows": 15
+      },
+      {
+        "code": "515050",
+        "avg_test_return": 0.06862723748630921,
+        "avg_train_return": 0.13866123185382018,
+        "oos_is": 0.4949273605087946,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      },
+      {
+        "code": "515070",
+        "avg_test_return": 0.005969233656669644,
+        "avg_train_return": -0.06734245067416235,
+        "oos_is": 0.08863998260995709,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 5,
+        "n_windows": 15
+      },
+      {
+        "code": "515650",
+        "avg_test_return": -0.05189859182408815,
+        "avg_train_return": -0.19266655436181304,
+        "oos_is": -0.2693700107732584,
+        "pass_rate": 0.13333333333333333,
+        "n_passed": 2,
+        "n_windows": 15
+      },
+      {
+        "code": "515790",
+        "avg_test_return": -0.04769899540639096,
+        "avg_train_return": -0.1645192788930846,
+        "oos_is": -0.28992951906498987,
+        "pass_rate": 0.2,
+        "n_passed": 3,
+        "n_windows": 15
+      },
+      {
+        "code": "520900",
+        "avg_test_return": -0.056574085215546445,
+        "avg_train_return": -0.24344692500113532,
+        "oos_is": -0.23238775850334775,
+        "pass_rate": 0.0,
+        "n_passed": 0,
+        "n_windows": 3
+      },
+      {
+        "code": "588000",
+        "avg_test_return": -0.004315683250052937,
+        "avg_train_return": 0.013796798234276708,
+        "oos_is": -0.31280324440282614,
+        "pass_rate": 0.3333333333333333,
+        "n_passed": 2,
+        "n_windows": 6
+      }
+    ]
+  }
+}

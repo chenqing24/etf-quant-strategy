@@ -46,6 +46,15 @@ etf_reports/*.txt
 
 # 大型实验数据
 experiments_v7/
+experiments_v8/
+experiments_v8_sop/
+experiments_v9_recompute/
+
+# 测试缓存（二进制 pickle）
+.cache/
+
+# 实时生成报告（JSON）
+etf_reports/*.json
 
 # QwenPaw 配置文件（不应提交到项目）
 SOUL.md
