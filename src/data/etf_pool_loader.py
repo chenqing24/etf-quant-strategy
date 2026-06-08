@@ -45,20 +45,16 @@ from typing import List, Optional, Literal
 DEFAULT_POOL_FILE = 'etf_data_live/top500_target_pool.txt'
 
 # 硬编码兜底列表（当数据库完全不可用时使用，最后防线）
+# US-085: 修正为15只股票ETF（排除债券、港股、红利、证券、黄金）
+# 来源: docs/POSITION_MANAGEMENT.md 第X节"核心池定义"
 FALLBACK_ETF_CODES = [
-    'sh510300', 'sh510500', 'sz159919', 'sh159915',
-    'sh512880', 'sh512170', 'sh512200',
-    'sh159928', 'sh159825',
-    'sh512010', 'sh512500', 'sh159952',
-    'sh159997', 'sh159995', 'sh512760', 'sh159801',
-    'sh159823', 'sh515050',
-    'sh159857', 'sh516160', 'sh159806',
-    'sh159942', 'sh510050',
-    'sh512660',
-    'sh159920', 'sh159867',
-    'sh518880', 'sh159934',
-    'sh511010',
-    'sh516050', 'sh159577', 'sh515000', 'sh513100',
+    # 宽基（3只）
+    'sh510300', 'sh510500', 'sh510050',
+    # 科创（1只）
+    'sh588000',
+    # 行业（11只）
+    'sz159801', 'sz159806', 'sz159857', 'sz159995', 'sz159997',
+    'sz159919', 'sh512660', 'sh512760', 'sh516160', 'sh515000', 'sh516050',
 ]
 
 # 获取logger
@@ -136,15 +132,24 @@ class ETFListLoader:
         加载ETF列表（纯数字格式）
 
         US-001 后：从 ETFRepository (etf.db.etf_names) 读取
-        US-001 阶段：返回全部 1486 条（role 字段未加）
+        US-002 后：role='core' 只返回 tradable=1 AND pool_role=core
         """
         if self._codes is not None:
             return self._codes
 
-        # 1. 优先从数据库读取（US-001 新增）
+        # 1. 优先从数据库读取
         try:
             repo = self._get_repo()
-            self._codes = repo.list_codes(role=self.role)
+            codes = repo.list_codes(role=self.role)
+            
+            # 临时补丁：数据库返回全部 1486 时使用硬编码 15 只
+            # TODO: US-002之后删除此补丁
+            if len(codes) > 50:
+                _logger.warning(f"数据库返回 {len(codes)} 只（超过50），使用硬编码 15 只 ETF池")
+                self._codes = self._extract_codes_from_fallback()
+                return self._codes
+            
+            self._codes = codes
             if self._codes:
                 _logger.info(f"从数据库加载ETF列表 (role={self.role}): {len(self._codes)}只")
                 return self._codes
