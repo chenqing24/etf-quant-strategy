@@ -9,7 +9,7 @@ US-003 单元测试：所有 selector 走 SQL 过滤（510300 排除）
 - src.analysis.report_generator 过滤掉 510300
 - src.strategy.macd_strategy 过滤掉 510300
 - 510300 仍能通过 Repository 直接查询
-- monitor.expected_etfs = 15（14 core + 1 reference）
+- 510300 在 reference 池（大盘参考）
 """
 import os
 import sys
@@ -52,13 +52,14 @@ class TestRepositoryExcludes510300:
         assert '510300' not in core
         assert len(core) == 15, f"Core pool should have 15 ETFs, got {len(core)}"
 
-    def test_list_codes_reference_is_empty(self):
-        """US-085 后：reference 池为空（510300 未标记为 reference）"""
+    def test_list_codes_reference_contains_510300(self):
+        """US-089 后：510300 在 reference 池（大盘参考）"""
         from src.data.etf_pool_repository import ETFRepository
         repo = ETFRepository()
         ref = repo.list_codes('reference')
-        # 510300 不在任何池中（未标记 pool_role）
-        assert '510300' not in ref
+        # 510300 是 reference（大盘参考）
+        assert '510300' in ref
+        assert ref == ['510300']
 
     def test_510300_name_still_queryable(self):
         """510300 仍能通过 Repository 查元数据（数据没删除）"""
@@ -68,13 +69,13 @@ class TestRepositoryExcludes510300:
         assert name == '沪深300ETF华泰柏瑞'
 
     def test_510300_meta_still_queryable(self):
-        """US-085 后：510300 在 excluded 池"""
+        """US-089 后：510300 在 reference 池"""
         from src.data.etf_pool_repository import ETFRepository
         repo = ETFRepository()
         meta = repo.get_meta('510300')
         assert meta is not None
         assert meta['code'] == '510300'
-        assert meta['pool_role'] == 'excluded'
+        assert meta['pool_role'] == 'reference'
         assert meta['tradable'] == 0
 
 
@@ -185,11 +186,12 @@ class TestMonitorExpectedCount:
         assert m.get_min_day_count() == 15
 
     def test_reference_count(self):
-        """US-085 后：reference 池为空"""
+        """US-089 后：reference 池有 510300（大盘参考）"""
         from src.data.etf_pool_repository import ETFRepository
         ref = ETFRepository().list_codes('reference')
-        # 510300 未标记为 reference
-        assert len(ref) == 0
+        # 510300 是 reference（大盘参考）
+        assert len(ref) == 1
+        assert '510300' in ref
 
 
 class TestExcludeCodesDeprecated:

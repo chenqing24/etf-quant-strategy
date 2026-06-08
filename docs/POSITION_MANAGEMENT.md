@@ -252,14 +252,13 @@ config = StrategyConfig(
 |------|------|
 | 数量 | **15只** |
 | 类型 | A股股票ETF（排除债券、货币、QDII、商品） |
-| 来源 | `src/data/etf_pool_loader.py` 的 `FALLBACK_ETF_CODES` |
+| 来源 | `etf_names.pool_role='core'` (数据库) |
 | 文档 | `docs/POSITION_MANAGEMENT.md` |
 
 ### 9.2 核心池列表（15只）
 
 | 类别 | 代码 | 名称 |
 |------|------|------|
-| 宽基 | 510300 | 沪深300ETF |
 | 宽基 | 510500 | 中证500ETF |
 | 宽基 | 510050 | 上证50ETF |
 | 科创 | 588000 | 科创50ETF |
@@ -274,8 +273,15 @@ config = StrategyConfig(
 | 新能源车 | 516160 | 新能源车ETF |
 | 芯片 | 515000 | 芯片ETF |
 | 光伏 | 516050 | 光伏ETF |
+| 消费 | 159867 | 养殖ETF鹏华 |
 
-### 9.3 排除清单
+### 9.3 参考池（1只）
+
+| 类别 | 代码 | 名称 | 用途 |
+|------|------|------|------|
+| 宽基 | 510300 | 沪深300ETF | 大盘参考（用于市场状态判断，不参与交易） |
+
+### 9.4 排除清单
 
 | 类型 | 代码 | 原因 |
 |------|------|------|
@@ -285,28 +291,29 @@ config = StrategyConfig(
 | 证券 | 512170, 512200, 512880 | 周期性强 |
 | 黄金 | 518880, 159934 | 商品ETF |
 
-### 9.4 变更流程
+### 9.5 变更流程
 
 ```
 需要修改核心池时：
-1. 修改 docs/POSITION_MANAGEMENT.md 第9.2节
+1. 修改数据库 etf_names 表（pool_role 字段）
 2. 修改 src/data/etf_pool_loader.py 的 FALLBACK_ETF_CODES
-3. 更新 INDEX.md 的"文档资产清单"
-4. 运行测试验证（etf_pool_loader 测试）
-5. 提交 Git
+3. 更新 docs/POSITION_MANAGEMENT.md 第9.2节
+4. 更新 INDEX.md 的"文档资产清单"
+5. 运行测试验证（etf_pool_loader 测试）
+6. 提交 Git
 ```
 
-### 9.5 避免同类问题（教训85）
+### 9.6 避免同类问题（教训85）
 
 | 机制 | 说明 |
 |------|------|
 | **文档化** | 核心池定义必须写入 `POSITION_MANAGEMENT.md` |
-| **单一数据源** | FALLBACK_ETF_CODES 是唯一来源 |
+| **单一数据源** | `etf_names.pool_role` 是唯一来源 |
 | **变更检查** | SOP-02 增加"池定义变更检查清单" |
 | **回归测试** | 每次修改后运行 `ETFListLoader` 测试 |
 
 ---
 
-*文档版本: 1.1*
-*最后更新: 2026-06-08（增加核心池定义 US-085）*
+*文档版本: 1.2*
+*最后更新: 2026-06-08（修正 510300 为 reference）*
 *相关文档: SELECTION_RULES.md, PRD.md, INDEX.md*
