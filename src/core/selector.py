@@ -324,3 +324,7 @@ class Selector:
 
 
 __all__ = ['Selector']
+
+
+# 兼容旧 API
+ETFSelector = Selector

@@ -374,7 +374,7 @@ ETF总数: {len(pool)}只
                 latest = df_ind[df_ind['date'] == latest_date].iloc[0]
                 
                 # 7因子打分
-                from .selector import ETFSelector
+                from src.core.selector import ETFSelector
                 selector = ETFSelector()
                 score, reasons = selector.evaluate(df_ind, latest_date)
                 
