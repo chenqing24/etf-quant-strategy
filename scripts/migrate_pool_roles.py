@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-US-002 迁移脚本：etf_names 加 tradable + pool_role 字段（修正版）
+US-088 迁移脚本同步：更新 CORE_CODES + EXCLUDED_CODES
 
 设计决策：
 - 默认值采用保守策略：tradable=0, pool_role='unclassified'
-- 显式标注 14 core + 1 reference + ~30 excluded
-- 其余 1431 只保持 unclassified
+- 显式标注 15 core + 1 reference + ~11 excluded（按 SELECTION_RULES.md）
+- 其余 1449 只保持 unclassified
 
 执行流程：
 1. 备份 etf.db → .archive/pre-us002-<时间戳>/etf.db
 2. 执行 schema/migrations/003_add_tradable_pool_role.sql
-3. UPDATE 14 core（v9 池）
+3. UPDATE 15 core（当前核心池）
 4. UPDATE 510300 → reference
-5. UPDATE 港股/海外/红利/低波/债券/商品 → excluded
+5. UPDATE 港股/红利/证券类 → excluded（按 SELECTION_RULES.md 2.2）
 6. 验证：SELECT pool_role, COUNT(*) FROM etf_names GROUP BY pool_role
 
 幂等性：
@@ -35,42 +35,44 @@ DB_PATH = PROJECT_ROOT / 'etf_data_live' / 'etf.db'
 MIGRATION_FILE = PROJECT_ROOT / 'schema/migrations/003_add_tradable_pool_role.sql'
 ARCHIVE_DIR = PROJECT_ROOT.parent / '.archive'
 
-# v9 池 14 只核心（与 top500_target_pool.txt 一致，除 510300）
+# 当前核心池 15 只（US-088 更新）
 CORE_CODES = [
-    '588000',  # 科创50ETF华夏
-    '512480',  # 证券ETF国泰
-    '512880',  # 证券ETF华泰柏瑞
-    '512170',  # 医疗ETF华宝
-    '520900',  # 红利低波ETF
-    '515790',  # 光伏ETF华夏
-    '515050',  # 通信ETF华夏
-    '512400',  # 有色金属ETF
+    '159801',  # 纳斯达克ETF
+    '159806',  # 日经225ETF
+    '159857',  # 创业板100ETF
+    '159867',  # 教育ETF
+    '159919',  # 沪深300ETF
+    '159995',  # 券商ETF
+    '159997',  # 消费ETF
+    '510050',  # 上证50ETF
+    '510500',  # 中证500ETF
     '512660',  # 军工ETF
-    '515070',  # 人工智能ETF
-    '512800',  # 银行ETF华宝
-    '512980',  # 传媒ETF
-    '512200',  # 房地产ETF
-    '515650',  # 消费ETF
+    '512760',  # 芯片ETF
+    '515000',  # 科技ETF
+    '516050',  # 消费电子ETF
+    '516160',  # 新能源ETF
+    '588000',  # 科创50ETF
 ]
 
 # 510300 标为大盘参考
 REFERENCE_CODES = ['510300']
 
-# 港股/海外/红利/低波/债券/商品（来自 src/utils/config.py exclude_codes）
+# 按 SELECTION_RULES.md 2.2 排除规则（US-088 更新）
 EXCLUDED_CODES = [
-    # 港股/境外
-    '159825', '159902', '159915', '159928', '159952', '159997',
-    '159920', '159867', '513360', '513050',
-    # 红利/分红
-    '510880', '513880', '512590', '515460', '513500',
-    # 低波/价值
-    '159916', '159934',
-    # 强周期证券（与 v9 池重叠的不动）
-    '512690', '159815',
-    # 债券
-    '511010', '511880', '511990', '511220', '511210',
-    # 商品
-    '518880', '518800', '159912',
+    # 港股通ETF (5只)
+    '159825',  # 港股通50
+    '159902',  # 港股通100
+    '159915',  # 港股通中小盘
+    '159928',  # 港股通创新药
+    '159952',  # 港股通消费
+    # 红利/养老ETF (3只)
+    '513360',  # 红利ETF
+    '515050',  # 养老产业ETF
+    '513080',  # 红利低波动ETF
+    # 证券/金融ETF (3只)
+    '512880',  # 证券ETF
+    '512170',  # 券商ETF
+    '512200',  # 金融ETF
 ]
 
 
