@@ -232,4 +232,71 @@ etf_strategy/
 
 ---
 
-*文档版本: v3.0 | 更新: 2026-05-31*
+---
+
+## 十一、文档资产清单（单一真相源）
+
+> 管理所有文档的"用途、使用者、状态"
+> 审查频率：每周
+> **每次新增/删除/修改文档后，必须更新此清单**
+
+### 活跃文档（被代码引用）
+
+| 文件 | 用途 | 使用者 | 状态 | 最后审查 |
+|------|------|--------|------|----------|
+| `SOP_01_DATA_MINING.md` | 因子挖掘标准流程 | 所有因子研究任务 | 活跃 | 2026-06-07 |
+| `SOP_02_REFACTOR_DEV.md` | 重构开发流程 | 所有开发任务 | 活跃 | 2026-06-07 |
+| `SOP_03_EXPERIMENT.md` | 实验执行流程 | 所有实验任务 | 活跃 | 2026-06-07 |
+| `SOP_04_DATA_SOURCE.md` | 数据源接入流程 | 数据采集任务 | 活跃 | 2026-06-07 |
+| `SOP_05_DUAL_MODE.md` | 双模式决策 | 每日决策 | 活跃 | 2026-06-07 |
+| `SOP_06_MANUAL_TRADE.md` | 手动交易记录 | decision_cli, tracker | 活跃 | 2026-06-07 |
+| `SOP_07_V9_MISSION_INTEGRATION.md` | v9因子集成 | US-026 | 活跃 | 2026-06-07 |
+| `SOP_INDEX.md` | SOP文档索引 | 所有SOP入口 | 活跃 | 2026-06-07 |
+| `POSITION_MANAGEMENT.md` | 持仓参数 + 核心池定义（15只） | etf_pool_loader.py, selector.py | 活跃 | 2026-06-08 |
+| `TRADE_RECORD_SPEC.md` | 交易字段规范 | tracker.py | 活跃 | 2026-06-07 |
+| `ARCHITECTURE_DECOUPLING.md` | 架构解耦设计 | 架构重构 | 活跃 | 2026-06-07 |
+| `CHANGELOG.md` | 变更记录 | 所有开发 | 活跃 | 2026-06-07 |
+| `EVALUATION_SYSTEM_V7.md` | 评估系统设计 | 回测引擎 | 活跃 | 2026-06-07 |
+| `DATA_SOURCE_REFERENCE.md` | 数据源参考 | 数据采集 | 活跃 | 2026-06-07 |
+| `MODULES.md` | 模块依赖 | 架构设计 | 活跃 | 2026-06-07 |
+| `TOOLS.md` | 工具清单 | 所有任务 | 活跃 | 2026-06-07 |
+
+### 归档文档（不再维护）
+
+| 文件 | 状态 | 归档日期 | 原因 |
+|------|------|----------|------|
+| `archive/architecture/*` | 废弃 | 2026-06-07 | 已被 ARCHITECTURE_DECOUPLING.md 替代 |
+| `archive/experiment_reports/*` | 废弃 | 2026-06-07 | 实验报告归档 |
+| `archive/top3/*` | 废弃 | 2026-06-07 | 已被 v7/v8 实验报告替代 |
+| `archive/plans/*` | 废弃 | 2026-06-07 | 计划文档归档 |
+
+### 文档 metadata 头部（示例）
+
+每个活跃文档头部应包含：
+
+```yaml
+---
+file: SOP-06.md
+purpose: 标准化用户手动记录 ETF 买卖操作
+used_by:
+  - src/cli/decision.py
+  - src/trade/tracker.py
+status: active
+last_review: 2026-06-07
+review_interval: weekly
+---
+```
+
+### 审查流程
+
+```
+1. 每次新增/删除/修改文档 → 更新此清单
+2. 每周一 → 检查"声明的使用者"是否还引用
+3. 状态变更（活跃 → 废弃）→ 移动到 archive/ 目录
+4. AI 会话开始 → 读取此清单 → 知道哪些文档在用
+```
+
+---
+
+*文档版本: v4.0 | 更新: 2026-06-07*
+*变更：增加第十一章"文档资产清单"，SOP-02 要求更新此清单*
