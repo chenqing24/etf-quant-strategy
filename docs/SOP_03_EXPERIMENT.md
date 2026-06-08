@@ -1,3 +1,16 @@
+```yaml
+---
+file: SOP_03_EXPERIMENT.md
+purpose: 实验设计→执行→分析（批量因子/组合测试）
+used_by:
+  - 所有实验任务
+  - US-026 批量实验
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # SOP-03: 实验执行标准流程
 
 > 来源: EXECUTION_PLAN_V2.md / 实验执行经验

@@ -1,3 +1,16 @@
+```yaml
+---
+file: DATA_SOURCE_REFERENCE.md
+purpose: 数据源接口参考（17个接口测试结果：13通过4失败）
+used_by:
+  - 数据采集任务
+  - AKTools部署
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # ETF量化系统 - 数据源完整文档 v4.0
 
 > 更新: 2026-05-30 | 基于全面测试验证

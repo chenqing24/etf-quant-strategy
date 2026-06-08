@@ -1,3 +1,16 @@
+```yaml
+---
+file: EVALUATION_SYSTEM_V7.md
+purpose: ETF量化策略评价体系（v7版本：IC/IR/盈利期望/最大回撤/夏普）
+used_by:
+  - 回测引擎
+  - 实验验证
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # ETF量化策略完整评价体系 v7.0
 
 _版本: 7.0_
