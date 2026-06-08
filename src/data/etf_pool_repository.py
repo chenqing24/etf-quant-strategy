@@ -47,9 +47,8 @@ class ETFRepository:
         """
         返回指定角色的纯数字代码列表（无 sh/sz 前缀）
 
-        US-001 阶段：etf_names 还没有 pool_role 字段，
-        所以无论传什么 role 都返回全部 1486 条。
-        US-002 之后会按 tradable/pool_role 过滤。
+        US-002 完成：etf_names 现在有 pool_role 字段，
+        会按 tradable/pool_role 过滤。
         """
         sql, params = self._build_list_codes_sql(role)
         try:

@@ -137,17 +137,10 @@ class ETFListLoader:
         if self._codes is not None:
             return self._codes
 
-        # 1. 优先从数据库读取
+        # 1. 从数据库读取（US-002 完成：支持 pool_role 过滤）
         try:
             repo = self._get_repo()
             codes = repo.list_codes(role=self.role)
-            
-            # 临时补丁：数据库返回全部 1486 时使用硬编码 15 只
-            # TODO: US-002之后删除此补丁
-            if len(codes) > 50:
-                _logger.warning(f"数据库返回 {len(codes)} 只（超过50），使用硬编码 15 只 ETF池")
-                self._codes = self._extract_codes_from_fallback()
-                return self._codes
             
             self._codes = codes
             if self._codes:
