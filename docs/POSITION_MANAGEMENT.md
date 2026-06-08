@@ -1,5 +1,19 @@
 # ETF量化策略 - 仓位管理文档
 
+```yaml
+---
+file: POSITION_MANAGEMENT.md
+purpose: 仓位管理规则 + 核心池定义
+used_by:
+  - src/data/etf_pool_loader.py（FALLBACK_ETF_CODES）
+  - src/selector.py（候选池过滤）
+  - src/cli/decision.py（决策引擎）
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 ## 1. 概述
 
 本文档记录ETF量化策略的仓位管理规则，包括持仓数量、权重分配、调仓逻辑等。
@@ -228,6 +242,71 @@ config = StrategyConfig(
 
 ---
 
-*文档版本: 1.0*
-*最后更新: 2025-05-24*
-*相关文档: SELECTION_RULES.md, PRD.md*
+## 9. 核心池定义（US-085）
+
+> **重要**: 核心池是策略候选ETF的唯一数据源，必须保持一致。
+
+### 9.1 池定义
+
+| 属性 | 值 |
+|------|------|
+| 数量 | **15只** |
+| 类型 | A股股票ETF（排除债券、货币、QDII、商品） |
+| 来源 | `src/data/etf_pool_loader.py` 的 `FALLBACK_ETF_CODES` |
+| 文档 | `docs/POSITION_MANAGEMENT.md` |
+
+### 9.2 核心池列表（15只）
+
+| 类别 | 代码 | 名称 |
+|------|------|------|
+| 宽基 | 510300 | 沪深300ETF |
+| 宽基 | 510500 | 中证500ETF |
+| 宽基 | 510050 | 上证50ETF |
+| 科创 | 588000 | 科创50ETF |
+| 芯片 | 159801 | 芯片ETF华夏 |
+| 新能源 | 159806 | 新能源ETF |
+| 光伏 | 159857 | 光伏ETF |
+| 军工 | 159995 | 军工ETF |
+| 电子 | 159997 | 电子ETF |
+| 消费 | 159919 | 消费ETF |
+| 军工 | 512660 | 军工ETF国泰 |
+| 国防 | 512760 | 国防ETF |
+| 新能源车 | 516160 | 新能源车ETF |
+| 芯片 | 515000 | 芯片ETF |
+| 光伏 | 516050 | 光伏ETF |
+
+### 9.3 排除清单
+
+| 类型 | 代码 | 原因 |
+|------|------|------|
+| 债券 | 511010 | 不是股票ETF |
+| 港股 | 159825, 159928, 159952, 159915 | 非A股 |
+| 红利 | 515050 | 动量策略冲突 |
+| 证券 | 512170, 512200, 512880 | 周期性强 |
+| 黄金 | 518880, 159934 | 商品ETF |
+
+### 9.4 变更流程
+
+```
+需要修改核心池时：
+1. 修改 docs/POSITION_MANAGEMENT.md 第9.2节
+2. 修改 src/data/etf_pool_loader.py 的 FALLBACK_ETF_CODES
+3. 更新 INDEX.md 的"文档资产清单"
+4. 运行测试验证（etf_pool_loader 测试）
+5. 提交 Git
+```
+
+### 9.5 避免同类问题（教训85）
+
+| 机制 | 说明 |
+|------|------|
+| **文档化** | 核心池定义必须写入 `POSITION_MANAGEMENT.md` |
+| **单一数据源** | FALLBACK_ETF_CODES 是唯一来源 |
+| **变更检查** | SOP-02 增加"池定义变更检查清单" |
+| **回归测试** | 每次修改后运行 `ETFListLoader` 测试 |
+
+---
+
+*文档版本: 1.1*
+*最后更新: 2026-06-08（增加核心池定义 US-085）*
+*相关文档: SELECTION_RULES.md, PRD.md, INDEX.md*
