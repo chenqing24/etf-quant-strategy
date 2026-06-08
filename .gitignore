@@ -63,3 +63,13 @@ PROFILE.md
 MEMORY.md
 HEARTBEAT.md
 *.skill.md*.bak
+
+# US-094: 临时文件/未跟踪文件
+etf_performance.json
+etf_positions.json
+etf_trades.json
+analyze_v8_sop.py
+data/deduplicate_etf_info.json
+docs/ARCHITECTURE.md
+etf_quant_decision_skill.md
+tests/integration/test_datafacade_integration.py
