@@ -73,3 +73,16 @@ data/deduplicate_etf_info.json
 docs/ARCHITECTURE.md
 etf_quant_decision_skill.md
 tests/integration/test_datafacade_integration.py
+
+# US-095: src/ 根目录历史遗留 stub（已被 src.core/.data/.analysis/ 替代）
+# 这些是早期版本的简单副本，已被正式包化模块替代，0 引用
+src/data_loader.py
+src/dingtalk_sender.py
+src/indicator.py
+src/industry_mapping.py
+src/notifier.py
+src/performance_analyzer.py
+src/report_builder.py
+src/report_generator.py
+src/scenario_adapter.py
+src/trade_tracker.py
