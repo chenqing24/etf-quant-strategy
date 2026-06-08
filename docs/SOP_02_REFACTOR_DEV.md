@@ -1,6 +1,3 @@
-# SOP-02: 重构与修复开发流程
-
-```yaml
 ---
 file: SOP_02_REFACTOR_DEV.md
 purpose: 问题发现→根因分析→方案设计→开发→验证→交付
@@ -11,7 +8,9 @@ status: active
 last_review: 2026-06-07
 review_interval: weekly
 ---
-```
+
+# SOP-02: 重构与修复开发流程
+
 
 > 来源: REFACTOR_RETROSPECTIVE.md / 复盘v7/v8经验
 > 版本: 1.1 | 创建: 2026-05-31 | 更新: 2026-06-07 (增加文档更新同步检查)

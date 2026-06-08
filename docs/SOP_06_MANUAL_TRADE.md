@@ -1,6 +1,3 @@
-# SOP-06: 用户手动交易记录
-
-```yaml
 ---
 file: SOP_06_MANUAL_TRADE.md
 purpose: 标准化用户手动记录 ETF 买卖操作
@@ -11,7 +8,9 @@ status: active
 last_review: 2026-06-07
 review_interval: weekly
 ---
-```
+
+# SOP-06: 用户手动交易记录
+
 
 **版本**：v2.1  
 **作者**：福猫管家  

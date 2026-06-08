@@ -1,6 +1,3 @@
-# ETF量化策略 - 仓位管理文档
-
-```yaml
 ---
 file: POSITION_MANAGEMENT.md
 purpose: 仓位管理规则 + 核心池定义
@@ -12,7 +9,9 @@ status: active
 last_review: 2026-06-08
 review_interval: weekly
 ---
-```
+
+# ETF量化策略 - 仓位管理文档
+
 
 ## 1. 概述
 
