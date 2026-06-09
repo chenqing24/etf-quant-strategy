@@ -64,6 +64,11 @@ from src.utils.execution_source import (
     add_source_argument,
     get_source_from_argv,
 )
+from src.utils.safety_gate import (
+    require_force,
+    add_dry_run_argument,
+    SafetyGateError,
+)
 
 logger = get_logger()
 
@@ -703,6 +708,12 @@ def main():
     parser.add_argument('--webhook', type=str, help='钉钉Webhook URL')
     parser.add_argument('--silent', action='store_true', help='静默模式（不发送钉钉，由cron响应代替）')
     parser.add_argument('--force', action='store_true', help='强制覆盖今日报告（默认今日已生成则跳过）')
+    # ── US-002: Safety Gate（--force-target + --dry-run） ─────────────
+    parser.add_argument('--force-target', type=str, default=None,
+                       help='Severe 操作的对象名确认（如 --force-target=positions，'
+                            '对应 --mode=trade --action=clear 类破坏性操作）')
+    add_dry_run_argument(parser)
+    # ─────────────────────────────────────────────────────────────
     parser.add_argument('--simple', action='store_true', help='简版输出（钉钉APP专用）')
     parser.add_argument('--full', action='store_true', help='完整报告（PC端专用）')
     parser.add_argument('--output', choices=['silent', 'brief', 'normal', 'verbose'],
@@ -766,13 +777,48 @@ def main():
         engine._simple_mode = True
     if args.force:
         engine.force = True
-    
+
+    # US-002: Safety Gate 参数注入到 engine
+    engine._execution_source = execution_source
+    engine._dry_run = args.dry_run
+    engine._force_target = args.force_target
+
     # 执行
     if args.mode == 'daily':
         engine.run_daily_check()
     elif args.mode == 'eval':
+        # US-002: eval 模式含钉钉推送，是 Moderate 破坏性操作（dingtalk_send）
+        try:
+            require_force(
+                "dingtalk_send",
+                source=execution_source,
+                force=args.force,
+                dry_run=args.dry_run,
+                target=None,
+            )
+        except SafetyGateError as e:
+            logger.error(str(e))
+            sys.exit(2)
+        if args.dry_run:
+            logger.info("[dry-run] eval 模式 dry-run 完成，未实际推送钉钉")
+            sys.exit(0)
         engine.run_full_evaluation(silent=args.silent, simple=args.simple)
     elif args.mode == 'trade':
+        # US-002: trade 写入是 Moderate 破坏性操作（trade_record）
+        try:
+            require_force(
+                "trade_record",
+                source=execution_source,
+                force=args.force,  # 复用现有 --force 标志
+                dry_run=args.dry_run,
+                target=None,
+            )
+        except SafetyGateError as e:
+            logger.error(str(e))
+            sys.exit(2)
+        if args.dry_run:
+            logger.info("[dry-run] trade 模式 dry-run 完成，未实际执行")
+            sys.exit(0)
         if args.code and args.action and args.price and args.quantity:
             engine.execute_trade(
                 args.code, args.action, args.price, args.quantity,

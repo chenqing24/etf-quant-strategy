@@ -54,6 +54,12 @@ from src.utils.execution_source import (
     add_source_argument,
     get_source_from_argv,
 )
+from src.utils.safety_gate import (
+    require_force,
+    add_force_argument,
+    add_dry_run_argument,
+    SafetyGateError,
+)
 
 
 # 工作日判断（A股周一至周五）
@@ -532,6 +538,10 @@ def main():
     parser = argparse.ArgumentParser(description='数据质量监控')
     parser.add_argument('--json', action='store_true', help='输出JSON格式')
     parser.add_argument('--dingtalk', action='store_true', help='发送到钉钉')
+    # ── US-002: Safety Gate ───────────────────────────────────
+    add_force_argument(parser)  # 钉钉推送是 Moderate 操作
+    add_dry_run_argument(parser)
+    # ─────────────────────────────────────────────────────────────
     parser.add_argument('--db-path', type=str, help='数据库路径')
 
     # ── US-001: 执行源标识（audit / 未来门禁） ──────────────────
@@ -554,6 +564,23 @@ def main():
     
     # 告警或警告时发送到钉钉
     if args.dingtalk and (report.get('alerts') or report.get('warnings')):
+        # US-002: 钉钉推送是 Moderate 破坏性操作（dingtalk_send）
+        try:
+            require_force(
+                "dingtalk_send",
+                source=execution_source,
+                force=args.force,
+                dry_run=args.dry_run,
+                target=None,
+            )
+        except SafetyGateError as e:
+            print(str(e))
+            sys.exit(2)
+
+        if args.dry_run:
+            print("\n[dry-run] 将发送钉钉通知，未实际执行")
+            sys.exit(0)
+
         try:
             from src.notify.dingtalk import DingTalkSender
             sender = DingTalkSender(mode='qwenpaw')
