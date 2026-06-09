@@ -59,6 +59,11 @@ from src.notify.notifier import SignalNotifier
 from src.data.manager import DataFacade
 from src.notify.scenario import ScenarioAdapter, notify_decision
 from src.utils.logger import init_logger, get_logger, OutputLevel
+from src.utils.execution_source import (
+    ExecutionSource,
+    add_source_argument,
+    get_source_from_argv,
+)
 
 logger = get_logger()
 
@@ -730,9 +735,18 @@ def main():
     parser.add_argument('--is_real', type=int, choices=[0, 1], default=0,
                        help='是否实盘（1=实盘, 0=模拟，默认 0）。实盘必传 1（US-016 设计）')
     # ─────────────────────────────────────────────────────────────
-    
+
+    # ── US-001: 执行源标识（audit / 未来门禁） ──────────────────
+    add_source_argument(parser)
+    # ─────────────────────────────────────────────────────────────
+
     args = parser.parse_args()
-    
+
+    # US-001: 解析执行源（argv 缺省 → 走 get_source_from_argv 默认 MANUAL）
+    execution_source = get_source_from_argv() if args.source is None else ExecutionSource(args.source)
+    logger.info(f"🔖 execution_source = {execution_source.value} "
+                f"(argv={args.source!r}, env={os.environ.get('EXECUTION_SOURCE')!r})")
+
     # 初始化日志器
     output_level = OutputLevel[args.output.upper()]
     init_logger(output_level)
