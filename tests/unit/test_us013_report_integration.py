@@ -159,12 +159,19 @@ class TestE2ERun:
     """端到端：CLI 跑通"""
 
     def test_eval_silent_runs(self):
-        """eval --silent 端到端跑通"""
+        """eval --silent端到端跑通
+
+        US-002 后：eval 含钉钉推送（dingtalk_send, MODERATE 级），
+        Safety Gate 对 DIALOG/MANUAL源强制要求 --force。
+        E2E 测试模拟 cron自动化场景（--source=cron跳过 --force 检查），
+        验证 CLI端到端可执行；强制/确认逻辑由 test_safety_gate.py单独覆盖。
+        """
         result = subprocess.run(
-            ['python', '-m', 'src.cli.decision', '-m', 'eval', '--silent'],
+            ['python', '-m', 'src.cli.decision', '-m', 'eval', '--silent',
+            '--source=cron'],
             capture_output=True, text=True, cwd=str(ROOT), timeout=120
         )
-        assert result.returncode == 0, f"eval 失败: {result.stderr}"
+        assert result.returncode ==0, f"eval失败: {result.stderr}"
 
     def test_history_runs(self):
         """history 模式跑通"""
