@@ -12,7 +12,7 @@
       {
         "content": [
           {
-            "text": "cd /home/qwenpaw/.qwenpaw/workspaces/default/etf_strategy && python scripts/monitor_position_deviation.py --dingtalk",
+            "text": "cd /home/qwenpaw/.qwenpaw/workspaces/default/etf_strategy && python scripts/monitor_position_deviation.py --dingtalk --source=cron",
             "type": "text"
           }
         ],
