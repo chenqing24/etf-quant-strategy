@@ -59,6 +59,11 @@ from src.notify.notifier import SignalNotifier
 from src.data.manager import DataFacade
 from src.notify.scenario import ScenarioAdapter, notify_decision
 from src.utils.logger import init_logger, get_logger, OutputLevel
+from src.utils.execution_source import (
+    ExecutionSource,
+    add_source_argument,
+    get_source_from_argv,
+)
 
 logger = get_logger()
 
@@ -530,12 +535,19 @@ class ETFDecisionEngine:
         market_mode_regime = self._detect_market_mode()
         market_mode = self._regime_to_label(market_mode_regime)
         
+        # 获取持仓数量（US-024: 修复钉钉通知"空仓"误判）
+        hold_count = 0
+        if self.tracker:
+            account = self.tracker.get_account_summary()
+            hold_count = account.get('hold_count', 0)
+        
         results = {
             'action': action,
             'code': new_code,
             'name': new_name,
             'price': new_price,
             'market_mode': market_mode,  # v9 双模式标注
+            'hold_count': hold_count,     # US-024: 持仓数量（修复空仓误判）
             'realtime': realtime,
             'indicators': indicators,
             'data_timestamp': data_timestamp,
@@ -680,7 +692,7 @@ class ETFDecisionEngine:
 def main():
     parser = argparse.ArgumentParser(description='ETF量化决策引擎')
     parser.add_argument('--mode', '-m', 
-                       choices=['daily', 'eval', 'trade', 'history', 'perf', 'update_pool', 'export', 'account'],
+                       choices=['daily', 'eval', 'trade', 'history', 'perf', 'update_pool', 'export', 'account', 'sync', 'check'],
                        default='daily', help='运行模式')
     parser.add_argument('--capital', '-c', type=float, default=20000,
                        help='本金')
@@ -723,9 +735,18 @@ def main():
     parser.add_argument('--is_real', type=int, choices=[0, 1], default=0,
                        help='是否实盘（1=实盘, 0=模拟，默认 0）。实盘必传 1（US-016 设计）')
     # ─────────────────────────────────────────────────────────────
-    
+
+    # ── US-001: 执行源标识（audit / 未来门禁） ──────────────────
+    add_source_argument(parser)
+    # ─────────────────────────────────────────────────────────────
+
     args = parser.parse_args()
-    
+
+    # US-001: 解析执行源（argv 缺省 → 走 get_source_from_argv 默认 MANUAL）
+    execution_source = get_source_from_argv() if args.source is None else ExecutionSource(args.source)
+    logger.info(f"🔖 execution_source = {execution_source.value} "
+                f"(argv={args.source!r}, env={os.environ.get('EXECUTION_SOURCE')!r})")
+
     # 初始化日志器
     output_level = OutputLevel[args.output.upper()]
     init_logger(output_level)
@@ -779,6 +800,80 @@ def main():
         from src.etf_pool_updater import ETFListUpdater
         updater = ETFListUpdater('etf_pool.json')
         updater.run_full_update()
+    elif args.mode == 'sync':
+        # 数据一致性检查 + 钉钉提醒
+        _run_data_sync(engine, args)
+    elif args.mode == 'check':
+        # 仅检查，不发送钉钉
+        _run_data_check(engine, args)
+
+
+# ── 数据一致性检查（预防 US-014 再次发生）─────────────────────────
+
+def _run_data_check(engine: ETFDecisionEngine, args):
+    """仅检查数据一致性，不发送钉钉"""
+    print("\n📋 数据一致性检查")
+    print("=" * 40)
+    
+    result = engine.tracker.check_data_consistency()
+    print(result['summary'])
+    
+    if result['issues']:
+        print("\n问题详情：")
+        for issue in result['issues']:
+            print(f"  [{issue['type']}] {issue['code']}: {issue['msg']}")
+        
+        print("\n快速修复命令：")
+        print("  python -m src.cli.decision -m sync --fix")
+    else:
+        print("\n✅ 无需修复")
+
+
+def _run_data_sync(engine: ETFDecisionEngine, args):
+    """数据一致性检查 + 钉钉提醒 + 修复"""
+    print("\n📋 数据一致性检查 + 同步")
+    print("=" * 40)
+    
+    result = engine.tracker.check_data_consistency()
+    print(result['summary'])
+    
+    if result['issues']:
+        print("\n问题详情：")
+        for issue in result['issues']:
+            print(f"  [{issue['type']}] {issue['code']}: {issue['msg']}")
+        
+        # 钉钉提醒
+        print("\n📤 发送钉钉提醒...")
+        try:
+            from src.notify.dingtalk import DingTalkSender
+            sender = DingTalkSender()
+            
+            msg_parts = [f"⚠️ 数据不一致，发现 {len(result['issues'])} 个问题："]
+            for issue in result['issues'][:5]:  # 最多显示5条
+                msg_parts.append(f"• {issue['code']}: {issue['msg']}")
+            if len(result['issues']) > 5:
+                msg_parts.append(f"• ...还有 {len(result['issues']) - 5} 条")
+            msg_parts.append("")
+            msg_parts.append("请回复 '同步' 或手动执行：")
+            msg_parts.append("  python -m src.cli.decision -m sync --fix")
+            
+            sender.send_text("\n".join(msg_parts))
+            print("✅ 钉钉提醒已发送")
+        except Exception as e:
+            print(f"⚠️ 钉钉发送失败: {e}")
+            print("请手动检查数据一致性")
+    else:
+        print("\n✅ 数据一致，无需修复")
+    
+    # 自动刷新 pnl_pct
+    print("\n🔄 刷新持仓盈亏...")
+    updated = engine.tracker.refresh_positions_pnl()
+    print(f"   更新了 {updated} 条记录")
+    
+    # 验证
+    print("\n📊 当前持仓状态：")
+    for pos in engine.tracker.load_positions():
+        print(f"   {pos.code} {pos.name}: {pos.pnl_pct/100:+.2%} ({pos.hold_days}天)")
 
 
 # ── US-005: 新增 CLI 子命令实现 ─────────────────────────────────

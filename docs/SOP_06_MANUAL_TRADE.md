@@ -1,9 +1,21 @@
+---
+file: SOP_06_MANUAL_TRADE.md
+purpose: 标准化用户手动记录 ETF 买卖操作
+used_by:
+  - src/cli/decision.py
+  - src/trade/tracker.py
+status: active
+last_review: 2026-06-07
+review_interval: weekly
+---
+
 # SOP-06: 用户手动交易记录
 
-**版本**：v2.0  
+
+**版本**：v2.1  
 **作者**：福猫管家  
 **创建日期**：2026-06-02  
-**更新日期**：2026-06-02（v2.0 增强）  
+**更新日期**：2026-06-07（v2.1 增加数据一致性检查）  
 **参考来源**：
 - [mransbro/tradingjournal](https://github.com/mransbro/tradingjournal) — 基础交易字段
 - [leionion/ai-trading-journal-audit-tool](https://github.com/leionion/ai-trading-journal-audit-tool) — NormalizedTrade schema、session_analyzer.py
@@ -246,19 +258,55 @@ python -m src.cli.decision -m eval --days 30
 
 ---
 
-## 9. 相关文档
+## 9. 数据一致性检查（预防 US-014）
+
+每次用户实盘操作后，系统应自动检测数据一致性：
+
+```bash
+# 每日检查（Heartbeat）
+python -m src.cli.decision -m check
+
+# 检查 + 钉钉提醒 + 刷新
+python -m src.cli.decision -m sync
+```
+
+**检查项目**：
+
+| 问题类型 | 说明 | 严重性 |
+|----------|------|--------|
+| `phantom_holding` | positions 显示持仓但交易历史无买入 | ⚠️ 需修复 |
+| `missing_position` | positions 显示空但交易历史有净买入 | ⚠️ 需修复 |
+| `quantity_mismatch` | positions.qty vs 交易历史净持仓不一致 | ⚠️ 需修复 |
+| `duplicate_trade` | 同日同标的多条交易记录 | ⚠️ 需修复 |
+| `oversell` | 当前持仓卖空 | ❌ P0 立即修复 |
+
+**钉钉提醒格式**：
+```
+⚠️ 数据不一致，发现 2 个问题：
+• 515050: positions.qty=2600 vs 交易历史净持仓=3000
+• 515070: 缺少买入记录
+
+请回复 '同步' 或手动执行：
+  python -m src.cli.decision -m sync --fix
+```
+
+---
+
+## 10. 相关文档
 
 | 文档 | 说明 |
 |------|------|
 | `SOP_INDEX.md` | SOP索引 |
 | `TRADE_RECORD_SPEC.md` | 交易记录字段规范 |
 | `src/trade/tracker.py` | 交易追踪器实现 |
+| `src/cli/decision.py` | CLI 入口（含 sync/check） |
 
 ---
 
-## 10. 更新记录
+## 11. 更新记录
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
 | v1.0 | 2026-06-02 | 初始版本 |
 | v2.0 | 2026-06-02 | 增加信号快照、情绪、时段字段 |
+| v2.1 | 2026-06-07 | 增加第九章"数据一致性检查"（US-014 复盘） |

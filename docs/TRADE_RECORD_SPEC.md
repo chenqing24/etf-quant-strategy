@@ -1,3 +1,16 @@
+```yaml
+---
+file: TRADE_RECORD_SPEC.md
+purpose: 交易记录字段规范（决策上下文、模型参数、快照引用）
+used_by:
+  - tracker.py
+  - decision_cli
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # 交易记录规范（TRADE_RECORD_SPEC）
 
 > 版本: 1.0 | 生效: 2026-06-01

@@ -12,7 +12,7 @@
       {
         "content": [
           {
-            "text": "cd /home/qwenpaw/.qwenpaw/workspaces/default/etf_strategy && python scripts/monitoring/monitor_top3_volatility.py",
+            "text": "cd /home/qwenpaw/.qwenpaw/workspaces/default/etf_strategy && python scripts/monitoring/monitor_top3_volatility.py --source=cron",
             "type": "text"
           }
         ],

@@ -1,3 +1,16 @@
+```yaml
+---
+file: SOP_05_DUAL_MODE.md
+purpose: v9双模式决策（趋势市信号=趋势市，空仓=震荡市）
+used_by:
+  - 每日决策
+  - 趋势市/震荡市判断
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # SOP-05 双模式量化交易策略
 
 > 版本：v1.2

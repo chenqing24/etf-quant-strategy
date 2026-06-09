@@ -121,13 +121,34 @@ class ETFReportGenerator:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def load_data(self) -> str:
-        """加载数据，返回最新日期"""
-        loader = DataLoader()
+        """加载数据，返回最新日期
+        
+        使用 DataFacade统一数据入口（教训81-82）：
+        - 冷数据：历史日K线（SQLite）
+        - 热数据：今日实时价格（JSON）
+        - 融合：历史数据 + 实时价格覆盖最后一条
+        """
+        from src.data.manager import DataFacade
+        
+        # 使用 DataFacade 获取所有 ETF 代码
+        facade = DataFacade(self.data_dir)
+        codes = facade.cold.get_code_list()
+        
+        # 使用 DataFacade.get_merged() 获取融合数据
+        self.data = {}
+        for code in codes:
+            df = facade.get_merged(code, days=300)
+            if len(df) >= 100:  # 降低门槛以便加载更多ETF
+                self.data[code] = df
+        
         if getattr(self, '_simple_mode', False):
-            loader._simple_mode = True
             from src.core.selector import Selector
             Selector._simple_mode = True
-        self.data = loader.load(min_rows=100)  # 降低门槛以便加载更多ETF
+        
+        if not self.data:
+            self.latest_date = datetime.now().strftime('%Y-%m-%d')
+            return self.latest_date
+        
         self.latest_date = max(df['date'].max() for df in self.data.values())
         
         # 预计算所有ETF的技术指标 (供报告使用RSI等)
@@ -146,12 +167,16 @@ class ETFReportGenerator:
         selector = Selector()
         indicator = Indicator()
 
-        # US-003: 单一过滤入口 = Repository (tradable AND core)
-        # 不再依赖 StrategyConfig().exclude_codes（已 deprecated）
-        repo = ETFRepository()
-        tradable_pool = set(repo.list_codes("core"))  # 14 只 core
-        # 也加入 reference（如 510300）但要单独标记
-        reference_pool = set(repo.list_codes("reference"))  # [510300]
+        # US-003: 单一过滤入口 = ETFListLoader（动态池）
+        # 使用 ETFListLoader.get_tencent_codes() 获取正确的池定义
+        from src.data.etf_pool_loader import ETFListLoader
+        loader = ETFListLoader()
+        tencent_codes = loader.get_tencent_codes()  # 带 sh/sz 前缀
+        # 转换为纯数字代码
+        tradable_pool = set(code.replace('sh', '').replace('sz', '') for code in tencent_codes)
+        
+        # reference池（只读）
+        reference_pool = {'510300'}  # 沪深300 作为大盘参考
 
         # US-010: 已持仓过滤集合
         held_codes = getattr(self, 'held_codes', set()) or set()
@@ -161,10 +186,10 @@ class ETFReportGenerator:
         filtered_by_held_scores = []  # US-017: 持仓也计算分数（不入选 Top N, 但报告展示）
         for code, df in self.data.items():
             # US-003 单一过滤入口:
-            # 1. 不在 core 池（包括 510300 等 reference / excluded / unclassified）→ 跳过
+            # 1. 不在动态池中 → 跳过
             if code not in tradable_pool:
                 continue
-            # 2. 是大盘参考（510300）→ 跳过（虽然 core 池已经过滤了，这里是双保险）
+            # 2. 是大盘参考（510300）→ 跳过
             if code in reference_pool:
                 continue
             if len(df) < 60:

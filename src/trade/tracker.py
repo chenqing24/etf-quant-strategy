@@ -361,6 +361,59 @@ class TradeTracker:
             conn.commit()
         finally:
             conn.close()
+
+    # ── P1-1: 实时更新 pnl_pct / hold_days / current_price ────────
+    
+    def refresh_positions_pnl(self) -> int:
+        """
+        刷新所有持仓的 pnl_pct / hold_days / current_price
+        
+        Returns:
+            更新了多少条记录
+        """
+        from datetime import date
+        positions = self.load_positions()
+        if not positions:
+            return 0
+        
+        updated = 0
+        today = date.today()
+        conn = self._get_conn()
+        try:
+            for pos in positions:
+                if pos.status not in ('HOLDING', 'PENDING', 'REBALANCING'):
+                    continue
+                
+                # 1. 计算 hold_days
+                entry_date = date.fromisoformat(pos.entry_date)
+                hold_days = (today - entry_date).days
+                
+                # 2. 获取实时价格
+                try:
+                    rt = self._fetch_realtime_data(pos.code)
+                    current_price = rt.get('price', 0.0) or 0.0
+                except Exception:
+                    current_price = pos.current_price or 0.0
+                
+                # 3. 计算 pnl_pct
+                if pos.entry_price > 0 and current_price > 0:
+                    pnl_pct = (current_price - pos.entry_price) / pos.entry_price * 100
+                else:
+                    pnl_pct = 0.0
+                
+                # 4. 更新数据库
+                conn.execute("""
+                    UPDATE positions
+                    SET current_price = ?, pnl_pct = ?, hold_days = ?, updated_at = datetime('now')
+                    WHERE code = ?
+                """, (current_price, pnl_pct, hold_days, pos.code))
+                updated += 1
+            
+            conn.commit()
+        finally:
+            conn.close()
+        
+        return updated
     
     # ── US-005: 实时数据获取 ────────────────────────────────────
     
@@ -587,6 +640,15 @@ class TradeTracker:
         # 检查通过后才入库（事务原子性）
         self.save_trade(trade)
 
+        # US-095 守卫: is_real=0 纸面交易不入 positions（避免污染账户视图）
+        # 原因: 510300 paper 仓位污染 positions，导致 cash 虚减
+        # 注意: trade_history 仍保留（is_paper 可追溯）
+        if is_real == 0:
+            _logger = logging.getLogger(__name__)
+            _logger.info(f"record_buy 纸面交易: {code} - 跳过 positions 更新")
+            self._audit(code, 'EMPTY', 'HOLDING_PAPER', f"纸面买入 {quantity}股 @ {price} (不入 positions)")
+            return trade
+
         # 更新持仓
         positions = self._rebuild_positions_from_trades()  # US-024: 真相源
         new_pos = Position(
@@ -638,6 +700,41 @@ class TradeTracker:
         # US-005 旧顺序: load_positions (脏数据) → save_trade → can_sell → 失败 return None
         # US-024 新顺序: can_sell (真相源) → 失败抛异常 → 通过才 save_trade
         # 关键: can_sell 用 _rebuild_positions_from_trades（US-024 bug #2）
+        # US-095 守卫: is_real=0 纸面交易不进 can_sell（避免对不存在的 paper 仓位做检查）
+        if is_real == 0:
+            _logger = logging.getLogger(__name__)
+            sell_qty = quantity or 0
+            # US-095: 自动获取名称（与 record_buy 保持一致）
+            from src.utils.industry import INDUSTRY_MAPPING
+            sell_name = INDUSTRY_MAPPING.get(code, code)
+            trade = TradeRecord(
+                date=datetime.now().strftime('%Y-%m-%d'),
+                code=code,
+                name=sell_name,
+                action='sell',
+                price=price,
+                quantity=sell_qty,
+                amount=price * sell_qty,
+                reason='纸面卖出',
+                actual_pnl=actual_pnl,
+                realtime_price=price,
+                price_deviation=0.0,
+                rsi_14=0.0,
+                day_change_pct=0.0,
+                score=0,
+                emotion=emotion,
+                session=session,
+                is_real=is_real,
+                model=model,
+                strategy=strategy,
+                evaluation=evaluation,
+                snapshot_ref=snapshot_ref,
+            )
+            self.save_trade(trade)
+            _logger.info(f"record_sell 纸面交易: {code} - 跳过 positions 更新")
+            self._audit(code, 'HOLDING_PAPER', 'EMPTY', f"纸面卖出 {sell_qty}股 @ {price} (不入 positions)")
+            return trade
+
         ok, reason, pos = self.can_sell(code, quantity)
         if not ok or pos is None:
             _logger = logging.getLogger(__name__)
@@ -715,7 +812,6 @@ class TradeTracker:
                 self._audit(code, 'CLOSING', 'EMPTY', f"已卖出 @ {price}, pnl={actual_pnl_partial}")
 
             return trade
-        return None
     
     # ── US-005: 查询接口 ─────────────────────────────────────────
     
@@ -865,6 +961,10 @@ class TradeTracker:
         sell_records = {}  # code -> [(date, quantity), ...]
 
         for trade in trades:
+            # US-095 守卫: is_real=0 纸面交易不进入重建（避免污染 active 持仓列表）
+            if trade.is_real == 0:
+                continue
+
             if trade.action == 'buy':
                 if trade.code not in buy_records:
                     buy_records[trade.code] = {
@@ -903,8 +1003,11 @@ class TradeTracker:
                 # 原因: 510300 在 selector/report_generator 中已被排除，
                 # 若 trade_history 残留脏数据（含 510300 买入），get_holdings() 会
                 # 误判为"已持仓"，导致 new buy 被改成"持仓"。
-                if is_reference:
-                    continue
+                # 
+                # 临时补丁（教训81-82）：pool_role 字段缺失导致 reference_pool=全部1486
+                # TODO: US-002完成后恢复此检查
+                # if is_reference:
+                #     continue
                 is_legacy = legacy_holdings.get(code, 0)  # US-015: 从原 positions 读
                 # US-024: 重建持仓的 is_real = 任何一笔 buy is_real=1 则为 1
                 # （保守处理：只要有实盘买入就标实盘持仓）
@@ -1302,3 +1405,127 @@ class TradeTracker:
             'hold_count': len(holdings),
             'max_holdings': max_holdings,
         }
+
+    # ── 数据一致性检查（预防 US-014 再次发生）───────────────────────
+    
+    def check_data_consistency(self) -> dict:
+        """
+        检查 positions vs trade_history 一致性
+        
+        Returns:
+            {
+                'ok': bool,                           # 是否一致
+                'issues': [                           # 发现的问题列表
+                    {'type': str, 'code': str, 'msg': str},
+                    ...
+                ],
+                'summary': str                        # 人类可读摘要
+            }
+        """
+        issues = []
+        
+        # 1. 从 trade_history 重建"真相源"持仓
+        conn = self._get_conn()
+        try:
+            trades = conn.execute("""
+                SELECT code, action, SUM(quantity) as qty
+                FROM trade_history WHERE is_real=1
+                GROUP BY code, action
+            """).fetchall()
+            
+            trade_summary = {}
+            for code, action, qty in trades:
+                if code not in trade_summary:
+                    trade_summary[code] = {'buy': 0, 'sell': 0}
+                trade_summary[code][action] = qty
+            
+            # 2. 对比 positions 表
+            positions = conn.execute("SELECT code, quantity, status FROM positions WHERE is_real=1").fetchall()
+            
+            for code, pos_qty, status in positions:
+                trade_info = trade_summary.get(code, {'buy': 0, 'sell': 0})
+                net_qty = trade_info['buy'] - trade_info['sell']
+                
+                if status == 'HOLDING' and net_qty <= 0:
+                    issues.append({
+                        'type': 'phantom_holding',
+                        'code': code,
+                        'msg': f'{code} positions=HOLDING 但交易历史净持仓={net_qty}'
+                    })
+                elif status == 'EMPTY' and net_qty > 0:
+                    issues.append({
+                        'type': 'missing_position',
+                        'code': code,
+                        'msg': f'{code} positions=EMPTY 但交易历史净持仓={net_qty}'
+                    })
+                elif status == 'HOLDING' and pos_qty != net_qty:
+                    issues.append({
+                        'type': 'quantity_mismatch',
+                        'code': code,
+                        'msg': f'{code} positions.qty={pos_qty} vs trade_history净持仓={net_qty}'
+                    })
+        finally:
+            conn.close()
+        
+        # 3. 检查异常交易记录
+        conn = self._get_conn()
+        try:
+            # 重复买入（同日同标的）
+            rows = conn.execute("""
+                SELECT date, code, action, COUNT(*) as cnt
+                FROM trade_history
+                WHERE is_real=1
+                GROUP BY date, code, action
+                HAVING cnt > 1
+            """).fetchall()
+            for date, code, action, cnt in rows:
+                issues.append({
+                    'type': 'duplicate_trade',
+                    'code': code,
+                    'msg': f'{date} {code} {action} 有{cnt}条重复记录'
+                })
+            
+            # 卖空检测（仅检查当前持仓，不检查历史已平仓）
+            # 获取当前持仓代码
+            current_codes = set(r[0] for r in conn.execute(
+                "SELECT code FROM positions WHERE status IN ('HOLDING', 'PENDING', 'REBALANCING')"
+            ).fetchall())
+            
+            for code in current_codes:
+                sell_qty = conn.execute(
+                    "SELECT SUM(quantity) FROM trade_history WHERE code=? AND action='sell' AND is_real=1",
+                    (code,)
+                ).fetchone()[0] or 0
+                buy_qty = conn.execute(
+                    "SELECT SUM(quantity) FROM trade_history WHERE code=? AND action='buy' AND is_real=1",
+                    (code,)
+                ).fetchone()[0] or 0
+                if sell_qty > buy_qty:
+                    issues.append({
+                        'type': 'oversell',
+                        'code': code,
+                        'msg': f'{code} 卖出>{buy_qty}（可能卖空）'
+                    })
+        finally:
+            conn.close()
+        
+        ok = len(issues) == 0
+        summary = "✅ 数据一致" if ok else f"⚠️ 发现 {len(issues)} 个问题"
+        
+        return {'ok': ok, 'issues': issues, 'summary': summary}
+    
+    def get_consistency_report(self) -> str:
+        """生成人类可读的一致性报告"""
+        result = self.check_data_consistency()
+        
+        if result['ok']:
+            return "✅ 数据一致，无需修复"
+        
+        lines = [f"⚠️ 发现 {len(result['issues'])} 个问题："]
+        for issue in result['issues']:
+            lines.append(f"  [{issue['type']}] {issue['code']}: {issue['msg']}")
+        lines.append("")
+        lines.append("快速修复命令：")
+        lines.append("  python -m src.cli.decision -m sync --check")
+        
+        return "\n".join(lines)

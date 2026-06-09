@@ -62,9 +62,15 @@ class ReportBuilder:
         # 钉钉换行规则：行尾加2个空格
         def ln(text): return text + "  " if text else text
         
-        # 市场模式标签（v9 双模式）
+        # 市场模式标签（v9 双模式 + US-024: 修复空仓误判）
+        hold_count = results.get('hold_count', 0)
         mode_emoji = "📈" if market_mode == "趋势市" else "📊"
-        mode_desc = "趋势市" if market_mode == "趋势市" else "震荡市(空仓)"
+        if market_mode == "趋势市":
+            mode_desc = f"趋势市({hold_count}持仓)"
+        elif hold_count > 0:
+            mode_desc = f"震荡市({hold_count}持仓)"
+        else:
+            mode_desc = "震荡市(空仓)"
         
         lines = [
             ln(f"## {mode_emoji} ETF量化决策 {msg_time}"),

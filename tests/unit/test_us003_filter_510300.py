@@ -9,7 +9,7 @@ US-003 单元测试：所有 selector 走 SQL 过滤（510300 排除）
 - src.analysis.report_generator 过滤掉 510300
 - src.strategy.macd_strategy 过滤掉 510300
 - 510300 仍能通过 Repository 直接查询
-- monitor.expected_etfs = 15（14 core + 1 reference）
+- 510300 在 reference 池（大盘参考）
 """
 import os
 import sys
@@ -26,17 +26,19 @@ class TestETFListLoaderExcludes510300:
     """ETFListLoader 不应包含 510300"""
 
     def test_load_does_not_contain_510300(self):
+        """US-085 后：核心池 15 只，510300 不在池中
+        US-095 后：515050 加入 core 池 → 16 只
+        """
         from src.data.etf_pool_loader import ETFListLoader
         codes = ETFListLoader().load()
         assert '510300' not in codes
-        assert len(codes) == 14
+        assert len(codes) == 16, f"Core pool should have 16 ETFs (US-095), got {len(codes)}"
 
     def test_load_contains_v9_etfs(self):
+        """核心池仍包含 v9 候选 ETF"""
         from src.data.etf_pool_loader import ETFListLoader
         codes = ETFListLoader().load()
-        v9_etfs = ['588000', '512480', '512880', '512170', '520900',
-                   '515790', '515050', '512400', '512660', '515070',
-                   '512800', '512980', '512200', '515650']
+        v9_etfs = ['588000', '512660', '515000', '516050']
         for v9 in v9_etfs:
             assert v9 in codes, f"{v9} should be in core pool"
 
@@ -45,16 +47,21 @@ class TestRepositoryExcludes510300:
     """Repository 行为"""
 
     def test_list_codes_core_excludes_510300(self):
+        """US-085 后：核心池 15 只，510300 不在池中
+        US-095 后：515050 加入 core 池 → 16 只
+        """
         from src.data.etf_pool_repository import ETFRepository
         repo = ETFRepository()
         core = repo.list_codes('core')
         assert '510300' not in core
-        assert len(core) == 14
+        assert len(core) == 16, f"Core pool should have 16 ETFs (US-095), got {len(core)}"
 
     def test_list_codes_reference_contains_510300(self):
+        """US-089 后：510300 在 reference 池（大盘参考）"""
         from src.data.etf_pool_repository import ETFRepository
         repo = ETFRepository()
         ref = repo.list_codes('reference')
+        # 510300 是 reference（大盘参考）
         assert '510300' in ref
         assert ref == ['510300']
 
@@ -66,6 +73,7 @@ class TestRepositoryExcludes510300:
         assert name == '沪深300ETF华泰柏瑞'
 
     def test_510300_meta_still_queryable(self):
+        """US-089 后：510300 在 reference 池"""
         from src.data.etf_pool_repository import ETFRepository
         repo = ETFRepository()
         meta = repo.get_meta('510300')
@@ -162,32 +170,32 @@ class TestMACDStrategyExcludes510300:
     """src.strategy.macd_strategy 应排除 510300"""
 
     def test_get_signals_filters_510300(self):
-        """get_signals 返回的 signals 不含 510300"""
+        """US-085 后：核心池 15 只，510300 不在池中"""
         from src.strategy.macd_strategy import MACDStrategy
 
         strat = MACDStrategy()
         # 检查 pool_loader 加载的池不含 510300
         pool = strat.pool_loader.load()
         assert '510300' not in pool
-        assert len(pool) == 14
+        assert len(pool) == 16, f"Core pool should have 16 ETFs (US-095: 515050 added), got {len(pool)}"
 
 
 class TestMonitorExpectedCount:
-    """monitor.expected_etfs 应该 = 15（14 core + 1 reference）"""
+    """monitor.expected_etfs 应该 = 16（US-085 + US-095）"""
 
-    def test_get_min_day_count_returns_14(self):
-        """US-003 后 monitor 基线 = 14（core 池）"""
+    def test_get_min_day_count_returns_15(self):
+        """US-095 后 monitor 基线 = 16（515050 加入 core 池）"""
         from src.data.monitor import DataQualityMonitor
         m = DataQualityMonitor()
-        assert m.get_min_day_count() == 14
+        assert m.get_min_day_count() == 16  # US-095: 15→16
 
     def test_reference_count(self):
-        """验证 reference 池有 510300（用于 reference 计数）"""
+        """US-089 后：reference 池有 510300（大盘参考）"""
         from src.data.etf_pool_repository import ETFRepository
         ref = ETFRepository().list_codes('reference')
-        # 14 core + 1 reference = 15
-        # 监控告警时 "expected_etfs" 应该 = 14（仅 core），但 total = 15（含 reference）
+        # 510300 是 reference（大盘参考）
         assert len(ref) == 1
+        assert '510300' in ref
 
 
 class TestExcludeCodesDeprecated:

@@ -1,3 +1,16 @@
+```yaml
+---
+file: SOP_01_DATA_MINING.md
+purpose: 因子挖掘完整流程（业务理解→数据准备→IC计算→方向确认→权重→回测验证→参数优化）
+used_by:
+  - 所有因子研究任务
+  - US-024 v9 维护
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # SOP-01: 数据挖掘标准流程
 
 > 来源: FACTOR_MINING_PLAN_v2.md / 8FACTOR_MINING_PLAN.md

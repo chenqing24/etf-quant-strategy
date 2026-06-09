@@ -33,6 +33,11 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.constants import DATA_DIR
+from src.utils.execution_source import (
+    ExecutionSource,
+    add_source_argument,
+    get_source_from_argv,
+)
 
 # 默认路径
 DEFAULT_DB_PATH = os.path.join(DATA_DIR, 'etf.db')
@@ -195,16 +200,24 @@ class SQLiteBackupManager:
 
 def main():
     parser = argparse.ArgumentParser(description='SQLite备份管理')
-    parser.add_argument('--type', choices=['daily', 'weekly', 'manual'], 
+    parser.add_argument('--type', choices=['daily', 'weekly', 'manual'],
                         default='daily', help='备份类型')
     parser.add_argument('--restore', type=str, help='从备份恢复')
     parser.add_argument('--list', action='store_true', help='列出所有备份')
     parser.add_argument('--status', action='store_true', help='查看备份状态')
     parser.add_argument('--db-path', type=str, help='数据库路径')
     parser.add_argument('--backup-dir', type=str, help='备份目录')
-    
+
+    # ── US-001: 执行源标识（audit / 未来门禁） ──────────────────
+    add_source_argument(parser)
+    # ─────────────────────────────────────────────────────────────
+
     args = parser.parse_args()
-    
+
+    # US-001: 解析执行源（argv 缺省 → 走 get_source_from_argv 默认 MANUAL）
+    execution_source = get_source_from_argv() if args.source is None else ExecutionSource(args.source)
+    print(f"🔖 execution_source = {execution_source.value}")
+
     manager = SQLiteBackupManager(
         db_path=args.db_path,
         backup_dir=args.backup_dir

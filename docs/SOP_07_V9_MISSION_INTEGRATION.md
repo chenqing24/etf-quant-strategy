@@ -1,3 +1,16 @@
+```yaml
+---
+file: SOP_07_V9_MISSION_INTEGRATION.md
+purpose: v9 mission 新因子集成（W4/W3/W2等）
+used_by:
+  - US-026 v9因子集成
+  - 因子集成任务
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # SOP-07：v9 Mission 因子集成标准流程
 
 **版本**：v1.0

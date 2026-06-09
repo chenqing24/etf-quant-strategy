@@ -12,7 +12,7 @@
       {
         "content": [
           {
-            "text": "cd /home/qwenpaw/.qwenpaw/workspaces/default/etf_strategy && python scripts/auto_disable_monitor_when_normal.py",
+            "text": "cd /home/qwenpaw/.qwenpaw/workspaces/default/etf_strategy && python scripts/auto_disable_monitor_when_normal.py --source=cron",
             "type": "text"
           }
         ],

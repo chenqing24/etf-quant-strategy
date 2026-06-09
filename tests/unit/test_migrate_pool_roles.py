@@ -63,7 +63,9 @@ def test_migration_creates_columns(backup_etf_db):
 
 
 def test_migration_labels_14_core(backup_etf_db):
-    """迁移后应该有 14 只 core（v9 池）"""
+    """迁移后应该有 16 只 core（US-002:14 → US-085:15 → US-095:16）
+    US-095: +515050 通信ETF华夏（误标"养老产业ETF"已修正）
+    """
     subprocess.run(
         [sys.executable, 'scripts/migrate_pool_roles.py'],
         cwd=ROOT, capture_output=True, text=True, timeout=30
@@ -73,7 +75,7 @@ def test_migration_labels_14_core(backup_etf_db):
     try:
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM etf_names WHERE pool_role = 'core' AND tradable = 1")
-        assert cur.fetchone()[0] == 14
+        assert cur.fetchone()[0] == 16  # US-095: 14→15→16
     finally:
         conn.close()
 
@@ -98,7 +100,9 @@ def test_migration_labels_510300_as_reference(backup_etf_db):
 
 
 def test_migration_labels_excluded(backup_etf_db):
-    """迁移后应该有 ~22 只 excluded（27 - 5 与 v9 池重叠）"""
+    """迁移后应该有 12 只 excluded（US-002 13 - US-095 移除 515050 = 12）
+    移除原因: 515050 不是"养老产业ETF"而是"通信ETF华夏"（fundgz验证）
+    """
     subprocess.run(
         [sys.executable, 'scripts/migrate_pool_roles.py'],
         cwd=ROOT, capture_output=True, text=True, timeout=30
@@ -109,13 +113,13 @@ def test_migration_labels_excluded(backup_etf_db):
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM etf_names WHERE pool_role = 'excluded'")
         cnt = cur.fetchone()[0]
-        assert 20 <= cnt <= 30, f"expected ~22 excluded, got {cnt}"
+        assert cnt == 12, f"expected 12 excluded (US-095), got {cnt}"
     finally:
         conn.close()
 
 
 def test_migration_unclassified_count(backup_etf_db):
-    """未显式标注的应该保持 unclassified"""
+    """未显式标注的应该保持 untracked（US-002 改名为 untracked）"""
     subprocess.run(
         [sys.executable, 'scripts/migrate_pool_roles.py'],
         cwd=ROOT, capture_output=True, text=True, timeout=30
@@ -124,12 +128,11 @@ def test_migration_unclassified_count(backup_etf_db):
     conn = sqlite3.connect(str(DB_PATH))
     try:
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM etf_names WHERE pool_role = 'unclassified'")
+        cur.execute("SELECT COUNT(*) FROM etf_names WHERE pool_role = 'untracked'")
         cnt = cur.fetchone()[0]
-        # US-008 后：14 + 1 + 1 (legacy_holding) + ~22 + unclassified = 1486
+        # US-002 后: 16 core + 1 ref + 12 excluded + 39 legacy_holding + untracked = 1486
         cur.execute("SELECT COUNT(*) FROM etf_names")
         total = cur.fetchone()[0]
-        # US-008: legacy_holding 角色（159611）也算 categorized
         cur.execute("SELECT COUNT(*) FROM etf_names WHERE pool_role IN ('core', 'reference', 'excluded', 'legacy_holding')")
         categorized = cur.fetchone()[0]
         assert cnt == total - categorized
@@ -155,7 +158,7 @@ def test_migration_idempotent(backup_etf_db):
 
 
 def test_repository_after_migration(backup_etf_db):
-    """迁移后 Repository 行为正确"""
+    """迁移后 Repository 行为正确（US-095: core=16, excluded=12）"""
     subprocess.run(
         [sys.executable, 'scripts/migrate_pool_roles.py'],
         cwd=ROOT, capture_output=True, text=True, timeout=30
@@ -164,20 +167,20 @@ def test_repository_after_migration(backup_etf_db):
     from src.data.etf_pool_repository import ETFRepository
     repo = ETFRepository()
 
-    # 1. core = 14
+    # 1. core = 16 (US-002:14 → US-085:15 → US-095:16)
     core = repo.list_codes('core')
-    assert len(core) == 14
+    assert len(core) == 16
     assert '588000' in core
-    assert '512480' in core
+    assert '515050' in core  # US-095: 通信ETF华夏
     assert '510300' not in core  # 510300 在 reference
 
     # 2. reference = ['510300']
     ref = repo.list_codes('reference')
     assert ref == ['510300']
 
-    # 3. excluded = ~22
+    # 3. excluded = 12 (US-002:13 → US-095:12)
     exc = repo.list_codes('excluded')
-    assert 20 <= len(exc) <= 30
+    assert len(exc) == 12
 
     # 4. all = 1486
     assert len(repo.all_codes()) == 1486

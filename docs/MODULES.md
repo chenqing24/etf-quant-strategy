@@ -1,3 +1,16 @@
+```yaml
+---
+file: MODULES.md
+purpose: 模块依赖关系（职责、接口、依赖）
+used_by:
+  - 架构设计
+  - 重构决策
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # 模块说明
 
 > 描述每个模块的职责、接口和依赖关系

@@ -1,3 +1,16 @@
+```yaml
+---
+file: ARCHITECTURE_DECOUPLING.md
+purpose: 回测引擎解耦改造（US-009），热冷数据分离
+used_by:
+  - 架构重构
+  - 数据层设计
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # 回测引擎解耦改造（US-009）
 
 **Story ID**: US-009

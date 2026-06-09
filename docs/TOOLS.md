@@ -1,3 +1,15 @@
+```yaml
+---
+file: TOOLS.md
+purpose: 项目中所有可用工具索引（按用途分类）
+used_by:
+  - 所有任务（工具定位）
+status: active
+last_review: 2026-06-08
+review_interval: weekly
+---
+```
+
 # 📚 ETF量化系统 - 工具清单
 
 > 本文件索引项目中所有可用工具，按用途分类

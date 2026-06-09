@@ -82,23 +82,29 @@ class TestETFListLoader(TestCase):
         # US-001 后：池文件已废弃，加载由数据库接管
         loader = ETFListLoader()
         codes = loader.load()
-        self.assertIn('512880', codes)
+        self.assertIn('588000', codes)
     
     def test_load_with_comments(self):
-        # US-002 后: 池大小变为 14（v9 核心池）
+        # US-085 后: 池大小变为 15（核心池）
+        # US-095 后: 515050 (通信ETF华夏) 加入 core 池 → 16 只
+        # 原因: 515050 实际是通信ETF（fundgz验证），不是养老产业ETF
+        #       用户实盘持仓 515050，需要在核心池中
         loader = ETFListLoader()
         codes = loader.load()
-        self.assertEqual(len(codes), 14)
-    
+        self.assertEqual(len(codes), 16)  # US-095: 15→16
+
     def test_to_tencent_codes(self):
-        # US-002 后: 14 只转腾讯格式（不含 510300，510300 是 reference）
+        # US-085 后: 15 只转腾讯格式（不含 510300，510300 是 excluded）
+        # US-095 后: 16 只（含 515050）
         loader = ETFListLoader()
         tencent_codes = loader.get_tencent_codes()
-        self.assertEqual(len(tencent_codes), 14)
-        
-        # 510300 不在 core 池
+        self.assertEqual(len(tencent_codes), 16)  # US-095: 15→16
+
+        # 510300 不在 core 池（reference）
         self.assertNotIn('sh510300', tencent_codes)
-        # 588000（v9 核心池第一只）应该在
+        # 515050 在 core 池（US-095 修复）
+        self.assertIn('sh515050', tencent_codes)
+        # 588000（核心池）应该在
         self.assertIn('sh588000', tencent_codes)
 
 
