@@ -49,6 +49,11 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.constants import DATA_DIR, DB_NAME
+from src.utils.execution_source import (
+    ExecutionSource,
+    add_source_argument,
+    get_source_from_argv,
+)
 
 
 # 工作日判断（A股周一至周五）
@@ -528,9 +533,17 @@ def main():
     parser.add_argument('--json', action='store_true', help='输出JSON格式')
     parser.add_argument('--dingtalk', action='store_true', help='发送到钉钉')
     parser.add_argument('--db-path', type=str, help='数据库路径')
-    
+
+    # ── US-001: 执行源标识（audit / 未来门禁） ──────────────────
+    add_source_argument(parser)
+    # ─────────────────────────────────────────────────────────────
+
     args = parser.parse_args()
-    
+
+    # US-001: 解析执行源（argv 缺省 → 走 get_source_from_argv 默认 MANUAL）
+    execution_source = get_source_from_argv() if args.source is None else ExecutionSource(args.source)
+    print(f"🔖 execution_source = {execution_source.value}")
+
     monitor = DataQualityMonitor(db_path=args.db_path)
     report = monitor.check_all()
     
