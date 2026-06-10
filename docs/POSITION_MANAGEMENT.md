@@ -1,12 +1,13 @@
 ---
 file: POSITION_MANAGEMENT.md
-purpose: 仓位管理规则 + 核心池定义
+purpose: 仓位管理规则 + 核心池定义 + 决策快照机制
 used_by:
   - src/data/etf_pool_loader.py（FALLBACK_ETF_CODES）
   - src/selector.py（候选池过滤）
   - src/cli/decision.py（决策引擎）
 status: active
-last_review: 2026-06-08
+last_review: 2026-06-10
+version: 8
 review_interval: weekly
 ---
 
@@ -77,6 +78,97 @@ for i, (code, s, price) in enumerate(candidates[:config.hold_count]):
 ```
 
 **默认行为**: 如果持仓数 < weight长度，多余的权重不使用
+
+---
+
+## 4. 决策快照机制（v8.1 新增，US-001）
+
+> **背景**：每笔交易必须有完整的"决策上下文"，包括 target/stop 价格、信号快照、模型参数等。
+> 业界参考：MiFID II 交易记录法规、QuantConnect Lean Insight、Backtrader、CQRS Event Sourcing。
+
+### 4.1 为什么需要决策快照
+
+| 痛点 | 决策快照如何解决 |
+|------|------------------|
+| 事后无法复盘"为什么买" | 记录当时的模型/策略/评价指标 |
+| target/stop 价格散落各处 | 统一存入 SQLite `decision_snapshot` 表 |
+| 多笔交易参数对比困难 | snapshot_ref 串联 trade_history ↔ decision_snapshot |
+| 文件系统（JSON）易损坏 | 数据库事务保证原子性 |
+
+### 4.2 数据库表结构
+
+**`decision_snapshot` 表**（schema 007，US-002 应用）：
+
+```sql
+CREATE TABLE decision_snapshot (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_time TEXT NOT NULL,         -- 快照时间 ISO 8601
+    code TEXT NOT NULL,                  -- ETF代码
+    action TEXT NOT NULL,                -- 'buy' / 'sell'
+    cost REAL,                           -- 决策时价格（cost）
+    target_price REAL,                   -- 目标价 = cost × (1 + stop_gain)
+    stop_loss_price REAL,                -- 止损价 = cost × (1 + stop_loss)
+    stop_profit_price REAL,              -- 止盈价（同 target_price，冗余）
+    risk_reward_ratio REAL,              -- 盈亏比
+    max_hold_days INTEGER,               -- 计划持仓天数
+    model_name TEXT,                     -- 模型名 (e.g. 'ETF量化决策v8_sop')
+    strategy_json TEXT,                  -- 完整 strategy 配置（JSON）
+    evaluation_json TEXT,                -- 完整 evaluation 指标（JSON）
+    rationale TEXT,                      -- 决策理由
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_snapshot_time ON decision_snapshot(snapshot_time);
+CREATE INDEX idx_snapshot_code ON decision_snapshot(code);
+```
+
+**`trade_history` 表加 5 字段**（schema 006）：
+
+| 字段 | 类型 | 来源 |
+|------|------|------|
+| `target_price` | REAL | cost × (1 + stop_gain) |
+| `stop_loss_price` | REAL | cost × (1 + stop_loss) |
+| `stop_profit_price` | REAL | = target_price |
+| `risk_reward_ratio` | REAL | (target - cost) / (cost - stop_loss) |
+| `max_hold_days` | INTEGER | strategy.risk_control.max_hold_days |
+
+**关联方式**：`trade_history.snapshot_ref` → `decision_snapshot.id`（不使用外键约束，保持灵活性）
+
+### 4.3 Target/Stop 价格计算
+
+| 字段 | 公式 | 示例（cost=1.251, stop_gain=0.10, stop_loss=-0.06）|
+|------|------|---------------------------------------------------|
+| `target_price` | `cost × (1 + stop_gain)` | 1.251 × 1.10 = 1.376 |
+| `stop_loss_price` | `cost × (1 + stop_loss)` | 1.251 × 0.94 = 1.176 |
+| `stop_profit_price` | `= target_price` | 1.376 |
+| `risk_reward_ratio` | `(target - cost) / (cost - stop_loss)` | 0.125 / 0.075 ≈ 1.67 |
+| `max_hold_days` | `strategy.risk_control.max_hold_days` | 15 |
+
+### 4.4 持久化流程
+
+```
+1. 决策引擎生成推荐
+2. 计算 target/stop 价格（用 config.stop_gain / stop_loss）
+3. 写入 decision_snapshot 表 → 获得 snapshot_id
+4. 用户/策略执行交易
+5. 写入 trade_history 表，snapshot_ref = snapshot_id
+```
+
+### 4.5 与已有机制的对比
+
+| 维度 | 文件系统（JSON）| 数据库（SQLite）|
+|------|-----------------|-------------------|
+| 原子性 | ❌ 文件损坏风险 | ✅ 事务保证 |
+| 查询能力 | ❌ 全文件扫描 | ✅ 索引查询 |
+| 多笔对比 | ❌ 需手动合并 | ✅ SQL JOIN |
+| 备份 | ❌ 易遗忘 | ✅ SQLite 文件单文件备份 |
+| 迁移工具 | N/A | `scripts/migrate_snapshot_to_sqlite.py`（US-003）|
+
+### 4.6 关联文档
+
+- [TRADE_RECORD_SPEC.md](./TRADE_RECORD_SPEC.md) v1.1 — 字段规范
+- [SOP_06_V2_DESIGN.md](./SOP_06_V2_DESIGN.md) — 设计背景
+- [INTERFACE_CONTRACT.md](./INTERFACE_CONTRACT.md) — DecisionSnapshot 接口契约
 
 ---
 
@@ -313,6 +405,7 @@ config = StrategyConfig(
 
 ---
 
-*文档版本: 1.2*
+*文档版本: 8.1*
+*最后更新: 2026-06-10（v8.1 加决策快照机制，US-001）*
 *最后更新: 2026-06-08（修正 510300 为 reference）*
-*相关文档: SELECTION_RULES.md, PRD.md, INDEX.md*
+*相关文档: SELECTION_RULES.md, PRD.md, INDEX.md, TRADE_RECORD_SPEC.md*
