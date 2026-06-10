@@ -28,3 +28,14 @@ CREATE TABLE IF NOT EXISTS decision_snapshot (
 -- AC2: 2 索引
 CREATE INDEX IF NOT EXISTS idx_snapshot_time ON decision_snapshot(snapshot_time);
 CREATE INDEX IF NOT EXISTS idx_snapshot_model ON decision_snapshot(model_name, model_version);
+
+-- 派生字段补丁（US-002 worker 漏写，控制器补）
+-- 日期: 2026-06-10
+-- 原因: 完整 PRD 要求 14 字段，含 target/stop 派生列
+-- 注: 现实已存在 decision_snapshot 表（5 ALTER 需用预扫描策略保持幂等）
+
+ALTER TABLE decision_snapshot ADD COLUMN target_price REAL;
+ALTER TABLE decision_snapshot ADD COLUMN stop_loss_price REAL;
+ALTER TABLE decision_snapshot ADD COLUMN stop_profit_price REAL;
+ALTER TABLE decision_snapshot ADD COLUMN risk_reward_ratio REAL;
+ALTER TABLE decision_snapshot ADD COLUMN expected_hold_days INTEGER;
