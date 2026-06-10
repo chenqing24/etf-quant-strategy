@@ -38,6 +38,12 @@ from src.utils.execution_source import (
     add_source_argument,
     get_source_from_argv,
 )
+from src.utils.safety_gate import (
+    require_force,
+    add_force_argument,
+    add_dry_run_argument,
+    SafetyGateError,
+)
 
 # 默认路径
 DEFAULT_DB_PATH = os.path.join(DATA_DIR, 'etf.db')
@@ -200,8 +206,8 @@ class SQLiteBackupManager:
 
 def main():
     parser = argparse.ArgumentParser(description='SQLite备份管理')
-    parser.add_argument('--type', choices=['daily', 'weekly', 'manual'],
-                        default='daily', help='备份类型')
+    parser.add_argument('--type', choices=['daily', 'weekly', 'manual', 'reset'],
+                        default='daily', help='备份类型（reset = Severe 删除级别）')
     parser.add_argument('--restore', type=str, help='从备份恢复')
     parser.add_argument('--list', action='store_true', help='列出所有备份')
     parser.add_argument('--status', action='store_true', help='查看备份状态')
@@ -210,6 +216,13 @@ def main():
 
     # ── US-001: 执行源标识（audit / 未来门禁） ──────────────────
     add_source_argument(parser)
+    # ─────────────────────────────────────────────────────────────
+
+    # ── US-002: Safety Gate（--force / --dry-run） ─────────────
+    # 注意：--type=reset 是 Severe 操作；这里默认按 Moderate 注册，
+    # 运行时根据 --type 决定是否走 Severe 路径（reset_db + target=db）。
+    add_force_argument(parser)
+    add_dry_run_argument(parser)
     # ─────────────────────────────────────────────────────────────
 
     args = parser.parse_args()
@@ -243,6 +256,23 @@ def main():
             if latest:
                 print(f"    最新: {latest['filename']} ({latest['size_mb']} MB)")
     else:
+        # US-002: Safety Gate（--type=reset 是 Severe，需要 --force=db）
+        op_name = "reset_db" if args.type == "reset" else f"backup_{args.type}"
+        danger_target = "db" if args.type == "reset" else None
+        try:
+            require_force(
+                op_name,
+                source=execution_source,
+                force=args.force,
+                dry_run=args.dry_run,
+                target=danger_target,
+            )
+        except SafetyGateError as e:
+            print(str(e))
+            sys.exit(2)
+        if args.dry_run:
+            print(f"[dry-run] 将执行 backup type={args.type}，未实际执行")
+            sys.exit(0)
         manager.backup(args.type)
 
 

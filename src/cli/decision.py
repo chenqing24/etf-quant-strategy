@@ -42,6 +42,7 @@ ETF量化决策 - 命令行入口
 """
 import argparse
 import sys
+import time
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -64,6 +65,13 @@ from src.utils.execution_source import (
     add_source_argument,
     get_source_from_argv,
 )
+from src.utils.safety_gate import (
+    require_force,
+    add_dry_run_argument,
+    SafetyGateError,
+)
+# US-003: Audit Logger
+from src.utils.audit_logger import get_audit
 
 logger = get_logger()
 
@@ -703,6 +711,12 @@ def main():
     parser.add_argument('--webhook', type=str, help='钉钉Webhook URL')
     parser.add_argument('--silent', action='store_true', help='静默模式（不发送钉钉，由cron响应代替）')
     parser.add_argument('--force', action='store_true', help='强制覆盖今日报告（默认今日已生成则跳过）')
+    # ── US-002: Safety Gate（--force-target + --dry-run） ─────────────
+    parser.add_argument('--force-target', type=str, default=None,
+                       help='Severe 操作的对象名确认（如 --force-target=positions，'
+                            '对应 --mode=trade --action=clear 类破坏性操作）')
+    add_dry_run_argument(parser)
+    # ─────────────────────────────────────────────────────────────
     parser.add_argument('--simple', action='store_true', help='简版输出（钉钉APP专用）')
     parser.add_argument('--full', action='store_true', help='完整报告（PC端专用）')
     parser.add_argument('--output', choices=['silent', 'brief', 'normal', 'verbose'],
@@ -744,6 +758,18 @@ def main():
 
     # US-001: 解析执行源（argv 缺省 → 走 get_source_from_argv 默认 MANUAL）
     execution_source = get_source_from_argv() if args.source is None else ExecutionSource(args.source)
+
+    # US-003: Audit 日志 — start 事件（在解析完 args 后立即写）
+    _audit = get_audit()
+    _t0 = time.time()
+    _cmd = "decision.py " + " ".join(sys.argv[1:])
+    _audit.write_event(
+        event_type="started",
+        command=_cmd,
+        source=execution_source.value,
+        actor="月海巫师" if execution_source != ExecutionSource.CRON else None,
+        args={"mode": args.mode, "capital": args.capital, "code": args.code, "action": args.action},
+    )
     logger.info(f"🔖 execution_source = {execution_source.value} "
                 f"(argv={args.source!r}, env={os.environ.get('EXECUTION_SOURCE')!r})")
 
@@ -766,13 +792,76 @@ def main():
         engine._simple_mode = True
     if args.force:
         engine.force = True
-    
+
+    # US-002: Safety Gate 参数注入到 engine
+    engine._execution_source = execution_source
+    engine._dry_run = args.dry_run
+    engine._force_target = args.force_target
+
     # 执行
     if args.mode == 'daily':
         engine.run_daily_check()
     elif args.mode == 'eval':
+        # US-002: eval 模式含钉钉推送，是 Moderate 破坏性操作（dingtalk_send）
+        try:
+            require_force(
+                "dingtalk_send",
+                source=execution_source,
+                force=args.force,
+                dry_run=args.dry_run,
+                target=None,
+            )
+        except SafetyGateError as e:
+            logger.error(str(e))
+            # US-003: SafetyGate 拒绝时写 audit
+            _audit.write_event(
+                event_type="denied_by_safety_gate",
+                command=_cmd,
+                source=execution_source.value,
+                outcome="denied",
+                duration_ms=(time.time() - _t0) * 1000,
+                error_msg=str(e),
+                op="dingtalk_send",
+            )
+            sys.exit(2)
+        if args.dry_run:
+            logger.info("[dry-run] eval 模式 dry-run 完成，未实际推送钉钉")
+            _audit.write_event(
+                event_type="dry_run",
+                command=_cmd,
+                source=execution_source.value,
+                outcome="success",
+                duration_ms=(time.time() - _t0) * 1000,
+                op="dingtalk_send",
+            )
+            sys.exit(0)
         engine.run_full_evaluation(silent=args.silent, simple=args.simple)
     elif args.mode == 'trade':
+        # US-002: trade 写入是 Moderate 破坏性操作（trade_record）
+        try:
+            require_force(
+                "trade_record",
+                source=execution_source,
+                force=args.force,  # 复用现有 --force 标志
+                dry_run=args.dry_run,
+                target=None,
+            )
+        except SafetyGateError as e:
+            logger.error(str(e))
+            # US-003: SafetyGate 拒绝时写 audit
+            _audit.write_event(
+                event_type="denied_by_safety_gate",
+                command=_cmd,
+                source=execution_source.value,
+                outcome="denied",
+                duration_ms=(time.time() - _t0) * 1000,
+                error_msg=str(e),
+                op="trade_record",
+            )
+            sys.exit(2)
+        if args.dry_run:
+            logger.info("[dry-run] trade 模式 dry-run 完成，未实际执行")
+            sys.exit(0)
         if args.code and args.action and args.price and args.quantity:
             engine.execute_trade(
                 args.code, args.action, args.price, args.quantity,
@@ -806,6 +895,16 @@ def main():
     elif args.mode == 'check':
         # 仅检查，不发送钉钉
         _run_data_check(engine, args)
+
+    # US-003: Audit 日志 — success 事件（main 末尾）
+    _audit.write_event(
+        event_type="success",
+        command=_cmd,
+        source=execution_source.value,
+        outcome="success",
+        duration_ms=(time.time() - _t0) * 1000,
+        mode=args.mode,
+    )
 
 
 # ── 数据一致性检查（预防 US-014 再次发生）─────────────────────────
