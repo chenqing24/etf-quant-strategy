@@ -111,6 +111,14 @@ class TradeRecord:
     snapshot_ref: str = ""       # 决策快照文件路径
     # ─────────────────────────────────────────────────────────────
 
+    # ── US-003 目标价/止损/止盈（可选，缺则 log warning）─────────
+    target_price: float = 0.0        # 目标止盈价（price × 1.15）
+    stop_loss_price: float = 0.0     # 止损价（price × 0.90）
+    stop_profit_price: float = 0.0   # 止盈价（同 target_price）
+    risk_reward_ratio: float = 0.0   # 风险回报比
+    max_hold_days: int = 0           # 最大持仓天数
+    # ─────────────────────────────────────────────────────────────
+
 
 def _infer_session(trade_time: str) -> str:
     """从交易时间推断UTC时段
@@ -289,8 +297,10 @@ class TradeTracker:
                     signal_time, signal_price, signal_rsi, signal_adx, signal_score,
                     trade_time, emotion, session,
                     is_real, is_paper,
-                    model, strategy, evaluation, snapshot_ref
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    model, strategy, evaluation, snapshot_ref,
+                    target_price, stop_loss_price, stop_profit_price,
+                    risk_reward_ratio, max_hold_days
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 trade.date, trade.code, trade.name, trade.action,
                 trade.price, trade.quantity, trade.amount, trade.reason,
@@ -302,6 +312,8 @@ class TradeTracker:
                 trade.trade_time, emotion, session,
                 trade.is_real, trade.is_paper,
                 model, strategy, evaluation, snapshot_ref,
+                trade.target_price, trade.stop_loss_price, trade.stop_profit_price,
+                trade.risk_reward_ratio, trade.max_hold_days,
             ))
             conn.commit()
         finally:
@@ -541,7 +553,14 @@ class TradeTracker:
                    model: str = "",                  # 🆕 Q-009 决策上下文
                    strategy: str = "",               # 🆕 Q-009
                    evaluation: str = "",             # 🆕 Q-009
-                   snapshot_ref: str = "") -> TradeRecord:
+                   snapshot_ref: str = "",           # 🆕 Q-009
+                   # ── US-003 目标价/止损（可选，缺则 log warning）─────────
+                   target_price: float = 0.0,
+                   stop_loss_price: float = 0.0,
+                   stop_profit_price: float = 0.0,
+                   risk_reward_ratio: float = 0.0,
+                   max_hold_days: int = 0,
+                   ) -> TradeRecord:
         """
         记录买入（SOP-06 v2.0 + US-008 区分实盘/模拟 + Q-009 决策上下文）
 
@@ -588,6 +607,19 @@ class TradeTracker:
         if not session and trade_time:
             session = _infer_session(trade_time)
         
+        # ── US-003 缺 target_price 时 log warning（Q-009 兼容）──
+        if not target_price:
+            _logger = logging.getLogger(__name__)
+            _logger.warning(
+                f"record_buy({code}@{price}): target_price 未传，无法做目标价追踪（Q-009 兼容）"
+            )
+            # 缺省 → 内部置 None（让 db 存 NULL 而非 0.0，区分"无目标价"和"目标价=0"）
+            target_price = None
+            stop_loss_price = None
+            stop_profit_price = None
+            risk_reward_ratio = None
+            max_hold_days = None
+
         trade = TradeRecord(
             date=trade_date,
             code=code,
@@ -620,6 +652,12 @@ class TradeTracker:
             strategy=strategy,
             evaluation=evaluation,
             snapshot_ref=snapshot_ref,
+            # US-003 目标价/止损（缺时为 0.0，不写库对应 NULL）
+            target_price=target_price,
+            stop_loss_price=stop_loss_price,
+            stop_profit_price=stop_profit_price,
+            risk_reward_ratio=risk_reward_ratio,
+            max_hold_days=max_hold_days,
         )
 
         # ── US-024: 事务重构（先 can_buy 后 save_trade）────────────
@@ -707,6 +745,7 @@ class TradeTracker:
             # US-095: 自动获取名称（与 record_buy 保持一致）
             from src.utils.industry import INDUSTRY_MAPPING
             sell_name = INDUSTRY_MAPPING.get(code, code)
+
             trade = TradeRecord(
                 date=datetime.now().strftime('%Y-%m-%d'),
                 code=code,
