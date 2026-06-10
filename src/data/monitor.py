@@ -39,6 +39,7 @@
 """
 import os
 import sys
+import time
 import json
 import sqlite3
 from datetime import datetime, timedelta
@@ -60,6 +61,8 @@ from src.utils.safety_gate import (
     add_dry_run_argument,
     SafetyGateError,
 )
+# US-003: Audit Logger
+from src.utils.audit_logger import get_audit
 
 
 # 工作日判断（A股周一至周五）
@@ -554,14 +557,25 @@ def main():
     execution_source = get_source_from_argv() if args.source is None else ExecutionSource(args.source)
     print(f"🔖 execution_source = {execution_source.value}")
 
+    # US-003: Audit 日志 — start 事件
+    _audit = get_audit()
+    _t0 = time.time()
+    _cmd = "monitor.py " + " ".join(sys.argv[1:])
+    _audit.write_event(
+        event_type="started",
+        command=_cmd,
+        source=execution_source.value,
+        args={"dingtalk": args.dingtalk, "json": args.json, "db_path": args.db_path},
+    )
+
     monitor = DataQualityMonitor(db_path=args.db_path)
     report = monitor.check_all()
-    
+
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
     else:
         print(monitor.format_report())
-    
+
     # 告警或警告时发送到钉钉
     if args.dingtalk and (report.get('alerts') or report.get('warnings')):
         # US-002: 钉钉推送是 Moderate 破坏性操作（dingtalk_send）
@@ -575,10 +589,28 @@ def main():
             )
         except SafetyGateError as e:
             print(str(e))
+            # US-003: SafetyGate 拒绝时写 audit
+            _audit.write_event(
+                event_type="denied_by_safety_gate",
+                command=_cmd,
+                source=execution_source.value,
+                outcome="denied",
+                duration_ms=(time.time() - _t0) * 1000,
+                error_msg=str(e),
+                op="dingtalk_send",
+            )
             sys.exit(2)
 
         if args.dry_run:
             print("\n[dry-run] 将发送钉钉通知，未实际执行")
+            _audit.write_event(
+                event_type="dry_run",
+                command=_cmd,
+                source=execution_source.value,
+                outcome="success",
+                duration_ms=(time.time() - _t0) * 1000,
+                op="dingtalk_send",
+            )
             sys.exit(0)
 
         try:
@@ -589,6 +621,17 @@ def main():
             print("\n📨 已发送钉钉通知")
         except Exception as e:
             print(f"\n⚠️ 钉钉发送失败: {e}")
+
+    # US-003: Audit 日志 — success 事件
+    _audit.write_event(
+        event_type="success",
+        command=_cmd,
+        source=execution_source.value,
+        outcome="success",
+        duration_ms=(time.time() - _t0) * 1000,
+        alerts=len(report.get('alerts') or []),
+        warnings=len(report.get('warnings') or []),
+    )
 
 
 if __name__ == '__main__':

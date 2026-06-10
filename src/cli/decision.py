@@ -42,6 +42,7 @@ ETF量化决策 - 命令行入口
 """
 import argparse
 import sys
+import time
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -69,6 +70,8 @@ from src.utils.safety_gate import (
     add_dry_run_argument,
     SafetyGateError,
 )
+# US-003: Audit Logger
+from src.utils.audit_logger import get_audit
 
 logger = get_logger()
 
@@ -755,6 +758,18 @@ def main():
 
     # US-001: 解析执行源（argv 缺省 → 走 get_source_from_argv 默认 MANUAL）
     execution_source = get_source_from_argv() if args.source is None else ExecutionSource(args.source)
+
+    # US-003: Audit 日志 — start 事件（在解析完 args 后立即写）
+    _audit = get_audit()
+    _t0 = time.time()
+    _cmd = "decision.py " + " ".join(sys.argv[1:])
+    _audit.write_event(
+        event_type="started",
+        command=_cmd,
+        source=execution_source.value,
+        actor="月海巫师" if execution_source != ExecutionSource.CRON else None,
+        args={"mode": args.mode, "capital": args.capital, "code": args.code, "action": args.action},
+    )
     logger.info(f"🔖 execution_source = {execution_source.value} "
                 f"(argv={args.source!r}, env={os.environ.get('EXECUTION_SOURCE')!r})")
 
@@ -798,9 +813,27 @@ def main():
             )
         except SafetyGateError as e:
             logger.error(str(e))
+            # US-003: SafetyGate 拒绝时写 audit
+            _audit.write_event(
+                event_type="denied_by_safety_gate",
+                command=_cmd,
+                source=execution_source.value,
+                outcome="denied",
+                duration_ms=(time.time() - _t0) * 1000,
+                error_msg=str(e),
+                op="dingtalk_send",
+            )
             sys.exit(2)
         if args.dry_run:
             logger.info("[dry-run] eval 模式 dry-run 完成，未实际推送钉钉")
+            _audit.write_event(
+                event_type="dry_run",
+                command=_cmd,
+                source=execution_source.value,
+                outcome="success",
+                duration_ms=(time.time() - _t0) * 1000,
+                op="dingtalk_send",
+            )
             sys.exit(0)
         engine.run_full_evaluation(silent=args.silent, simple=args.simple)
     elif args.mode == 'trade':
@@ -815,6 +848,16 @@ def main():
             )
         except SafetyGateError as e:
             logger.error(str(e))
+            # US-003: SafetyGate 拒绝时写 audit
+            _audit.write_event(
+                event_type="denied_by_safety_gate",
+                command=_cmd,
+                source=execution_source.value,
+                outcome="denied",
+                duration_ms=(time.time() - _t0) * 1000,
+                error_msg=str(e),
+                op="trade_record",
+            )
             sys.exit(2)
         if args.dry_run:
             logger.info("[dry-run] trade 模式 dry-run 完成，未实际执行")
@@ -852,6 +895,16 @@ def main():
     elif args.mode == 'check':
         # 仅检查，不发送钉钉
         _run_data_check(engine, args)
+
+    # US-003: Audit 日志 — success 事件（main 末尾）
+    _audit.write_event(
+        event_type="success",
+        command=_cmd,
+        source=execution_source.value,
+        outcome="success",
+        duration_ms=(time.time() - _t0) * 1000,
+        mode=args.mode,
+    )
 
 
 # ── 数据一致性检查（预防 US-014 再次发生）─────────────────────────
