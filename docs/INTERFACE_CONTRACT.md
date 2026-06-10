@@ -1,7 +1,8 @@
-# ETF量化系统 - 接口契约文档 v2.0
+# ETF量化系统 - 接口契约文档 v2.1
 
 > 规范模块间调用关系，解决参数传递链路长的问题
-> 更新：新增 DataSourceRouter 接口 + 新 DataFacade 契约 + 历史回溯边界
+> 更新：v2.1 新增 DecisionSnapshot 接口契约（US-001 决策快照）
+> v2.0：新增 DataSourceRouter 接口 + 新 DataFacade 契约 + 历史回溯边界
 
 ## 1. 核心原则
 
@@ -242,3 +243,164 @@ random_wait()
 |------|------|---------|
 | v1.0 | 2025-05-24 | 初始版本：DataLoader/DataFacade |
 | v2.0 | 2026-05-26 | 新增DataSourceRouter + 历史回溯边界 |
+| v2.1 | 2026-06-10 | 新增DecisionSnapshot接口契约（US-001决策快照）|
+
+---
+
+## 9. DecisionSnapshot 接口契约（US-001）
+
+> **模块路径**：`src/trade/decision_snapshot.py`（US-003 实现）
+> **存储位置**：SQLite `etf.db` 的 `decision_snapshot` 表（schema 007）
+
+### 9.1 类签名
+
+```python
+from dataclasses import dataclass
+from typing import Optional
+from datetime import datetime
+
+@dataclass
+class DecisionSnapshot:
+    """决策快照数据类 - US-001 决策快照持久化"""
+
+    # ===== 必填字段 =====
+    snapshot_time: str             # ISO 8601 时间戳 "2026-06-10T10:30:00"
+    code: str                      # ETF代码 '159611'
+    action: str                    # 'buy' / 'sell'
+    cost: float                    # 决策时价格（cost basis）
+
+    # ===== Target / Stop 价格（v1.1 必填）=====
+    target_price: float            # 目标价 = cost × (1 + stop_gain)
+    stop_loss_price: float         # 止损价 = cost × (1 + stop_loss)
+    stop_profit_price: float       # 止盈价（冗余）
+    risk_reward_ratio: float       # 盈亏比
+    max_hold_days: int             # 计划持仓天数
+
+    # ===== 决策上下文（Q-009 必填）=====
+    model_name: str                # 模型名 'ETF量化决策v8_sop'
+    strategy_json: str             # strategy 配置（JSON 字符串）
+    evaluation_json: str           # evaluation 指标（JSON 字符串）
+
+    # ===== 可选字段 =====
+    rationale: Optional[str] = None        # 决策理由（人工注释）
+    id: Optional[int] = None               # 数据库自增 ID（写入后填充）
+    created_at: Optional[str] = None       # 数据库写入时间（自动填充）
+
+    # ===== 关联字段（不入库）=====
+    snapshot_ref: Optional[str] = None     # 反向引用（"snapshot:{id}"）
+```
+
+### 9.2 Repository 类接口
+
+```python
+class DecisionSnapshotRepository:
+    """决策快照仓储类 - SQLite 持久化"""
+
+    def save(self, snapshot: DecisionSnapshot) -> int:
+        """保存决策快照，返回 id
+        - 自动设置 created_at
+        - 返回自增主键
+        """
+
+    def get_by_id(self, snapshot_id: int) -> Optional[DecisionSnapshot]:
+        """按 ID 查询单个快照"""
+
+    def get_by_code(self, code: str, limit: int = 50) -> List[DecisionSnapshot]:
+        """按 ETF 代码查询（按时间倒序）"""
+
+    def get_by_time_range(self, start: str, end: str) -> List[DecisionSnapshot]:
+        """按时间范围查询（snapshot_time BETWEEN）"""
+
+    def list_recent(self, limit: int = 100) -> List[DecisionSnapshot]:
+        """查询最近的 N 条快照（用于调试/复盘）"""
+
+    def delete(self, snapshot_id: int) -> bool:
+        """删除快照（谨慎使用，通常只用于测试清理）"""
+```
+
+### 9.3 工厂函数
+
+```python
+def make_snapshot_from_strategy(
+    code: str,
+    action: str,
+    cost: float,
+    strategy: dict,
+    evaluation: dict,
+    rationale: Optional[str] = None,
+) -> DecisionSnapshot:
+    """从 strategy 配置自动计算 target/stop，构造 DecisionSnapshot
+
+    计算逻辑：
+      target_price     = cost × (1 + strategy.risk_control.stop_gain)
+      stop_loss_price  = cost × (1 + strategy.risk_control.stop_loss)
+      stop_profit_price = target_price
+      risk_reward_ratio = (target - cost) / (cost - stop_loss)
+      max_hold_days    = strategy.risk_control.max_hold_days
+    """
+```
+
+### 9.4 与 TradeRecord 的关系
+
+| 维度 | TradeRecord | DecisionSnapshot |
+|------|-------------|------------------|
+| 存储表 | trade_history | decision_snapshot |
+| 创建时机 | 实际成交时 | 决策生成时 |
+| 价格字段 | price（成交价）| cost（决策时价）|
+| target/stop | 5 字段（schema 006）| 5 字段 |
+| 关联方式 | snapshot_ref = "snapshot:{id}" | id 自增 |
+| 写入顺序 | 1. save snapshot → 2. save trade | trade 引用 snapshot.id |
+
+### 9.5 使用示例
+
+```python
+from src.trade.decision_snapshot import (
+    DecisionSnapshot, DecisionSnapshotRepository, make_snapshot_from_strategy
+)
+
+# 1. 构造（自动计算 target/stop）
+strategy = {"risk_control": {"stop_gain": 0.10, "stop_loss": -0.06, "max_hold_days": 15}}
+snapshot = make_snapshot_from_strategy(
+    code="159611",
+    action="buy",
+    cost=1.251,
+    strategy=strategy,
+    evaluation={"avg_sharpe": 1.408, "model_version": "v8_sop"},
+    rationale="MA20 突破 + 量能放大",
+)
+
+# 2. 持久化
+repo = DecisionSnapshotRepository()
+snapshot_id = repo.save(snapshot)
+
+# 3. 写入 trade（关联快照）
+trade = TradeRecord(
+    code="159611", price=1.251, ..., snapshot_ref=f"snapshot:{snapshot_id}",
+    target_price=snapshot.target_price,
+    stop_loss_price=snapshot.stop_loss_price,
+    ...
+)
+
+# 4. 查询（复盘）
+recent = repo.list_recent(limit=10)
+for s in recent:
+    print(f"{s.snapshot_time} {s.code} {s.action} target={s.target_price}")
+```
+
+### 9.6 错误处理
+
+| 场景 | 行为 |
+|------|------|
+| strategy 缺少 risk_control | 抛 `ValueError("strategy.risk_control 必填")` |
+| cost ≤ 0 | 抛 `ValueError("cost 必须为正")` |
+| action 不是 buy/sell | 抛 `ValueError("action 必须是 buy 或 sell")` |
+| 数据库写入失败 | 抛 `sqlite3.Error`（事务回滚）|
+| snapshot_ref 格式错误 | 查询时返回 None（不抛错）|
+
+### 9.7 测试要求（US-003）
+
+- 单元测试：构造、计算、序列化（10+ 用例）
+- 集成测试：save/get/list/delete（8+ 用例）
+- 边界测试：cost=0 / stop_loss 接近 cost / max_hold_days=0
+
+---

@@ -1,6 +1,7 @@
 # v9 待开发清单
-> 版本：v1.0
+> 版本：v1.1
 > 创建：2026-06-02
+> 更新：2026-06-10（决策快照文档升级完成，US-001）
 > 更新：2026-06-02
 > 状态：🟡 进行中
 
@@ -15,8 +16,9 @@
 | 钉钉通知增强 | 2 | 0 | 0 | 2 | ⚠️ |
 | v9 分支管理 | 2 | 2 | 0 | 0 | ❌ |
 | 007 四折WF验证 | 1 | 0 | 1 | 0 | 🔵 |
-| **总计** | **10** | **2** | **1** | **7** | — |
+| **总计** | **11** | **3** | **1** | **7** | — |
 
+> 2026-06-10 更新：TODO-013（决策快照）US-001 文档升级完成
 > 2026-06-02 更新：TODO-001~006 全部完成，TODO-007 方案确定
 
 ---
@@ -217,6 +219,36 @@
   - [ ] 各模式信号阈值
 ```
 
+#### TODO-013：决策快照持久化（US-001/002/003）
+```
+问题：决策快照在文件系统（etf_data_live/decision_snapshot.json），易损坏、查询难
+方案：迁移到 SQLite decision_snapshot 表 + trade_history 加 target/stop 字段
+
+任务划分：
+  - US-001 ✅ 文档升级（2026-06-10 完成）
+      - TRADE_RECORD_SPEC v1.0 → v1.1（加5字段）
+      - POSITION_MANAGEMENT v8 → v8.1（加决策快照机制小节）
+      - SOP_06_MANUAL_TRADE v2.1 → v2.2（加 target/stop 录入流程）
+      - SOP_06_V2_DESIGN 方案分 7.6 → 8.6（加决策快照持久化小节）
+      - INTERFACE_CONTRACT v2.0 → v2.1（加 DecisionSnapshot 接口契约）
+      - INDEX v5.0 → v5.1（加 decision_snapshot 表速查）
+      - CHANGELOG（记 v1.1 / v2.2 / schema 006/007）
+  - US-002 🟡 schema 006/007 + init_database 应用
+  - US-003 🟡 迁移脚本 + DecisionSnapshot 模块 + 测试
+
+文档升级完成：2026-06-10
+  ✅ docs/TRADE_RECORD_SPEC.md v1.1
+  ✅ docs/POSITION_MANAGEMENT.md v8.1
+  ✅ docs/SOP_06_MANUAL_TRADE.md v2.2
+  ✅ docs/SOP_06_V2_DESIGN.md v2.2
+  ✅ docs/INTERFACE_CONTRACT.md v2.1
+  ✅ docs/INDEX.md v5.1
+  ✅ docs/V9_BACKLOG.md v1.1（本文件）
+  ✅ docs/CHANGELOG.md v3.0
+
+状态：✅ US-001 完成（2026-06-10）/ US-002/003 待处理
+```
+
 ---
 
 ## 🔗 依赖关系图（简化版）
@@ -263,6 +295,7 @@ TODO-008（v9 分支决策）
 | 2026-06-02 | TODO-001 | ✅ 震荡市空仓替代 N6 |
 | 2026-06-02 | TODO-002 | ✅ 用 v8_sop 信号判断趋势市 |
 | 2026-06-02 | TODO-003 | ✅ 5年数据分析通过（趋势市收益+1.6%，胜率47%，占比100%） |
+| 2026-06-10 | TODO-013 (US-001) | ✅ 决策快照文档升级完成（v1.1 / v2.2 / schema 006/007） |
 
 ---
 

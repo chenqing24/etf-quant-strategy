@@ -32,6 +32,8 @@ review_interval: weekly
 | **修复数据问题** | `scripts/repair_data.py` | `scripts/` |
 | **补充历史数据** | AKTools + DataWriter | 见下方工作流 |
 | **获取ETF池** | `ETFListLoader.load()` | `src/data/etf_pool_loader.py` |
+| **查询决策快照** | `DecisionSnapshotRepository.list_recent()` | `src/trade/decision_snapshot.py`（US-003）|
+| **查询历史决策快照** | `DecisionSnapshotRepository.get_by_code()` | `src/trade/decision_snapshot.py` |
 
 ---
 
@@ -79,6 +81,41 @@ from src.data.loader import ETFNameLoader
 loader = ETFNameLoader()
 name = loader.get_name('510300')
 ```
+
+### 决策快照查询（US-001/US-003）
+
+```python
+from src.trade.decision_snapshot import DecisionSnapshotRepository
+
+repo = DecisionSnapshotRepository()
+recent = repo.list_recent(limit=10)                  # 最近10条
+by_code = repo.get_by_code('159611', limit=50)       # 按ETF代码
+by_id = repo.get_by_id(snapshot_id=123)               # 按主键
+```
+
+**`decision_snapshot` 表速查**（schema 007）：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | INTEGER PK | 自增主键 |
+| `snapshot_time` | TEXT NOT NULL | ISO 8601 时间戳 |
+| `code` | TEXT NOT NULL | ETF代码 |
+| `action` | TEXT NOT NULL | 'buy' / 'sell' |
+| `cost` | REAL | 决策时价格 |
+| `target_price` | REAL | 目标价 = cost × (1 + stop_gain) |
+| `stop_loss_price` | REAL | 止损价 = cost × (1 + stop_loss) |
+| `stop_profit_price` | REAL | 止盈价（同 target_price）|
+| `risk_reward_ratio` | REAL | 盈亏比 |
+| `max_hold_days` | INTEGER | 计划持仓天数 |
+| `model_name` | TEXT | 模型名 |
+| `strategy_json` | TEXT | strategy 配置（JSON）|
+| `evaluation_json` | TEXT | evaluation 指标（JSON）|
+| `rationale` | TEXT | 决策理由 |
+| `created_at` | TEXT DEFAULT NOW | 数据库写入时间 |
+
+**索引**：`idx_snapshot_time`、`idx_snapshot_code`
+
+**关联**：`trade_history.snapshot_ref = "snapshot:{decision_snapshot.id}"`
 
 ---
 
@@ -265,8 +302,11 @@ etf_strategy/
 | `SOP_06_MANUAL_TRADE.md` | 手动交易记录 | decision_cli, tracker | 活跃 | ✅ | 2026-06-08 |
 | `SOP_07_V9_MISSION_INTEGRATION.md` | v9因子集成 | US-026 | 活跃 | ✅ | 2026-06-08 |
 | `SOP_INDEX.md` | SOP文档索引 | 所有SOP入口 | 活跃 | ✅ | 2026-06-08 |
-| `POSITION_MANAGEMENT.md` | 持仓参数 + 核心池定义（14只） | etf_pool_loader.py, selector.py | 活跃 | ✅ | 2026-06-08 |
-| `TRADE_RECORD_SPEC.md` | 交易字段规范 | tracker.py | 活跃 | ✅ | 2026-06-08 |
+| `POSITION_MANAGEMENT.md` | 持仓参数 + 核心池定义（14只） + 决策快照机制（v8.1） | etf_pool_loader.py, selector.py | 活跃 | ✅ | 2026-06-10 |
+| `TRADE_RECORD_SPEC.md` | 交易字段规范 v1.1（含 target/stop）| tracker.py | 活跃 | ✅ | 2026-06-10 |
+| `SOP_06_MANUAL_TRADE.md` | 手动交易 v2.2（含 target/stop 录入）| decision_cli, tracker | 活跃 | ✅ | 2026-06-10 |
+| `SOP_06_V2_DESIGN.md` | SOP-06 v2.2 设计 + 决策快照持久化 | 设计参考 | 活跃 | ✅ | 2026-06-10 |
+| `INTERFACE_CONTRACT.md` | 接口契约 v2.1（含 DecisionSnapshot）| 架构设计 | 活跃 | ✅ | 2026-06-10 |
 | `ARCHITECTURE_DECOUPLING.md` | 架构解耦设计 | 架构重构 | 活跃 | ✅ | 2026-06-08 |
 | `EVALUATION_SYSTEM_V7.md` | 评估系统设计 | 回测引擎 | 活跃 | ✅ | 2026-06-08 |
 | `DATA_SOURCE_REFERENCE.md` | 数据源参考 | 数据采集 | 活跃 | ✅ | 2026-06-08 |
@@ -343,5 +383,6 @@ review_interval: weekly
 
 ---
 
-*文档版本: v5.0 | 更新: 2026-06-08*
+*文档版本: v5.1 | 更新: 2026-06-10*
+*变更：US-001 加 decision_snapshot 表速查 + 5 文档 v1.1/v2.2/v8.1/v2.2/v2.1 链接*
 *变更：US-087 完善文档资产清单 -16个活跃文档已添加metadata，更新废弃文档列表*

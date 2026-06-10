@@ -1,5 +1,79 @@
 # 变更记录
 
+## [3.0.0] - 2026-06-10
+
+### 文档升级（US-001 决策快照文档先行）
+
+> **范围**：仅 docs/ 目录，不涉及代码改动
+> **规则**：先文档后代码（按规则 3.1 文档同步）
+
+### 新增
+
+- **`docs/POSITION_MANAGEMENT.md` v8.1**
+  - 加第 4 节"决策快照机制"（4.1~4.6）
+  - 引用 `etf.db` 的 `decision_snapshot` 表（schema 007）
+  - 说明 target/stop 价格计算公式
+  - 与文件系统（JSON）方案对比
+  - 与 `etf.db.decision_snapshot` 表关联的 SQL 示例
+
+- **`docs/SOP_06_V2_DESIGN.md` v2.2**
+  - 加第 7 节"决策快照持久化"（7.1~7.7）
+  - 方案自评分：7.6/10 → **8.6/10**（+1.0）
+  - 业界参考：MiFID II / QuantConnect Lean / Backtrader / CQRS Event Sourcing
+  - US-001/002/003 任务划分
+
+- **`docs/INTERFACE_CONTRACT.md` v2.1**
+  - 加第 9 节"DecisionSnapshot 接口契约"
+  - `DecisionSnapshot` dataclass 完整字段定义（13 必填 + 3 可选）
+  - `DecisionSnapshotRepository` 接口（save / get_by_id / get_by_code / list_recent / delete）
+  - `make_snapshot_from_strategy()` 工厂函数签名
+  - 与 TradeRecord 的关系图
+  - 错误处理 + 测试要求
+
+- **`docs/INDEX.md` v5.1**
+  - 加"查询决策快照"场景入口
+  - 加 `decision_snapshot` 表速查（schema 007）
+  - 文档资产清单更新（5 文档版本号）
+
+### 变更
+
+- **`docs/TRADE_RECORD_SPEC.md` v1.0 → v1.1**
+  - 加 5 字段到必填段：`target_price` / `stop_loss_price` / `stop_profit_price` / `risk_reward_ratio` / `max_hold_days`
+  - 加示例 + 计算公式
+  - 加 `validate_trade_record()` v1.1 验证逻辑
+  - 加变更历史（v1.1 changelog）
+
+- **`docs/SOP_06_MANUAL_TRADE.md` v2.1 → v2.2**
+  - 加"Target / Stop 价格字段"小节
+  - CLI 示例加 5 个新参数（`--target_price` 等）
+  - 参数说明表加"推荐"标记
+  - 加 `compute_target_stop()` 自动计算函数
+
+- **`docs/V9_BACKLOG.md` v1.0 → v1.1**
+  - 加 TODO-013 决策快照任务（US-001/002/003）
+  - 完成记录表加 2026-06-10 TODO-013 ✅
+  - 总体状态表更新（11 总数）
+
+### 待办（US-002/003，下一阶段）
+
+- schema/migrations/006_add_trade_target_stop.sql（trade_history 加 5 字段）
+- schema/migrations/007_add_decision_snapshot_table.sql（CREATE TABLE + 2 索引）
+- scripts/init_database.py 应用 006/007
+- src/trade/decision_snapshot.py（US-003 实现模块）
+- scripts/migrate_snapshot_to_sqlite.py（US-003 迁移脚本）
+
+### 参考来源
+
+| 来源 | 借鉴点 |
+|------|--------|
+| MiFID II 交易记录法规 | 强制记录决策上下文（target/stop/reason）|
+| QuantConnect Lean Insight | 决策快照持久化 |
+| Backtrader | target/stop 价格随交易记录 |
+| CQRS Event Sourcing | 决策作为不可变事件存储 |
+| mransbro/tradingjournal | 基础字段（含 reason）|
+
+---
+
 ## [2.2.0] - 2026-05-29
 
 ### 新增
