@@ -1,20 +1,22 @@
 ---
 file: SOP_06_MANUAL_TRADE.md
-purpose: 标准化用户手动记录 ETF 买卖操作
+purpose: 标准化用户手动记录 ETF 买卖操作（含 target/stop 价格录入 v2.2）
 used_by:
   - src/cli/decision.py
   - src/trade/tracker.py
 status: active
-last_review: 2026-06-07
+last_review: 2026-06-10
+version: 2.2
 review_interval: weekly
 ---
 
 # SOP-06: 用户手动交易记录
 
 
-**版本**：v2.1  
+**版本**：v2.2  
 **作者**：福猫管家  
 **创建日期**：2026-06-02  
+**更新日期**：2026-06-10（v2.2 增加 target/stop 价格录入流程，US-001）  
 **更新日期**：2026-06-07（v2.1 增加数据一致性检查）  
 **参考来源**：
 - [mransbro/tradingjournal](https://github.com/mransbro/tradingjournal) — 基础交易字段
@@ -83,6 +85,45 @@ review_interval: weekly
 | `signal_adx` | 信号时的ADX(14) | `32.3` |
 | `signal_score` | 信号评分 | `6` |
 
+### Target / Stop 价格字段（v2.2 新增，US-001 决策快照）
+
+> **必填**：策略推荐买入时必须填写（系统可从 strategy 自动计算）
+> **推荐**：手动录入时强烈建议填写，便于事后复盘
+
+| 字段 | 类型 | 说明 | 计算/示例 |
+|------|------|------|----------|
+| `target_price` | float | 目标价（止盈位）| `cost × (1 + stop_gain)` = 1.251 × 1.10 = 1.376 |
+| `stop_loss_price` | float | 止损价 | `cost × (1 + stop_loss)` = 1.251 × 0.94 = 1.176 |
+| `stop_profit_price` | float | 止盈价（同 target_price，冗余）| = target_price |
+| `risk_reward_ratio` | float | 盈亏比 | `(target - cost) / (cost - stop_loss)` ≈ 1.67 |
+| `max_hold_days` | int | 计划持仓天数 | `strategy.risk_control.max_hold_days` = 15 |
+
+**录入方式选择**：
+
+| 场景 | 推荐方式 |
+|------|----------|
+| 策略推荐买入（自动生成 target/stop） | 系统自动从 `strategy.risk_control` 计算 |
+| 手动决策（用户自行设置） | 手动填写 4 个价格字段 + 1 个天数 |
+| 紧急止损（事后录入） | 只填 `stop_loss_price`，其他留空 |
+
+**自动计算逻辑**（系统）：
+
+```python
+def compute_target_stop(cost: float, strategy: dict) -> dict:
+    """从 strategy.risk_control 自动计算 target/stop"""
+    rc = strategy["risk_control"]
+    target = cost * (1 + rc["stop_gain"])
+    stop = cost * (1 + rc["stop_loss"])
+    rr = (target - cost) / (cost - stop) if cost > stop else 0.0
+    return {
+        "target_price": round(target, 4),
+        "stop_loss_price": round(stop, 4),
+        "stop_profit_price": round(target, 4),
+        "risk_reward_ratio": round(rr, 2),
+        "max_hold_days": rc["max_hold_days"]
+    }
+```
+
 ### 情绪字段（来源：参考 DawnSyndrome/automated-trading-journal）
 
 | 选项 | 说明 | 场景 |
@@ -113,7 +154,7 @@ review_interval: weekly
 ### 4.1 命令行方式
 
 ```bash
-# 买入记录（SOP-06 v2.0）
+# 买入记录（SOP-06 v2.2 含 target/stop）
 python -m src.cli.decision -m trade \
   --action buy \
   --code 515050 \
@@ -127,6 +168,11 @@ python -m src.cli.decision -m trade \
   --signal_rsi 50.6 \
   --signal_adx 32.3 \
   --signal_score 6 \
+  --target_price 1.317 \
+  --stop_loss_price 1.125 \
+  --stop_profit_price 1.317 \
+  --risk_reward_ratio 1.67 \
+  --max_hold_days 15 \
   --emotion calm \
   --session D
 ```
@@ -161,6 +207,11 @@ python -m src.cli.decision -m trade \
 | `--signal_score` | ❌ | 信号评分 |
 | `--emotion` | ❌ | 交易情绪（calm/euphoria/fear/fomo/regret） |
 | `--session` | ❌ | 交易时段（A/B/C/D/E/F，自动推断） |
+| `--target_price` | 🟢 推荐 | 目标价（系统可自动计算） |
+| `--stop_loss_price` | 🟢 推荐 | 止损价（系统可自动计算） |
+| `--stop_profit_price` | 🟢 推荐 | 止盈价（同 target_price） |
+| `--risk_reward_ratio` | ❌ | 盈亏比（系统自动计算） |
+| `--max_hold_days` | ❌ | 计划持仓天数（系统从 strategy 读取） |
 
 ---
 
@@ -310,3 +361,4 @@ python -m src.cli.decision -m sync
 | v1.0 | 2026-06-02 | 初始版本 |
 | v2.0 | 2026-06-02 | 增加信号快照、情绪、时段字段 |
 | v2.1 | 2026-06-07 | 增加第九章"数据一致性检查"（US-014 复盘） |
+| v2.2 | 2026-06-10 | 增加 target/stop 价格录入流程（US-001 决策快照）|
