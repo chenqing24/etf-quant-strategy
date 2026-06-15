@@ -1,0 +1,53 @@
+{
+  "experiment": "C16_single_factor",
+  "best": {
+    "factor": "ma5",
+    "avg_return": 0.675139158449426,
+    "avg_winrate": 0.5793650793650794,
+    "avg_max_drawdown": 0.010423823674164508,
+    "positive_etf_pct": 0.8285714285714286,
+    "total_trades": 104
+  },
+  "all_results": [
+    {
+      "factor": "none",
+      "avg_return": 0.6977139692926787,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "factor": "ma5",
+      "avg_return": 0.675139158449426,
+      "avg_winrate": 0.5793650793650794,
+      "avg_max_drawdown": 0.010423823674164508,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 104
+    },
+    {
+      "factor": "rsi",
+      "avg_return": 0.12264783322968535,
+      "avg_winrate": 0.4785714285714286,
+      "avg_max_drawdown": 0.0017818044140058265,
+      "positive_etf_pct": 0.5142857142857142,
+      "total_trades": 33
+    },
+    {
+      "factor": "obv",
+      "avg_return": 0.6876981828755105,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.010861608333907442,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "factor": "all",
+      "avg_return": 0.6728839425397146,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.010717332111889927,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    }
+  ]
+}

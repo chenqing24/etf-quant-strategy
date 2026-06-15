@@ -1,0 +1,37 @@
+{
+  "experiment": "C15_strict_sell",
+  "best": {
+    "sell_mode": "any",
+    "avg_return": 0.6896598903474965,
+    "avg_winrate": 0.576984126984127,
+    "avg_max_drawdown": 0.01086160833390744,
+    "positive_etf_pct": 0.8285714285714286,
+    "total_trades": 105
+  },
+  "all_results": [
+    {
+      "sell_mode": "any",
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "sell_mode": "majority",
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "sell_mode": "all",
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    }
+  ]
+}
