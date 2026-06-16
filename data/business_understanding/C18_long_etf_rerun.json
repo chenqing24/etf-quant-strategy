@@ -1,0 +1,86 @@
+{
+  "experiment": "C18_long_etf_rerun",
+  "n_etfs": 11,
+  "c11": {
+    "avg_return": 0.5667289788849477,
+    "avg_winrate": 0.3722222222222222,
+    "positive_pct": 0.8181818181818182,
+    "n": 11
+  },
+  "buy_hold": {
+    "avg_return": 0.33213344622850727,
+    "positive_pct": 0.6363636363636364,
+    "n": 11
+  },
+  "alpha": {
+    "alpha_mean": 0.23459553265644037,
+    "alpha_std": 0.3225019902037723,
+    "t_stat": 2.4125908767984985,
+    "p_value": 0.03652127505830216,
+    "alpha_positive_pct": 0.6363636363636364
+  },
+  "factor_results": [
+    {
+      "factor": "none",
+      "avg_return": 0.5667289788849477,
+      "avg_winrate": 0.3722222222222222,
+      "positive_pct": 0.8181818181818182,
+      "n": 11
+    },
+    {
+      "factor": "ma5",
+      "avg_return": 0.5446702957340182,
+      "avg_winrate": 0.3722222222222222,
+      "positive_pct": 0.8181818181818182,
+      "n": 11
+    },
+    {
+      "factor": "rsi",
+      "avg_return": 0.017945798405447983,
+      "avg_winrate": 0.38636363636363635,
+      "positive_pct": 0.45454545454545453,
+      "n": 11
+    },
+    {
+      "factor": "obv",
+      "avg_return": 0.5672077286216007,
+      "avg_winrate": 0.3722222222222222,
+      "positive_pct": 0.8181818181818182,
+      "n": 11
+    },
+    {
+      "factor": "all",
+      "avg_return": 0.5451490454706712,
+      "avg_winrate": 0.3722222222222222,
+      "positive_pct": 0.8181818181818182,
+      "n": 11
+    }
+  ],
+  "max_hold_grid": [
+    {
+      "max_hold_days": 99999,
+      "avg_return": 0.5667289788849477,
+      "avg_winrate": 0.3722222222222222
+    },
+    {
+      "max_hold_days": 60,
+      "avg_return": 0.04898888586090733,
+      "avg_winrate": 0.28264652014652014
+    },
+    {
+      "max_hold_days": 30,
+      "avg_return": -0.04845480271800921,
+      "avg_winrate": 0.24329594647776462
+    },
+    {
+      "max_hold_days": 10,
+      "avg_return": -0.09969607487222594,
+      "avg_winrate": 0.23189214302723446
+    },
+    {
+      "max_hold_days": 5,
+      "avg_return": -0.19376056278511494,
+      "avg_winrate": 0.2657712706171977
+    }
+  ]
+}
