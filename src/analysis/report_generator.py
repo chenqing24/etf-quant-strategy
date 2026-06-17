@@ -121,7 +121,19 @@ class ETFReportGenerator:
                 row = df[df['date'] == self.latest_date]
                 if len(row) > 0:
                     price = row.iloc[0]['close']
-                    # SOP-P0-2: 加 rsi5/rsi14/ma5 等多维数据，供报告对比
+                    # SOP-P0-2: 加 rsi5/rsi14/ma5 等多维数据
+                    # SOP-P0-3: 加 5日涨幅 / 20日涨幅 / 平均成交量（次级指标用于 tiebreaker）
+                    recent_5d_return = 0.0
+                    recent_20d_return = 0.0
+                    avg_volume_5d = 0.0
+                    if len(df) >= 21:
+                        price_now = row.iloc[0]['close']
+                        price_5d_ago = df['close'].iloc[-6] if len(df) >= 6 else price_now
+                        price_20d_ago = df['close'].iloc[-21] if len(df) >= 21 else price_now
+                        recent_5d_return = (price_now / price_5d_ago - 1) * 100
+                        recent_20d_return = (price_now / price_20d_ago - 1) * 100
+                        avg_volume_5d = float(df['volume'].tail(5).mean())
+
                     scores.append({
                         'code': code,
                         'name': get_etf_name(code),
@@ -135,9 +147,17 @@ class ETFReportGenerator:
                         'ma60': float(row.iloc[0].get('ma60', 0) or 0),
                         'ma120': float(row.iloc[0].get('ma120', 0) or 0),
                         'vol_ratio': float(row.iloc[0].get('vol_ratio', 0) or 0),
+                        # SOP-P0-3: 次级指标（用于 tiebreaker）
+                        'return_5d': recent_5d_return,
+                        'return_20d': recent_20d_return,
+                        'avg_volume_5d': avg_volume_5d,
                     })
-        
-        scores.sort(key=lambda x: -x['score'])
+
+        # SOP-P0-3: 同分时按次级指标排序
+        # 1. 主排序：score 降序
+        # 2. 次级：return_20d 降序（涨幅高优先）
+        # 3. 三级：avg_volume_5d 降序（流动性高优先）
+        scores.sort(key=lambda x: (-x['score'], -x['return_20d'], -x['avg_volume_5d']))
         self.current_etfs = scores
         
         return {
@@ -501,35 +521,56 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
             report += f"{i:<4} {etf['code']:<8} {etf['name']:<10} {etf['price']:>8.3f} {etf['score']:>6} {reasons}\n"
 
         # SOP-P0-2: 核心推荐加 Top 3 对比 + 选 1 不选 2/3 的说明
+        # SOP-P0-3: 加次级指标列（5日涨幅/20日涨幅/5日均量）
         report += f"""
-【核心推荐 Top 3 对比】（说明：以下按分数降序）
+【核心推荐 Top 3 对比】（说明：分数相同时按 20日涨幅 排序，相同再按 5日均量）
 """
+        report += f"{'排名':<4} {'代码':<8} {'名称':<12} {'分数':>4} {'价格':>7} {'5日%':>6} {'20日%':>7} {'5日均量':>10}\n"
+        report += "-" * 70 + "\n"
         for i, etf in enumerate(self.current_etfs[:3], 1):
             marker = ' ⭐' if i == 1 else ''
-            report += f"{i}. {etf['code']} {etf['name']} - 分数{etf['score']}分{marker}\n"
+            report += f"{i:<4} {etf['code']:<8} {etf['name']:<12} {etf['score']:>4} {etf['price']:>7.3f} {etf['return_5d']:>+5.1f}% {etf['return_20d']:>+6.1f}% {etf['avg_volume_5d']:>10.0f}{marker}\n"
+
+        # 详细理由 + RSI 警告
+        for i, etf in enumerate(self.current_etfs[:3], 1):
+            report += f"\n{i}. {etf['code']} {etf['name']}（{'首选' if i == 1 else f'备选 {i}'}）\n"
             report += f"   理由: {'+'.join(etf['reasons'][:3])}\n"
-            # RSI 超买警告
             rsi5 = etf.get('rsi5', 0)
+            rsi14 = etf.get('rsi14', 0)
             if rsi5 > 80:
-                report += f"   ⚠️ RSI5={rsi5:.0f} 超买（短期回调风险）\n"
-            report += "\n"
+                report += f"   ⚠️ RSI5={rsi5:.0f} 超买（短期回调风险高）\n"
+            if rsi14 > 75:
+                report += f"   ⚠️ RSI14={rsi14:.0f} 超买（中期调整可能）\n"
+            if rsi5 < 30:
+                report += f"   💡 RSI5={rsi5:.0f} 超卖（短期反弹机会，但需 MA20 向上确认）\n"
 
         # 选 1 不选 2/3 的对比说明
         if len(self.current_etfs) >= 2:
             top1 = self.current_etfs[0]
             top2 = self.current_etfs[1]
             if top1['score'] == top2['score']:
-                # 同分时按价格/流动性选（简化：用价格更低作为更易买入）
+                # SOP-P0-3: 同分时用次级指标解释
+                winner_metric = []
+                if top1['return_20d'] > top2['return_20d']:
+                    winner_metric.append(f"20日涨幅 {top1['return_20d']:+.1f}% > {top2['return_20d']:+.1f}%")
+                elif top1['return_20d'] < top2['return_20d']:
+                    winner_metric.append(f"20日涨幅 {top1['return_20d']:+.1f}% < {top2['return_20d']:+.1f}%（但其他指标更优）")
+                if top1['avg_volume_5d'] > top2['avg_volume_5d']:
+                    winner_metric.append(f"5日均量 {top1['avg_volume_5d']:.0f} > {top2['avg_volume_5d']:.0f}（流动性更优）")
+
                 report += f"""【选 {top1['code']} 不选 {top2['code']} 的理由】
 - 两标的分数相同（{top1['score']} 分）
-- 选 {top1['code']}：{top1['name']}（价格 {top1['price']:.3f} 元，{'更低' if top1['price'] < top2['price'] else '更高'}）
-- 不选 {top2['code']}：{top2['name']}（价格 {top2['price']:.3f} 元）
-- 同分时的细分差异需通过 IC 加权或流动性指标进一步评估
+- 次级指标对比：
+  {' | '.join(winner_metric) if winner_metric else '次级指标接近'}
+- 选 {top1['code']}：{top1['name']}
+- 不选 {top2['code']}：{top2['name']}
+- 注：同分时如对当前排序有疑问，可考虑手动交换
 """
             else:
                 report += f"""【选 {top1['code']} 不选 {top2['code']} 的理由】
 - {top1['code']} 分数 = {top1['score']}，{top2['code']} 分数 = {top2['score']}（差距 {top1['score']-top2['score']} 分）
 - {top1['code']} 多出的分项：{set(top1['reasons']) - set(top2['reasons'])}
+- {top1['code']} 20日涨幅 {top1['return_20d']:+.1f}% vs {top2['code']} {top2['return_20d']:+.1f}%
 """
 
         report += f"""
