@@ -1,17 +1,13 @@
-# ⚠️ DEPRECATED: 此文件已废弃（US-001: 2026-06-03）
-# 数据源改为：etf.db.etf_names 表 (via ETFRepository)
-# 备份位置：.archive/us001-text-pool-backup-20260603_105000/top500_target_pool.txt
-# ETFListLoader.load() 不再读取此文件，从数据库加载
-# 当前 1486 条 ETF 在 etf.db.etf_names 中
-#
-# ETF池 - Top500（成交额>=10亿 + 规模>=10亿）筛选结果
+﻿# ETF池 - Top500（成交额>=10亿 + 规模>=10亿）筛选结果
 # 筛选标准：成交额>=10亿，规模>=10亿
 # 排除：货币基金、债券基金、QDII海外、商品ETF
 # 仅保留：宽基指数+行业ETF，同主题去重
-# 总数: 15只
+# 总数: 14只（510300 已剔除 - 沪深300 ETF 全部为 reference 池，参考 SOUL 规则 21）
+#
+# 注意：SOP-13 起，DB（etf_names.pool_role='core'）是单一真相源
+#       本文件为导出产物，由 scripts/export_pool_to_txt.py 重新生成
 
 ETF_POOL = [
-    '510300',
     '588000',
     '512480',
     '512880',

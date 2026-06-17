@@ -88,15 +88,28 @@ class ETFReportGenerator:
         return self.latest_date
     
     def analyze_market(self) -> Dict:
-        """分析当前市场状态"""
+        """分析当前市场状态
+
+        SOP-13 + US-002：选股范围限制为 CORE 池（动态池 - reference）
+        """
         selector = Selector()
         indicator = Indicator()
-        
+
         # 获取排除列表
         exclude_codes = StrategyConfig().exclude_codes
-        
+
+        # SOP-13：限定选股范围为 CORE 池
+        try:
+            from src.data.etf_pool_repository import ETFRepository
+            core_codes = set(ETFRepository().list_codes('core'))
+        except Exception:
+            core_codes = None  # 回退：用全库
+
         scores = []
         for code, df in self.data.items():
+            # SOP-13：只对 CORE 池打分（reference 标的如 300ETF 不进入 trade 候选）
+            if core_codes is not None and code not in core_codes:
+                continue
             # 排除特殊ETF (红利、港股、证券、债券等)
             if code in exclude_codes:
                 continue
