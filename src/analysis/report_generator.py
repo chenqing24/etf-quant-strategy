@@ -134,6 +134,15 @@ class ETFReportGenerator:
                         recent_20d_return = (price_now / price_20d_ago - 1) * 100
                         avg_volume_5d = float(df['volume'].tail(5).mean())
 
+                    # SOP-P1-2: BOLL 突破/跌破检测
+                    boll_upper = float(row.iloc[0].get('boll_upper', 0) or 0)
+                    boll_lower = float(row.iloc[0].get('boll_lower', 0) or 0)
+                    boll_status = 'inside'  # 默认在轨道内
+                    if boll_upper > 0 and price > boll_upper:
+                        boll_status = 'break_upper'  # 突破上轨
+                    elif boll_lower > 0 and price < boll_lower:
+                        boll_status = 'break_lower'  # 跌破下轨
+
                     scores.append({
                         'code': code,
                         'name': get_etf_name(code),
@@ -151,6 +160,10 @@ class ETFReportGenerator:
                         'return_5d': recent_5d_return,
                         'return_20d': recent_20d_return,
                         'avg_volume_5d': avg_volume_5d,
+                        # SOP-P1-2: BOLL 状态
+                        'boll_status': boll_status,
+                        'boll_upper': boll_upper,
+                        'boll_lower': boll_lower,
                     })
 
         # SOP-P0-3: 同分时按次级指标排序
@@ -517,8 +530,9 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
         report += "-" * 70 + "\n"
         
         for i, etf in enumerate(self.current_etfs[:10], 1):
-            reasons = '+'.join(etf['reasons'][:3])
-            report += f"{i:<4} {etf['code']:<8} {etf['name']:<10} {etf['price']:>8.3f} {etf['score']:>6} {reasons}\n"
+            # SOP-P1-2: 显示所有正分 reasons（不只是前 3 个），扣分项也显示
+            reasons_str = ' '.join(etf['reasons'])
+            report += f"{i:<4} {etf['code']:<8} {etf['name']:<10} {etf['price']:>8.3f} {etf['score']:>6} {reasons_str}\n"
 
         # SOP-P0-2: 核心推荐加 Top 3 对比 + 选 1 不选 2/3 的说明
         # SOP-P0-3: 加次级指标列（5日涨幅/20日涨幅/5日均量）
@@ -531,7 +545,7 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
             marker = ' ⭐' if i == 1 else ''
             report += f"{i:<4} {etf['code']:<8} {etf['name']:<12} {etf['score']:>4} {etf['price']:>7.3f} {etf['return_5d']:>+5.1f}% {etf['return_20d']:>+6.1f}% {etf['avg_volume_5d']:>10.0f}{marker}\n"
 
-        # 详细理由 + RSI 警告
+        # 详细理由 + RSI/MACD/BOLL 警告
         for i, etf in enumerate(self.current_etfs[:3], 1):
             report += f"\n{i}. {etf['code']} {etf['name']}（{'首选' if i == 1 else f'备选 {i}'}）\n"
             report += f"   理由: {'+'.join(etf['reasons'][:3])}\n"
@@ -543,6 +557,14 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
                 report += f"   ⚠️ RSI14={rsi14:.0f} 超买（中期调整可能）\n"
             if rsi5 < 30:
                 report += f"   💡 RSI5={rsi5:.0f} 超卖（短期反弹机会，但需 MA20 向上确认）\n"
+            # SOP-P1-2: BOLL 突破/跌破警告
+            boll_status = etf.get('boll_status', 'inside')
+            boll_upper = etf.get('boll_upper', 0)
+            boll_lower = etf.get('boll_lower', 0)
+            if boll_status == 'break_upper' and boll_upper > 0:
+                report += f"   ⚠️ 突破BOLL上轨 {boll_upper:.3f}（超买区域，回归压力）\n"
+            elif boll_status == 'break_lower' and boll_lower > 0:
+                report += f"   💡 跌破BOLL下轨 {boll_lower:.3f}（超卖区域，反弹机会）\n"
 
         # 选 1 不选 2/3 的对比说明
         if len(self.current_etfs) >= 2:
