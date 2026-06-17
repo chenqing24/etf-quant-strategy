@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
 """指标计算层"""
 import pandas as pd
-import numpy as np
 from typing import Dict
 
 
 class Indicator:
     """技术指标计算"""
-    
+
     @staticmethod
     def calculate(df: pd.DataFrame) -> pd.DataFrame:
-        """计算技术指标
-        
+        """计算技术指标（SOP-P1-2 升级）
+
         输出字段:
         - ma5, ma10, ma20, ma60, ma120: 移动平均线
         - ma_vol_20: 成交量均线
         - vol_ratio: 量比 (volume / ma_vol_20)
         - rsi_5, rsi_14: RSI指标
-        - adx_14: ADX趋势强度指标（v9 双模式）
+        - macd, macd_signal, macd_hist: MACD 指标（SOP-P1-2 新增）
+        - boll_upper, boll_middle, boll_lower: 布林带（SOP-P1-2 新增）
         """
         df = df.copy()
-        
+
         # 移动平均线
         for d in [5, 10, 20, 60, 120]:
             df[f'ma{d}'] = df['close'].rolling(d).mean()
-        
+
         # 成交量均线
         df['ma_vol_20'] = df['volume'].rolling(20).mean()
         df['vol_ratio'] = df['volume'] / df['ma_vol_20']
-        
+
         # RSI
         for d in [5, 14]:
             delta = df['close'].diff()
@@ -36,62 +36,28 @@ class Indicator:
             loss = (-delta.where(delta < 0, 0)).rolling(d).mean()
             rs = gain / (loss + 1e-10)
             df[f'rsi_{d}'] = 100 - (100 / (1 + rs))
-        
-        # ADX（v9 双模式）
-        df = Indicator._calculate_adx(df, period=14)
-        
+
+        # SOP-P1-2: MACD 指标
+        # EMA12 - EMA26 = DIF (macd)
+        # EMA9 of DIF = DEA (macd_signal)
+        # DIF - DEA = macd_hist
+        ema12 = df['close'].ewm(span=12, adjust=False).mean()
+        ema26 = df['close'].ewm(span=26, adjust=False).mean()
+        df['macd'] = ema12 - ema26
+        df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+        df['macd_hist'] = (df['macd'] - df['macd_signal']) * 2
+
+        # SOP-P1-2: BOLL 布林带
+        # 中轨 = MA20
+        # 上轨 = MA20 + 2*STD20
+        # 下轨 = MA20 - 2*STD20
+        df['boll_middle'] = df['ma20']
+        std20 = df['close'].rolling(20).std()
+        df['boll_upper'] = df['boll_middle'] + 2 * std20
+        df['boll_lower'] = df['boll_middle'] - 2 * std20
+
         return df
-    
-    @staticmethod
-    def _calculate_adx(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
-        """计算 ADX 指标
-        
-        Args:
-            df: 包含 high, low, close 的 DataFrame
-            period: ADX 周期，默认14
-            
-        Returns:
-            添加了 adx_{period} 列的 DataFrame
-        """
-        high = df['high']
-        low = df['low']
-        close = df['close']
-        
-        # True Range (TR)
-        tr1 = high - low
-        tr2 = abs(high - close.shift(1))
-        tr3 = abs(low - close.shift(1))
-        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        
-        # Directional Movement (DM)
-        plus_dm = high.diff()
-        minus_dm = -low.diff()
-        
-        plus_dm[plus_dm < 0] = 0
-        plus_dm[minus_dm > plus_dm] = 0
-        
-        minus_dm[minus_dm < 0] = 0
-        minus_dm[plus_dm > minus_dm] = 0
-        
-        # 平滑
-        atr = tr.rolling(period).mean()
-        plus_dm_smooth = plus_dm.rolling(period).mean()
-        minus_dm_smooth = minus_dm.rolling(period).mean()
-        
-        # DI+ DI-
-        plus_di = 100 * plus_dm_smooth / (atr + 1e-10)
-        minus_di = 100 * minus_dm_smooth / (atr + 1e-10)
-        
-        # DX
-        dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di + 1e-10)
-        
-        # ADX
-        adx = dx.rolling(period).mean()
-        
-        df[f'adx_{period}'] = adx
-        
-        return df
-    
+
     @staticmethod
     def calculate_all(data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
         """批量计算"""
