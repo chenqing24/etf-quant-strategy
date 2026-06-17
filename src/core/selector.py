@@ -226,32 +226,32 @@ class Selector:
         # 1. 站上120日线 (+IC权重)
         if not pd.isna(row.get('ma120')) and row['close'] > row['ma120']:
             weighted_score += weights.get('ma120', 3)
-            reasons.append('MA120')
-        
+            reasons.append(f'MA120(+{weights.get("ma120", 3)})')
+
         # 2. 60日均线向上 (+IC权重)
         if len(df[df['date'] <= date]) >= 5:
             recent = df[df['date'] <= date].tail(5)
-            if (len(recent) >= 5 and 
-                not pd.isna(recent['ma60'].iloc[-1]) and 
+            if (len(recent) >= 5 and
+                not pd.isna(recent['ma60'].iloc[-1]) and
                 not pd.isna(recent['ma60'].iloc[0]) and
                 recent['ma60'].iloc[-1] > recent['ma60'].iloc[0]):
                 weighted_score += weights.get('ma60_up', 2)
-                reasons.append('MA60向上')
-        
+                reasons.append(f'MA60向上(+{weights.get("ma60_up", 2)})')
+
         # 3. 站上60日线 (+IC权重)
         if not pd.isna(row.get('ma60')) and row['close'] > row['ma60']:
             weighted_score += weights.get('ma60', 2)
-            reasons.append('MA60')
-        
+            reasons.append(f'MA60(+{weights.get("ma60", 2)})')
+
         # 4. 站上20日线 (+IC权重)
         if row['close'] > row['ma20']:
             weighted_score += weights.get('ma20', 1)
-            reasons.append('MA20')
-        
+            reasons.append(f'MA20(+{weights.get("ma20", 1)})')
+
         # 5. 放量 (+IC权重)
         if not pd.isna(row.get('vol_ratio')) and row['vol_ratio'] > 1.5:
             weighted_score += weights.get('vol', 2)
-            reasons.append(f"放量{int(row['vol_ratio']*100-100)}%")
+            reasons.append(f"放量(+{weights.get('vol', 2)})")
         
         # 6. RSI健康 (+IC权重) 或 超买扣分
         # 注意：RSI超卖(<30)时需要MA20向上确认，避免"接飞刀"
@@ -272,25 +272,25 @@ class Selector:
                     
                     if ma20_up:
                         weighted_score += weights.get('rsi', 1)
-                        reasons.append('RSI')
+                        reasons.append(f'RSI超卖反弹(+{weights.get("rsi", 1)})')
                     else:
                         # RSI超卖但MA20未向上，不加分也不记录（防止接飞刀）
                         pass
                 else:
                     weighted_score += weights.get('rsi', 1)
-                    reasons.append('RSI')
+                    reasons.append(f'RSI健康(+{weights.get("rsi", 1)})')
             elif rsi < 80:
                 # 超买警告，不扣分但也不加分
-                reasons.append('RSI⚠️')
+                reasons.append(f'RSI偏高(⚠️)')
             else:
                 # 严重超买，扣分
                 weighted_score -= 2
-                reasons.append('RSI⚠️⚠️')
-        
+                reasons.append(f'RSI超买(⚠️⚠️,-2)')
+
         # 7. MACD金叉 (+IC权重)
         if not pd.isna(row.get('macd')) and row['macd'] > 0:
             weighted_score += weights.get('macd', 1)
-            reasons.append('MACD')
+            reasons.append(f'MACD金叉(+{weights.get("macd", 1)})')
         
         return int(weighted_score), reasons
     

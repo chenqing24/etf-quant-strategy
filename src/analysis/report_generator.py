@@ -121,12 +121,20 @@ class ETFReportGenerator:
                 row = df[df['date'] == self.latest_date]
                 if len(row) > 0:
                     price = row.iloc[0]['close']
+                    # SOP-P0-2: 加 rsi5/rsi14/ma5 等多维数据，供报告对比
                     scores.append({
                         'code': code,
                         'name': get_etf_name(code),
                         'score': s,
                         'price': price,
-                        'reasons': reasons
+                        'reasons': reasons,
+                        'rsi5': float(row.iloc[0].get('rsi_5', 0) or 0),
+                        'rsi14': float(row.iloc[0].get('rsi_14', 0) or 0),
+                        'ma5': float(row.iloc[0].get('ma5', 0) or 0),
+                        'ma20': float(row.iloc[0].get('ma20', 0) or 0),
+                        'ma60': float(row.iloc[0].get('ma60', 0) or 0),
+                        'ma120': float(row.iloc[0].get('ma120', 0) or 0),
+                        'vol_ratio': float(row.iloc[0].get('vol_ratio', 0) or 0),
                     })
         
         scores.sort(key=lambda x: -x['score'])
@@ -491,12 +499,40 @@ RSI5: {rsi_5:.1f} | RSI14: {rsi_14:.1f}
         for i, etf in enumerate(self.current_etfs[:10], 1):
             reasons = '+'.join(etf['reasons'][:3])
             report += f"{i:<4} {etf['code']:<8} {etf['name']:<10} {etf['price']:>8.3f} {etf['score']:>6} {reasons}\n"
-        
-        report += f"""
-【核心推荐】
-1. {self.current_etfs[0]['code']} {self.current_etfs[0]['name']} - 分数{self.current_etfs[0]['score']}分 (最高)
-{f"2. {self.current_etfs[1]['code']} {self.current_etfs[1]['name']} - 分数{self.current_etfs[1]['score']}分" if len(self.current_etfs) > 1 else ""}
 
+        # SOP-P0-2: 核心推荐加 Top 3 对比 + 选 1 不选 2/3 的说明
+        report += f"""
+【核心推荐 Top 3 对比】（说明：以下按分数降序）
+"""
+        for i, etf in enumerate(self.current_etfs[:3], 1):
+            marker = ' ⭐' if i == 1 else ''
+            report += f"{i}. {etf['code']} {etf['name']} - 分数{etf['score']}分{marker}\n"
+            report += f"   理由: {'+'.join(etf['reasons'][:3])}\n"
+            # RSI 超买警告
+            rsi5 = etf.get('rsi5', 0)
+            if rsi5 > 80:
+                report += f"   ⚠️ RSI5={rsi5:.0f} 超买（短期回调风险）\n"
+            report += "\n"
+
+        # 选 1 不选 2/3 的对比说明
+        if len(self.current_etfs) >= 2:
+            top1 = self.current_etfs[0]
+            top2 = self.current_etfs[1]
+            if top1['score'] == top2['score']:
+                # 同分时按价格/流动性选（简化：用价格更低作为更易买入）
+                report += f"""【选 {top1['code']} 不选 {top2['code']} 的理由】
+- 两标的分数相同（{top1['score']} 分）
+- 选 {top1['code']}：{top1['name']}（价格 {top1['price']:.3f} 元，{'更低' if top1['price'] < top2['price'] else '更高'}）
+- 不选 {top2['code']}：{top2['name']}（价格 {top2['price']:.3f} 元）
+- 同分时的细分差异需通过 IC 加权或流动性指标进一步评估
+"""
+            else:
+                report += f"""【选 {top1['code']} 不选 {top2['code']} 的理由】
+- {top1['code']} 分数 = {top1['score']}，{top2['code']} 分数 = {top2['score']}（差距 {top1['score']-top2['score']} 分）
+- {top1['code']} 多出的分项：{set(top1['reasons']) - set(top2['reasons'])}
+"""
+
+        report += f"""
 {'='*70}
 四、资金配置方案
 {'='*70}
