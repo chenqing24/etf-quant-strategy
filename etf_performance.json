@@ -1,0 +1,11 @@
+{
+  "trades": [],
+  "positions": [],
+  "performance": {
+    "initial_capital": 20000,
+    "current_capital": 20000,
+    "total_pnl": 0,
+    "total_trades": 0,
+    "win_rate": 0
+  }
+}

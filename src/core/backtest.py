@@ -1,26 +1,5 @@
 #!/usr/bin/env python3
-"""回测引擎 - 已废弃
-
-⚠️ 警告：此文件已被废弃，请使用 src.backtest.engine.FactorBacktester
-
-迁移指南：
-1. 使用 BacktestConfig 配置回测参数
-2. 使用 FactorBacktester.backtest() 执行回测
-3. 配置项映射：
-   - score_threshold → BacktestConfig.score_threshold
-   - min_hold_days → BacktestConfig.min_hold_days
-   - signal_consecutive_days → BacktestConfig.signal_consecutive_days
-   - rebalance_days → BacktestConfig.rebalance_days
-
-参考文档：docs/BACKTEST_CONSOLIDATION.md
-"""
-import warnings
-warnings.warn(
-    "src.core.backtest is deprecated. Use src.backtest.engine.FactorBacktester instead.",
-    DeprecationWarning,
-    stacklevel=2
-)
-
+"""回测引擎 - 支持每日评分和调仓周期"""
 import pandas as pd
 from typing import Dict, Optional, List, Tuple
 
@@ -77,10 +56,6 @@ def run_backtest(
     # 调仓计数器
     days_since_rebalance = 0
     
-    # 信号持续性控制：连续低分天数计数器
-    consecutive_low_score_days = 0
-    signal_consecutive_days = getattr(config, 'signal_consecutive_days', 2)  # 连续2天才触发卖出
-    
     # 首次买入
     first_date = all_dates[0]
     market_ok = not market_filter or market_filter.is_bullish(first_date)
@@ -94,45 +69,37 @@ def run_backtest(
     for date_idx, date in enumerate(all_dates):
         days_since_rebalance += 1
         
-        # 1. 评分检查 + 卖出决策
-        # 条件：评分低于阈值 + 已持仓满最小天数 + 连续N天低分
+        # 1. 每日评分检查 - 检查持仓ETF是否需要卖出
         if executor.holdings:
             holdings_to_close = []
             for code, pos in executor.holdings.items():
                 if code not in data:
                     continue
-                
-                score, _ = selector.evaluate(data[code], date)
-                hold_days = date_idx - pos['entry_idx']
-                min_hold_days = getattr(config, 'min_hold_days', 3)  # 默认最小持仓3天
-                
-                # 评分低于阈值 + 已持仓满最小天数，才触发卖出
-                if score < config.score_threshold and hold_days >= min_hold_days:
-                    consecutive_low_score_days += 1
                     
-                    # 连续N天评分低于阈值，才触发卖出
-                    if consecutive_low_score_days >= signal_consecutive_days:
-                        holdings_to_close.append(code)
-                        executor.trades.append({
-                            'date': date,
-                            'code': code,
-                            'action': 'sell',
-                            'score': score,
-                            'reason': f'评分下降({consecutive_low_score_days}天,<{config.score_threshold})'
-                        })
-                else:
-                    # 评分恢复或未满最小持仓，清零计数器
-                    consecutive_low_score_days = 0
+                score, _ = selector.evaluate(data[code], date)
+                
+                # 评分低于阈值，触发卖出
+                if score < config.score_threshold:
+                    holdings_to_close.append(code)
+                    executor.trades.append({
+                        'date': date,
+                        'code': code,
+                        'action': 'sell',
+                        'score': score,
+                        'reason': f'评分下降({score}<{config.score_threshold})'
+                    })
             
             # 执行卖出
             for code in holdings_to_close:
                 _close_position(executor, data, code, date, config)
-        else:
-            # 无持仓时，清零计数器
-            consecutive_low_score_days = 0
         
-        # 2. 调仓周期检查 - 只有完全空仓时才重新选择
-        if days_since_rebalance >= config.rebalance_days and not executor.holdings:
+        # 2. 调仓周期检查 - 定期重新选择
+        should_rebalance = (
+            days_since_rebalance >= config.rebalance_days and
+            len(executor.holdings) < config.hold_count
+        )
+        
+        if should_rebalance:
             # 重新选择并买入
             _select_and_buy(executor, selector, data, config, date, allow_oversold)
             days_since_rebalance = 0
@@ -275,56 +242,11 @@ def _update_equity(
     data: Dict[str, pd.DataFrame],
     date: str
 ) -> None:
-    """更新组合权益
+    """更新组合权益"""
+    total_value = executor.equity
     
-    简化逻辑：
-    1. 获取前一天的日期和价格
-    2. 计算每只ETF的日收益率
-    3. 取平均收益率更新组合权益
-    """
-    if not executor.holdings:
-        return
-    
-    # 获取前一天的价格
-    daily_returns = []
-    for code, pos in executor.holdings.items():
-        if code not in data:
-            continue
-        
-        df = data[code]
-        dates_sorted = sorted(df['date'].tolist())
-        
-        # 查找前一天的日期
-        if date not in dates_sorted:
-            continue
-        
-        date_idx = dates_sorted.index(date)
-        if date_idx == 0:
-            # 第一天，用买入成本作为基准
-            rows = df[df['date'] == date]
-            if len(rows) == 0:
-                continue
-            price_today = rows.iloc[0]['close']
-            daily_return = (price_today - pos['cost']) / pos['cost']
-        else:
-            # 获取昨天和今天的价格
-            prev_date = dates_sorted[date_idx - 1]
-            rows_today = df[df['date'] == date]
-            rows_prev = df[df['date'] == prev_date]
-            
-            if len(rows_today) == 0 or len(rows_prev) == 0:
-                continue
-            
-            price_today = rows_today.iloc[0]['close']
-            price_prev = rows_prev.iloc[0]['close']
-            daily_return = (price_today - price_prev) / price_prev
-        
-        daily_returns.append(daily_return)
-    
-    # 平均收益率更新组合权益
-    if daily_returns:
-        avg_return = sum(daily_returns) / len(daily_returns)
-        executor.equity *= (1 + avg_return)
+    # 不更新权益，只记录持仓状态
+    # 实际权益在卖出时计算
 
 
 def _final_settlement(

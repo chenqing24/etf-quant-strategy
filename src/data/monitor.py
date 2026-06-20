@@ -2,20 +2,11 @@
 """
 数据质量监控模块
 
-用途：
-    - 检查数据新鲜度（分钟级告警，阈值80分钟）
-    - 检查数据完整性（交易日<50条=ERROR，缺失>20%=WARNING）
-    - 检查存储健康度
-    - 生成监控报告并发送到钉钉
-
-被谁调用：
-    - QwenPaw cron 定时任务（每日 09:00 工作日）
-    - 入口：`python -m src.data.monitor`
-
-功能说明：
-    - 替代已删除的 scripts/daily_data_check.py（功能重复）
-    - 是数据质量监控的唯一入口
-    - 包含分钟级新鲜度检查 + 完整性检查
+功能：
+- 检查数据新鲜度
+- 检查数据完整性
+- 检查存储健康度
+- 生成监控报告
 
 使用方式：
     # 检查并输出报告
@@ -26,20 +17,9 @@
     
     # 发送到钉钉
     python -m src.data.monitor --dingtalk
-
-依赖：
-    - src.constants (DATA_DIR, DB_NAME)
-    - src.notify.notifier (钉钉告警)
-    - sqlite3 (数据查询)
-
-注意事项：
-    - 数据新鲜度阈值：80分钟（80分钟内无更新=告警）
-    - 完整性阈值：50条（<50条=ERROR），缺失>20%（WARNING）
-    - 仅工作日运行（周一至周五）
 """
 import os
 import sys
-import time
 import json
 import sqlite3
 from datetime import datetime, timedelta
@@ -50,19 +30,6 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.constants import DATA_DIR, DB_NAME
-from src.utils.execution_source import (
-    ExecutionSource,
-    add_source_argument,
-    get_source_from_argv,
-)
-from src.utils.safety_gate import (
-    require_force,
-    add_force_argument,
-    add_dry_run_argument,
-    SafetyGateError,
-)
-# US-003: Audit Logger
-from src.utils.audit_logger import get_audit
 
 
 # 工作日判断（A股周一至周五）
@@ -91,27 +58,8 @@ class DataQualityMonitor:
         'max_db_size_mb': 100,        # 数据库超过100MB提示
         # 交易日完整性检查
         'max_day_missing_pct': 0.20,  # 交易日数据缺失超过20%告警
-        # B1 修复: min_day_count 改为动态方法 get_min_day_count()，跟随核心池大小
+        'min_day_count': 50,          # 交易日数据最少50条才正常
     }
-
-    def get_min_day_count(self) -> int:
-        """
-        动态获取交易日最小数据量阈值
-        
-        来源: v9 交易池大小（etf_data_live/top500_target_pool.txt）
-        下限: 10（避免过小阈值失效）
-        
-        为什么不写死 50: 历史 monitor 假设完整扩展池（~80 只），
-        实际 v9 池只 15 只，硬编码 50 会误报。
-        """
-        try:
-            from src.data.etf_pool_loader import ETFListLoader
-            loader = ETFListLoader()
-            codes = loader.load()
-            return max(len(codes), 10)  # 下限保护
-        except Exception as e:
-            # ETFListLoader 失败时回退到 v9 默认值
-            return 15  # v9 默认值（核心池 14 + 510300 大盘参考 = 15）
     
     def __init__(self, db_path: str = None):
         self.db_path = db_path or os.path.join(DATA_DIR, DB_NAME)
@@ -289,12 +237,8 @@ class DataQualityMonitor:
             etf_counts = {row[0]: row[1] for row in cur.fetchall()}
             
             try:
-                from src.data.etf_pool_loader import ETFListLoader
-                # B2 修复: 使用 v9 交易池（top500_target_pool.txt）作为 expected_etfs
-                # 历史 ETF_POOLS.core+extended=71 是 v3.0 时代的数据采集池，
-                # v9 已迁移到 15 只核心交易池（2026-06-02 启用）
-                loader = ETFListLoader()
-                expected_etfs = len(loader.load())
+                from src.config.etf_pools import ETF_POOLS
+                expected_etfs = len(ETF_POOLS.get('core', [])) + len(ETF_POOLS.get('extended', []))
             except:
                 expected_etfs = total_etfs
             
@@ -320,6 +264,14 @@ class DataQualityMonitor:
                 (last_trading_day,)
             )
             last_day_count = cur.fetchone()[0]
+            
+            # 获取前一个交易日记录数（基准）
+            prev_day = (datetime.strptime(last_trading_day, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
+            cur = conn.execute(
+                'SELECT COUNT(*) FROM daily WHERE date = ?',
+                (prev_day,)
+            )
+            prev_day_count = cur.fetchone()[0]
             
             conn.close()
             
@@ -349,8 +301,8 @@ class DataQualityMonitor:
             
             # 2. 交易日完整性（仅交易时段检查）
             if is_trade_day:
-                # B3 修复: 基准改为配置池大小（不再用前一日历史）
-                baseline_count = self.get_min_day_count()
+                # 基准：前一个交易日的记录数
+                baseline_count = prev_day_count if prev_day_count > 0 else 60  # 默认60条
                 
                 if last_day_count == 0:
                     # 没有数据
@@ -361,14 +313,14 @@ class DataQualityMonitor:
                         'message': f'交易日 {last_trading_day} 无数据',
                         'detail': f'基准: {baseline_count}条'
                     })
-                elif last_day_count < self.get_min_day_count():
+                elif last_day_count < self.THRESHOLDS['min_day_count']:
                     # 数据太少
                     trade_day_status = 'ERROR'
                     self.alerts.append({
                         'type': 'trade_day_completeness',
                         'level': 'ERROR',
                         'message': f'交易日 {last_trading_day} 数据不足 ({last_day_count}条)',
-                        'detail': f'基准: {baseline_count}条, 阈值: {self.get_min_day_count()}条'
+                        'detail': f'基准: {baseline_count}条, 阈值: {self.THRESHOLDS["min_day_count"]}条'
                     })
                 elif last_day_count < baseline_count * (1 - self.THRESHOLDS['max_day_missing_pct']):
                     # 数据缺失超过阈值
@@ -401,8 +353,7 @@ class DataQualityMonitor:
                 # 交易日完整性
                 'last_trading_day': last_trading_day,
                 'last_day_count': last_day_count,
-                # B3 修复: 移除 prev_day_count 字段，基准来自配置池（get_min_day_count）
-                'baseline_count': self.get_min_day_count(),
+                'prev_day_count': prev_day_count,
                 'is_trading_day': is_trade_day,
             }
             
@@ -505,7 +456,7 @@ class DataQualityMonitor:
             f"  ETF数量: {r['completeness'].get('total_etfs', 0)}/{r['completeness'].get('expected_etfs', 0)}",
             f"  缺失: {r['completeness'].get('missing_count', 0)} 只",
             f"  交易日: {r['completeness'].get('last_trading_day', 'N/A')} ({r['completeness'].get('last_day_count', 0)}条)",
-            f"  配置池: {r['completeness'].get('baseline_count', 0)}只",
+            f"  基准: {r['completeness'].get('prev_day_count', 0)}条",
             "",
             "【存储】",
             f"  状态: {r['storage'].get('status', 'N/A')}",
@@ -541,78 +492,20 @@ def main():
     parser = argparse.ArgumentParser(description='数据质量监控')
     parser.add_argument('--json', action='store_true', help='输出JSON格式')
     parser.add_argument('--dingtalk', action='store_true', help='发送到钉钉')
-    # ── US-002: Safety Gate ───────────────────────────────────
-    add_force_argument(parser)  # 钉钉推送是 Moderate 操作
-    add_dry_run_argument(parser)
-    # ─────────────────────────────────────────────────────────────
     parser.add_argument('--db-path', type=str, help='数据库路径')
-
-    # ── US-001: 执行源标识（audit / 未来门禁） ──────────────────
-    add_source_argument(parser)
-    # ─────────────────────────────────────────────────────────────
-
+    
     args = parser.parse_args()
-
-    # US-001: 解析执行源（argv 缺省 → 走 get_source_from_argv 默认 MANUAL）
-    execution_source = get_source_from_argv() if args.source is None else ExecutionSource(args.source)
-    print(f"🔖 execution_source = {execution_source.value}")
-
-    # US-003: Audit 日志 — start 事件
-    _audit = get_audit()
-    _t0 = time.time()
-    _cmd = "monitor.py " + " ".join(sys.argv[1:])
-    _audit.write_event(
-        event_type="started",
-        command=_cmd,
-        source=execution_source.value,
-        args={"dingtalk": args.dingtalk, "json": args.json, "db_path": args.db_path},
-    )
-
+    
     monitor = DataQualityMonitor(db_path=args.db_path)
     report = monitor.check_all()
-
+    
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
     else:
         print(monitor.format_report())
-
+    
     # 告警或警告时发送到钉钉
     if args.dingtalk and (report.get('alerts') or report.get('warnings')):
-        # US-002: 钉钉推送是 Moderate 破坏性操作（dingtalk_send）
-        try:
-            require_force(
-                "dingtalk_send",
-                source=execution_source,
-                force=args.force,
-                dry_run=args.dry_run,
-                target=None,
-            )
-        except SafetyGateError as e:
-            print(str(e))
-            # US-003: SafetyGate 拒绝时写 audit
-            _audit.write_event(
-                event_type="denied_by_safety_gate",
-                command=_cmd,
-                source=execution_source.value,
-                outcome="denied",
-                duration_ms=(time.time() - _t0) * 1000,
-                error_msg=str(e),
-                op="dingtalk_send",
-            )
-            sys.exit(2)
-
-        if args.dry_run:
-            print("\n[dry-run] 将发送钉钉通知，未实际执行")
-            _audit.write_event(
-                event_type="dry_run",
-                command=_cmd,
-                source=execution_source.value,
-                outcome="success",
-                duration_ms=(time.time() - _t0) * 1000,
-                op="dingtalk_send",
-            )
-            sys.exit(0)
-
         try:
             from src.notify.dingtalk import DingTalkSender
             sender = DingTalkSender(mode='qwenpaw')
@@ -621,17 +514,6 @@ def main():
             print("\n📨 已发送钉钉通知")
         except Exception as e:
             print(f"\n⚠️ 钉钉发送失败: {e}")
-
-    # US-003: Audit 日志 — success 事件
-    _audit.write_event(
-        event_type="success",
-        command=_cmd,
-        source=execution_source.value,
-        outcome="success",
-        duration_ms=(time.time() - _t0) * 1000,
-        alerts=len(report.get('alerts') or []),
-        warnings=len(report.get('warnings') or []),
-    )
 
 
 if __name__ == '__main__':

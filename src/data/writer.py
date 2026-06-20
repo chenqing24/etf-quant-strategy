@@ -1,38 +1,6 @@
-#!/usr/bin/env python3
 """
-统一数据写入器 - 唯一数据写入入口
-
-用途：
-    - 向 SQLite 数据库写入 ETF 行情数据
-    - 支持增量写入 + 防重复
-    - 自动创建表结构（IF NOT EXISTS）
-
-被谁调用：
-    - 所有需要写入数据的业务代码（src/ 下各类模块）
-    - scripts/data/refetch_etf_data.py（全量/指定重采集）
-    - scripts/data/fetch_today.py（今日数据采集）
-    - 禁止绕过此模块直接写入数据库
-
-功能说明：
-    - 所有数据写入必须经过此模块（强制约束）
-    - WAL 模式支持并发写入
-    - 启动时检查必要列（id/source/created_at/amount）
-    - 自动增量写入（UPSERT）
-
-使用方式：
-    from src.data.writer import DataWriter
-    
-    writer = DataWriter()
-    count = writer.write_daily(code, df)
-
-依赖：
-    - src.data.exceptions (DataValidationError)
-    - sqlite3
-
-注意事项：
-    - 多线程/多进程并发写入需使用 WAL 模式
-    - 必须使用 WAL 模式（PRAGMA journal_mode=WAL）
-    - 禁止直接 sqlite3.execute(INSERT)，必须走此模块
+统一数据写入器
+所有数据写入必须经过此模块
 """
 import os
 import sqlite3
@@ -71,8 +39,12 @@ class DataWriter:
             db_path: 数据库路径，默认使用 etf_data_live/etf.db
         """
         if db_path is None:
-            from src.constants import DB_NAME, DATA_DIR
-            self.db_path = str(Path(DATA_DIR) / DB_NAME)
+            # 使用相对路径
+            self.db_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                'etf_data_live',
+                'etf.db'
+            )
         else:
             self.db_path = db_path
         

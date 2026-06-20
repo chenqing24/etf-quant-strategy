@@ -14,7 +14,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.data.writer import DataWriter
-from src.data.data_types import DailyRecord
+from src.data.types import DailyRecord
 
 
 class TestFetcherWriterIntegration(unittest.TestCase):

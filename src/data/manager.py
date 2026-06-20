@@ -439,23 +439,20 @@ class DataFacade:
         
         if hot_dict:
             # 在最后一行附加热数据的价格
-            # 直接修改 DataFrame 的值，而不是替换整行
-            hot_price = hot_dict.get('price')
-            hot_change = hot_dict.get('change_pct')
-            hot_volume = hot_dict.get('volume')
+            last_row = df.iloc[-1].copy()
+            last_row['price'] = hot_dict.get('price')
+            last_row['change_pct'] = hot_dict.get('change_pct')
+            last_row['volume'] = hot_dict.get('volume', last_row['volume'])
             
-            # 更新最后一行的字段
-            df.iloc[-1, df.columns.get_loc('close')] = hot_price
-            df.iloc[-1, df.columns.get_loc('volume')] = hot_volume if hot_volume else df.iloc[-1]['volume']
+            # 更新最后一行的close为热数据价格
+            last_row['close'] = hot_dict.get('price')
+            df.iloc[-1] = last_row
             
-            # 添加 price 和 change_pct 列（如果不存在）
-            if 'price' not in df.columns:
-                df['price'] = None
-            if 'change_pct' not in df.columns:
-                df['change_pct'] = None
-            
-            df.iloc[-1, df.columns.get_loc('price')] = hot_price
-            df.iloc[-1, df.columns.get_loc('change_pct')] = hot_change
+            # 确保列顺序
+            for col in ['price', 'change_pct']:
+                if col not in df.columns:
+                    df[col] = None
+            df = df[['date', 'open', 'high', 'low', 'close', 'volume', 'price', 'change_pct']]
         
         return df
     

@@ -111,14 +111,6 @@ class TradeRecord:
     snapshot_ref: str = ""       # 决策快照文件路径
     # ─────────────────────────────────────────────────────────────
 
-    # ── US-003 目标价/止损/止盈（可选，缺则 log warning）─────────
-    target_price: float = 0.0        # 目标止盈价（price × 1.15）
-    stop_loss_price: float = 0.0     # 止损价（price × 0.90）
-    stop_profit_price: float = 0.0   # 止盈价（同 target_price）
-    risk_reward_ratio: float = 0.0   # 风险回报比
-    max_hold_days: int = 0           # 最大持仓天数
-    # ─────────────────────────────────────────────────────────────
-
 
 def _infer_session(trade_time: str) -> str:
     """从交易时间推断UTC时段
@@ -297,10 +289,8 @@ class TradeTracker:
                     signal_time, signal_price, signal_rsi, signal_adx, signal_score,
                     trade_time, emotion, session,
                     is_real, is_paper,
-                    model, strategy, evaluation, snapshot_ref,
-                    target_price, stop_loss_price, stop_profit_price,
-                    risk_reward_ratio, max_hold_days
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    model, strategy, evaluation, snapshot_ref
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 trade.date, trade.code, trade.name, trade.action,
                 trade.price, trade.quantity, trade.amount, trade.reason,
@@ -312,8 +302,6 @@ class TradeTracker:
                 trade.trade_time, emotion, session,
                 trade.is_real, trade.is_paper,
                 model, strategy, evaluation, snapshot_ref,
-                trade.target_price, trade.stop_loss_price, trade.stop_profit_price,
-                trade.risk_reward_ratio, trade.max_hold_days,
             ))
             conn.commit()
         finally:
@@ -553,14 +541,7 @@ class TradeTracker:
                    model: str = "",                  # 🆕 Q-009 决策上下文
                    strategy: str = "",               # 🆕 Q-009
                    evaluation: str = "",             # 🆕 Q-009
-                   snapshot_ref: str = "",           # 🆕 Q-009
-                   # ── US-003 目标价/止损（可选，缺则 log warning）─────────
-                   target_price: float = 0.0,
-                   stop_loss_price: float = 0.0,
-                   stop_profit_price: float = 0.0,
-                   risk_reward_ratio: float = 0.0,
-                   max_hold_days: int = 0,
-                   ) -> TradeRecord:
+                   snapshot_ref: str = "") -> TradeRecord:
         """
         记录买入（SOP-06 v2.0 + US-008 区分实盘/模拟 + Q-009 决策上下文）
 
@@ -607,19 +588,6 @@ class TradeTracker:
         if not session and trade_time:
             session = _infer_session(trade_time)
         
-        # ── US-003 缺 target_price 时 log warning（Q-009 兼容）──
-        if not target_price:
-            _logger = logging.getLogger(__name__)
-            _logger.warning(
-                f"record_buy({code}@{price}): target_price 未传，无法做目标价追踪（Q-009 兼容）"
-            )
-            # 缺省 → 内部置 None（让 db 存 NULL 而非 0.0，区分"无目标价"和"目标价=0"）
-            target_price = None
-            stop_loss_price = None
-            stop_profit_price = None
-            risk_reward_ratio = None
-            max_hold_days = None
-
         trade = TradeRecord(
             date=trade_date,
             code=code,
@@ -652,12 +620,6 @@ class TradeTracker:
             strategy=strategy,
             evaluation=evaluation,
             snapshot_ref=snapshot_ref,
-            # US-003 目标价/止损（缺时为 0.0，不写库对应 NULL）
-            target_price=target_price,
-            stop_loss_price=stop_loss_price,
-            stop_profit_price=stop_profit_price,
-            risk_reward_ratio=risk_reward_ratio,
-            max_hold_days=max_hold_days,
         )
 
         # ── US-024: 事务重构（先 can_buy 后 save_trade）────────────
@@ -677,15 +639,6 @@ class TradeTracker:
 
         # 检查通过后才入库（事务原子性）
         self.save_trade(trade)
-
-        # US-095 守卫: is_real=0 纸面交易不入 positions（避免污染账户视图）
-        # 原因: 510300 paper 仓位污染 positions，导致 cash 虚减
-        # 注意: trade_history 仍保留（is_paper 可追溯）
-        if is_real == 0:
-            _logger = logging.getLogger(__name__)
-            _logger.info(f"record_buy 纸面交易: {code} - 跳过 positions 更新")
-            self._audit(code, 'EMPTY', 'HOLDING_PAPER', f"纸面买入 {quantity}股 @ {price} (不入 positions)")
-            return trade
 
         # 更新持仓
         positions = self._rebuild_positions_from_trades()  # US-024: 真相源
@@ -738,42 +691,6 @@ class TradeTracker:
         # US-005 旧顺序: load_positions (脏数据) → save_trade → can_sell → 失败 return None
         # US-024 新顺序: can_sell (真相源) → 失败抛异常 → 通过才 save_trade
         # 关键: can_sell 用 _rebuild_positions_from_trades（US-024 bug #2）
-        # US-095 守卫: is_real=0 纸面交易不进 can_sell（避免对不存在的 paper 仓位做检查）
-        if is_real == 0:
-            _logger = logging.getLogger(__name__)
-            sell_qty = quantity or 0
-            # US-095: 自动获取名称（与 record_buy 保持一致）
-            from src.utils.industry import INDUSTRY_MAPPING
-            sell_name = INDUSTRY_MAPPING.get(code, code)
-
-            trade = TradeRecord(
-                date=datetime.now().strftime('%Y-%m-%d'),
-                code=code,
-                name=sell_name,
-                action='sell',
-                price=price,
-                quantity=sell_qty,
-                amount=price * sell_qty,
-                reason='纸面卖出',
-                actual_pnl=actual_pnl,
-                realtime_price=price,
-                price_deviation=0.0,
-                rsi_14=0.0,
-                day_change_pct=0.0,
-                score=0,
-                emotion=emotion,
-                session=session,
-                is_real=is_real,
-                model=model,
-                strategy=strategy,
-                evaluation=evaluation,
-                snapshot_ref=snapshot_ref,
-            )
-            self.save_trade(trade)
-            _logger.info(f"record_sell 纸面交易: {code} - 跳过 positions 更新")
-            self._audit(code, 'HOLDING_PAPER', 'EMPTY', f"纸面卖出 {sell_qty}股 @ {price} (不入 positions)")
-            return trade
-
         ok, reason, pos = self.can_sell(code, quantity)
         if not ok or pos is None:
             _logger = logging.getLogger(__name__)
@@ -1000,10 +917,6 @@ class TradeTracker:
         sell_records = {}  # code -> [(date, quantity), ...]
 
         for trade in trades:
-            # US-095 守卫: is_real=0 纸面交易不进入重建（避免污染 active 持仓列表）
-            if trade.is_real == 0:
-                continue
-
             if trade.action == 'buy':
                 if trade.code not in buy_records:
                     buy_records[trade.code] = {

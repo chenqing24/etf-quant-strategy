@@ -1,56 +1,39 @@
 {
-  "title": "US-026 3 因子配置（v9 mission 待集成候选）",
-  "version": "1.0",
-  "created": "2026-06-07",
-  "background": "US-026 完整因子挖掘 36 因子 → A3+A2+A4 联合验证 → 3 因子稳健通过",
-  "factors": {
-    "W4_RV_Change": {
-      "rank": 1,
-      "category": "波动类",
-      "formula": "RV = sqrt(Σ log_return²) × sqrt(252); RV_change = RV(today) - RV(t-20)",
-      "signal": "RV_change > 0 → buy",
-      "ic_5d": 0.0859,
-      "ic_20d": 0.0371,
-      "etf_pass_rate_15": "9/15 (60%)",
-      "wf_oos_is": 0.77,
-      "wf_is_to_oos": "0.1148 → 0.1425",
-      "weight_in_combo": 0.40
-    },
+  "title": "W4 RV 候选配置 (US-027 严格验证后，2026-06-07 更新)",
+  "version": "1.1",
+  "updated": "2026-06-07",
+  "background": "US-027 严格 WalkForward 验证 6 因子，W4_RV_Change 唯一 median OOS/IS > 0（0.12），其他 5 因子全负 median。改单因子部署，W3/W2 作辅助",
+  "primary_factor": {
+    "name": "W4_RV_Change",
+    "status": "DEPLOY_PRIMARY",
+    "rationale": "US-026 + US-027 双重验证唯一稳健因子（OOS/IS=0.77, A2=9/15 ETF 通过, 严格 median=0.12）",
+    "weight_in_v9": 1.0
+  },
+  "secondary_factors": {
     "W3_Hist_Vol_Change": {
-      "rank": 2,
-      "category": "波动类",
-      "formula": "Hist_Vol = std(log_return, 20) × sqrt(252); change = Vol(today) - Vol(t-20)",
-      "signal": "change > 0 → buy",
-      "ic_5d": 0.0766,
-      "ic_20d": 0.0276,
-      "etf_pass_rate_15": "4/15 (27%)",
-      "wf_oos_is": 0.28,
-      "wf_is_to_oos": "0.1012 → 0.1145",
-      "weight_in_combo": 0.30
+      "status": "MONITOR_ONLY",
+      "rationale": "A2=4/15 ETF 通过，弱稳健，不作 v9 权重",
+      "weight_in_v9": 0.0
     },
     "W2_BB_Width_Change": {
-      "rank": 3,
-      "category": "波动类",
-      "formula": "BB_width = (μ+2σ) - (μ-2σ); change = width(t) - width(t-20)",
-      "signal": "change > 0 → buy",
-      "ic_5d": 0.0990,
-      "ic_20d": 0.1407,
-      "etf_pass_rate_15": "6/15 (40%)",
-      "wf_oos_is": 1.10,
-      "wf_is_to_oos": "0.0536 → 0.0576",
-      "weight_in_combo": 0.30
+      "status": "MONITOR_ONLY",
+      "rationale": "A2=6/15 ETF 通过，中等稳健，不作 v9 权重",
+      "weight_in_v9": 0.0
     }
   },
-  "combo": {
-    "method": "weighted_average",
-    "formula": "combo_signal = 0.40 * W4 + 0.30 * W3 + 0.30 * W2",
-    "expected_ic_5d": 0.26,
-    "expected_ic_20d": 0.21
-  },
+  "combo_strategy": "single_factor",
   "v9_integration_plan": {
-    "step_1": "配置登记（当前）→ data/US-026_top3_volatility_factors.json",
-    "step_2": "monitor_cron（当前）→ 每日 14:00 计算 3 因子 IC 报告",
-    "step_3": "等 v9 mission 集成时机（需重新设计 decision.py 才不破坏现有 v9）",
-    "note": "v9 现有核心是 v9_v1_single_factor.py 15 因子，与 W4/W3/W2 不重叠。建议先 monitor，1 月后确认稳健后再集成"
+    "step_1_deploy": "DONE (2026-06-07) - cron id=8782c244 + 当前配置",
+    "step_2_monitor": "IN_PROGRESS (2026-06-07 06:50 启动)",
+    "step_3_evaluate": "1 周后（5 个工作日）评估 IC 稳定性 + OOS/IS",
+    "step_4_integrate_v9": "1 周后根据数据决定（按 SOP-07）",
+    "rollback_plan": "config 改回 v1.0 (W4/W3/W2 weighted_average) 1 步回滚"
+  },
+  "monitor_period": {
+    "start": "2026-06-07",
+    "end": "2026-06-14",
+    "duration_days": 7,
+    "working_days": 5,
+    "data_collection": "cron id=8782c244 每日 14:00 跑，自动写入 data/monitor_top3_volatility_history.json"
   }
 }

@@ -1,34 +1,5 @@
 #!/usr/bin/env python3
-"""
-补充缺失ETF到SQLite
-
-用途：
-    - 检查 CSV 目录和数据库的 ETF 差异
-    - 统计缺失的 ETF 和数据行数
-    - 辅助数据补充决策
-
-被谁调用：
-    - 无（独立工具，一次性使用）
-    - 数据维护时手动运行
-
-功能说明：
-    - 从 CSV 目录读取 ETF 代码
-    - 与数据库已存在的 code 对比
-    - 输出缺失数量和补充后预计总行数
-
-使用方式：
-    python scripts/check_missing_etfs.py
-
-依赖：
-    - sqlite3
-    - pandas
-    - glob
-
-注意事项：
-    - 已豁免 pre-commit 检查（一次性工具）
-    - 此脚本仅供参考，不执行实际写入
-    - 如需补充数据，使用 scripts/data/refetch_etf_data.py
-"""
+"""补充缺失ETF到SQLite"""
 import sqlite3
 import pandas as pd
 import glob

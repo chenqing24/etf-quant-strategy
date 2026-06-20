@@ -25,6 +25,7 @@ class TestDataPathConsistency:
         'src.cli.decision',
         'src.cross_validation',
         'src.sensitivity_analysis',
+        'src.factor_report',
     ]
 
     def test_loader_uses_standard_path(self):

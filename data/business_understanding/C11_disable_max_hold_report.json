@@ -6,9 +6,9 @@
   "end_date": "2026-06-15",
   "best": {
     "min_n": 1.0,
-    "avg_return": 0.6896598903474965,
+    "avg_return": 0.698136116416545,
     "avg_winrate": 0.576984126984127,
-    "avg_max_drawdown": 0.01086160833390744,
+    "avg_max_drawdown": 0.009798189636424273,
     "positive_etf_pct": 0.8285714285714286,
     "total_trades": 105.0,
     "etf_count": 35.0
@@ -16,18 +16,18 @@
   "all_results": [
     {
       "min_n": 1,
-      "avg_return": 0.6896598903474965,
+      "avg_return": 0.698136116416545,
       "avg_winrate": 0.576984126984127,
-      "avg_max_drawdown": 0.01086160833390744,
+      "avg_max_drawdown": 0.009798189636424273,
       "positive_etf_pct": 0.8285714285714286,
       "total_trades": 105,
       "etf_count": 35
     },
     {
       "min_n": 2,
-      "avg_return": 0.6728839425397146,
+      "avg_return": 0.6807445715154542,
       "avg_winrate": 0.576984126984127,
-      "avg_max_drawdown": 0.010717332111889927,
+      "avg_max_drawdown": 0.009684902232612496,
       "positive_etf_pct": 0.8285714285714286,
       "total_trades": 105,
       "etf_count": 35

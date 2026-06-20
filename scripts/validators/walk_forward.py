@@ -1,35 +1,8 @@
 """
-WalkForward验证引擎 - 时序稳健性验证
+WalkForward验证引擎
 
-用途：
-    - 验证策略在时序上的稳健性
-    - 使用滚动窗口分割训练/测试集
-    - 计算收益衰减和夏普比率
-
-被谁调用：
-    - scripts/analysis/full_validation.py（全面验证）
-    - scripts/validators/comprehensive.py（综合验证器）
-    - 不直接运行，作为模块被调用
-
-功能说明：
-    - 来源：DESIGN_OVERFIT_VALIDATOR.md v2.0
-    - 默认配置：train_months=6, test_months=3, min_windows=6
-    - 交易成本：双边 0.2%
-
-使用方式：
-    from scripts.validators import WalkForwardEngine
-    
-    validator = WalkForwardEngine(config)
-    result = validator.validate(data, signals)
-
-依赖：
-    - numpy
-    - pandas
-
-注意事项：
-    - 已豁免 pre-commit 检查（验证器）
-    - min_windows 从 3 改为 6，确保统计意义
-    - 结果保存为 WindowResult 数据类
+功能：时序稳健性验证
+来源：DESIGN_OVERFIT_VALIDATOR.md v2.0
 """
 import numpy as np
 import pandas as pd

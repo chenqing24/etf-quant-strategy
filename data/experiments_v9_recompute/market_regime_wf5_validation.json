@@ -1,0 +1,1768 @@
+{
+  "timestamp": "2026-06-02T05:44:49.498330",
+  "experiment": "market_regime_wf5_validation",
+  "sop": "SOP-03 Phase 3",
+  "top10_params": [
+    {
+      "key": "AT20_AV15_MA1030",
+      "adx_trend": 20,
+      "adx_volatile": 15,
+      "ma_fast": 10,
+      "ma_slow": 30,
+      "oos_sharpe": 4.106896750695776
+    },
+    {
+      "key": "AT20_AV18_MA1030",
+      "adx_trend": 20,
+      "adx_volatile": 18,
+      "ma_fast": 10,
+      "ma_slow": 30,
+      "oos_sharpe": 4.106896750695776
+    },
+    {
+      "key": "AT20_AV20_MA1030",
+      "adx_trend": 20,
+      "adx_volatile": 20,
+      "ma_fast": 10,
+      "ma_slow": 30,
+      "oos_sharpe": 4.106896750695776
+    },
+    {
+      "key": "AT20_AV15_MA1226",
+      "adx_trend": 20,
+      "adx_volatile": 15,
+      "ma_fast": 12,
+      "ma_slow": 26,
+      "oos_sharpe": 3.6036113010542237
+    },
+    {
+      "key": "AT20_AV18_MA1226",
+      "adx_trend": 20,
+      "adx_volatile": 18,
+      "ma_fast": 12,
+      "ma_slow": 26,
+      "oos_sharpe": 3.6036113010542237
+    },
+    {
+      "key": "AT20_AV20_MA1226",
+      "adx_trend": 20,
+      "adx_volatile": 20,
+      "ma_fast": 12,
+      "ma_slow": 26,
+      "oos_sharpe": 3.6036113010542237
+    },
+    {
+      "key": "AT20_AV15_MA520",
+      "adx_trend": 20,
+      "adx_volatile": 15,
+      "ma_fast": 5,
+      "ma_slow": 20,
+      "oos_sharpe": -2.320144053892735
+    },
+    {
+      "key": "AT20_AV18_MA520",
+      "adx_trend": 20,
+      "adx_volatile": 18,
+      "ma_fast": 5,
+      "ma_slow": 20,
+      "oos_sharpe": -2.320144053892735
+    },
+    {
+      "key": "AT20_AV20_MA520",
+      "adx_trend": 20,
+      "adx_volatile": 20,
+      "ma_fast": 5,
+      "ma_slow": 20,
+      "oos_sharpe": -2.320144053892735
+    },
+    {
+      "key": "AT25_AV15_MA520",
+      "adx_trend": 25,
+      "adx_volatile": 15,
+      "ma_fast": 5,
+      "ma_slow": 20,
+      "oos_sharpe": -6.225421780987619
+    }
+  ],
+  "wf_results": [
+    {
+      "key": "AT25_AV15_MA520",
+      "adx_trend": 25,
+      "adx_volatile": 15,
+      "ma_fast": 5,
+      "ma_slow": 20,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": 0.1655576583038491,
+      "avg_oos_return": 0.02180164207608012,
+      "avg_oos_sharpe": 0.5713832643254465,
+      "avg_decay": 1.363779459614277,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.01633481355485354,
+          "test_sharpe": -0.34675043971277303,
+          "test_return": -0.00658432842361889,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.008406876640088878,
+          "test_sharpe": -0.5621483435524868,
+          "test_return": -0.002151691968710125,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.6846075783296091,
+          "test_sharpe": 2.6647600543206695,
+          "test_return": 0.09161808705220897,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.8333333333333333,
+          "test_sharpe": 1.977402617519548,
+          "test_return": 0.06537818246178548,
+          "confidence": "MEDIUM"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.2513244233056744,
+          "test_return": 0.09943576735038351,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.0012445938760202724,
+          "test_sharpe": -0.4485930906978455,
+          "test_return": -0.02490670766807047,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.0,
+          "test_sharpe": 0.0,
+          "test_return": 0.0,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.3216658839045974,
+          "test_sharpe": 0.655552946348658,
+          "test_return": 0.06025710820399859,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.45841488639351957,
+          "test_sharpe": 5.818375005067774,
+          "test_return": 0.04727288621368437,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.15000000000000002,
+          "test_sharpe": 0.0,
+          "test_return": 0.0,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.3386101588942545,
+          "test_sharpe": -1.4569287098093282,
+          "test_return": -0.04534033955924575,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.46657109302388294,
+          "test_sharpe": -1.5552369767462766,
+          "test_return": -0.009880586522160574,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": -0.12145488724631581,
+          "test_sharpe": -0.8215162908210527,
+          "test_return": 0.01654726156137974,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.3172071265468164,
+          "test_sharpe": 0.057357088489387954,
+          "test_return": -0.0029281369835499707,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.33808886217557016,
+          "test_sharpe": 1.3371506811697498,
+          "test_return": 0.03830712942311697,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV15_MA520",
+      "adx_trend": 20,
+      "adx_volatile": 15,
+      "ma_fast": 5,
+      "ma_slow": 20,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.24775546762250758,
+      "avg_oos_return": 0.03727990713007417,
+      "avg_oos_sharpe": -0.3516558033256357,
+      "avg_decay": 3.7250774660712054,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.3899823985813395,
+          "test_return": 0.11946347796800653,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.1846651430898044,
+          "test_sharpe": -1.053852354399337,
+          "test_return": -0.024907707383746296,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.6580456015649689,
+          "test_sharpe": 2.8463094410874845,
+          "test_return": 0.10669530604613163,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.7839030996855894,
+          "test_sharpe": 0.8352325545075199,
+          "test_return": -0.002158243104307916,
+          "confidence": "MEDIUM"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.2513244233056744,
+          "test_return": 0.09943576735038351,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5497523180346615,
+          "test_sharpe": 0.8325077267822051,
+          "test_return": 0.060115406158115677,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.49287937068152043,
+          "test_sharpe": 13.5447490152435,
+          "test_return": 0.021266848305549285,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.4008778201391523,
+          "test_return": 0.0691033565333636,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -1.2947299740726155,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.2933288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.25074718624316195,
+          "test_sharpe": 0.7410727461191553,
+          "test_return": 0.059260344984279546,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.8066373604860748,
+          "test_sharpe": 0.926740694169311,
+          "test_return": 0.018090344279937488,
+          "confidence": "MEDIUM"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": -0.07225051237263477,
+          "test_sharpe": -0.6575017079087826,
+          "test_return": 0.033879154652143834,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.394946242589773,
+          "test_return": 0.029886649471076828,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.494375908304187,
+          "test_sharpe": -25.092229781010378,
+          "test_return": 0.014841359033298099,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV18_MA520",
+      "adx_trend": 20,
+      "adx_volatile": 18,
+      "ma_fast": 5,
+      "ma_slow": 20,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.24775546762250758,
+      "avg_oos_return": 0.03727990713007417,
+      "avg_oos_sharpe": -0.3516558033256357,
+      "avg_decay": 3.7250774660712054,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.3899823985813395,
+          "test_return": 0.11946347796800653,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.1846651430898044,
+          "test_sharpe": -1.053852354399337,
+          "test_return": -0.024907707383746296,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.6580456015649689,
+          "test_sharpe": 2.8463094410874845,
+          "test_return": 0.10669530604613163,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.7839030996855894,
+          "test_sharpe": 0.8352325545075199,
+          "test_return": -0.002158243104307916,
+          "confidence": "MEDIUM"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.2513244233056744,
+          "test_return": 0.09943576735038351,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5497523180346615,
+          "test_sharpe": 0.8325077267822051,
+          "test_return": 0.060115406158115677,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.49287937068152043,
+          "test_sharpe": 13.5447490152435,
+          "test_return": 0.021266848305549285,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.4008778201391523,
+          "test_return": 0.0691033565333636,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -1.2947299740726155,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.2933288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.25074718624316195,
+          "test_sharpe": 0.7410727461191553,
+          "test_return": 0.059260344984279546,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.8066373604860748,
+          "test_sharpe": 0.926740694169311,
+          "test_return": 0.018090344279937488,
+          "confidence": "MEDIUM"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": -0.07225051237263477,
+          "test_sharpe": -0.6575017079087826,
+          "test_return": 0.033879154652143834,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.394946242589773,
+          "test_return": 0.029886649471076828,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.494375908304187,
+          "test_sharpe": -25.092229781010378,
+          "test_return": 0.014841359033298099,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV20_MA520",
+      "adx_trend": 20,
+      "adx_volatile": 20,
+      "ma_fast": 5,
+      "ma_slow": 20,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.24775546762250758,
+      "avg_oos_return": 0.03727990713007417,
+      "avg_oos_sharpe": -0.3516558033256357,
+      "avg_decay": 3.7250774660712054,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.3899823985813395,
+          "test_return": 0.11946347796800653,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.1846651430898044,
+          "test_sharpe": -1.053852354399337,
+          "test_return": -0.024907707383746296,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.6580456015649689,
+          "test_sharpe": 2.8463094410874845,
+          "test_return": 0.10669530604613163,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.7839030996855894,
+          "test_sharpe": 0.8352325545075199,
+          "test_return": -0.002158243104307916,
+          "confidence": "MEDIUM"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.2513244233056744,
+          "test_return": 0.09943576735038351,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5497523180346615,
+          "test_sharpe": 0.8325077267822051,
+          "test_return": 0.060115406158115677,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.49287937068152043,
+          "test_sharpe": 13.5447490152435,
+          "test_return": 0.021266848305549285,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.4008778201391523,
+          "test_return": 0.0691033565333636,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -1.2947299740726155,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.2933288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.25074718624316195,
+          "test_sharpe": 0.7410727461191553,
+          "test_return": 0.059260344984279546,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 2,
+          "pass": false,
+          "score": 0.8066373604860748,
+          "test_sharpe": 0.926740694169311,
+          "test_return": 0.018090344279937488,
+          "confidence": "MEDIUM"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": -0.07225051237263477,
+          "test_sharpe": -0.6575017079087826,
+          "test_return": 0.033879154652143834,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.394946242589773,
+          "test_return": 0.029886649471076828,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.494375908304187,
+          "test_sharpe": -25.092229781010378,
+          "test_return": 0.014841359033298099,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV15_MA1030",
+      "adx_trend": 20,
+      "adx_volatile": 15,
+      "ma_fast": 10,
+      "ma_slow": 30,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.32069765294856667,
+      "avg_oos_return": 0.020330541976086688,
+      "avg_oos_sharpe": -1.1736457760161088,
+      "avg_decay": 1.2447968384498063,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4969943222109585,
+          "test_sharpe": 0.5169389803117024,
+          "test_return": 0.015977449345930372,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.13746973435432275,
+          "test_sharpe": -0.9582324478477425,
+          "test_return": -0.01968567013096148,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.4592495448489461,
+          "test_sharpe": 2.8279817464238874,
+          "test_return": 0.05962565201966707,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.08563993332531741,
+          "test_sharpe": -0.9367557778044975,
+          "test_return": -0.0789503626373294,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 2.676265618118441,
+          "test_return": 0.14137173013640286,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4587909256168571,
+          "test_sharpe": 0.5293030853895235,
+          "test_return": 0.041093292331929515,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.0,
+          "test_sharpe": 0.0,
+          "test_return": 0.0,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.4776180181135543,
+          "test_return": 0.0704365930467289,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -1.2960814879580693,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.2933288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3065022277260991,
+          "test_sharpe": 1.202605384431342,
+          "test_return": 0.07049539803250804,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3883618348711775,
+          "test_sharpe": 0.926740694169311,
+          "test_return": 0.018090344279937488,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.1821581303688394,
+          "test_sharpe": 0.06744760485346585,
+          "test_return": 0.008189240754118681,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.8415136483237187,
+          "test_return": 0.01840726249298487,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.242335077689955,
+          "test_sharpe": -24.141116925633185,
+          "test_return": 0.005680657312502592,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV18_MA1030",
+      "adx_trend": 20,
+      "adx_volatile": 18,
+      "ma_fast": 10,
+      "ma_slow": 30,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.32069765294856667,
+      "avg_oos_return": 0.020330541976086688,
+      "avg_oos_sharpe": -1.1736457760161088,
+      "avg_decay": 1.2447968384498063,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4969943222109585,
+          "test_sharpe": 0.5169389803117024,
+          "test_return": 0.015977449345930372,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.13746973435432275,
+          "test_sharpe": -0.9582324478477425,
+          "test_return": -0.01968567013096148,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.4592495448489461,
+          "test_sharpe": 2.8279817464238874,
+          "test_return": 0.05962565201966707,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.08563993332531741,
+          "test_sharpe": -0.9367557778044975,
+          "test_return": -0.0789503626373294,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 2.676265618118441,
+          "test_return": 0.14137173013640286,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4587909256168571,
+          "test_sharpe": 0.5293030853895235,
+          "test_return": 0.041093292331929515,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.0,
+          "test_sharpe": 0.0,
+          "test_return": 0.0,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.4776180181135543,
+          "test_return": 0.0704365930467289,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -1.2960814879580693,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.2933288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3065022277260991,
+          "test_sharpe": 1.202605384431342,
+          "test_return": 0.07049539803250804,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3883618348711775,
+          "test_sharpe": 0.926740694169311,
+          "test_return": 0.018090344279937488,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.1821581303688394,
+          "test_sharpe": 0.06744760485346585,
+          "test_return": 0.008189240754118681,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.8415136483237187,
+          "test_return": 0.01840726249298487,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.242335077689955,
+          "test_sharpe": -24.141116925633185,
+          "test_return": 0.005680657312502592,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV20_MA1030",
+      "adx_trend": 20,
+      "adx_volatile": 20,
+      "ma_fast": 10,
+      "ma_slow": 30,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.32069765294856667,
+      "avg_oos_return": 0.020330541976086688,
+      "avg_oos_sharpe": -1.1736457760161088,
+      "avg_decay": 1.2447968384498063,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4969943222109585,
+          "test_sharpe": 0.5169389803117024,
+          "test_return": 0.015977449345930372,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.13746973435432275,
+          "test_sharpe": -0.9582324478477425,
+          "test_return": -0.01968567013096148,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.4592495448489461,
+          "test_sharpe": 2.8279817464238874,
+          "test_return": 0.05962565201966707,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.08563993332531741,
+          "test_sharpe": -0.9367557778044975,
+          "test_return": -0.0789503626373294,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 2.676265618118441,
+          "test_return": 0.14137173013640286,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4587909256168571,
+          "test_sharpe": 0.5293030853895235,
+          "test_return": 0.041093292331929515,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.0,
+          "test_sharpe": 0.0,
+          "test_return": 0.0,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.4776180181135543,
+          "test_return": 0.0704365930467289,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": -1.2960814879580693,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.2933288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3065022277260991,
+          "test_sharpe": 1.202605384431342,
+          "test_return": 0.07049539803250804,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3883618348711775,
+          "test_sharpe": 0.926740694169311,
+          "test_return": 0.018090344279937488,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.1821581303688394,
+          "test_sharpe": 0.06744760485346585,
+          "test_return": 0.008189240754118681,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.8415136483237187,
+          "test_return": 0.01840726249298487,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.242335077689955,
+          "test_sharpe": -24.141116925633185,
+          "test_return": 0.005680657312502592,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV15_MA1226",
+      "adx_trend": 20,
+      "adx_volatile": 15,
+      "ma_fast": 12,
+      "ma_slow": 26,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.39787042691078095,
+      "avg_oos_return": 0.014812635136934194,
+      "avg_oos_sharpe": -1.5692812956253326,
+      "avg_decay": 0.9910966037776656,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.36366098887762516,
+          "test_sharpe": 0.5169389803117024,
+          "test_return": 0.015977449345930372,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.13746973435432275,
+          "test_sharpe": -0.9582324478477425,
+          "test_return": -0.01968567013096148,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.4592495448489461,
+          "test_sharpe": 2.8279817464238874,
+          "test_return": 0.05962565201966707,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.08563993332531741,
+          "test_sharpe": -0.9367557778044975,
+          "test_return": -0.0789503626373294,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.2513244233056744,
+          "test_return": 0.09943576735038351,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4587909256168571,
+          "test_sharpe": 0.5293030853895235,
+          "test_return": 0.041093292331929515,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.0,
+          "test_sharpe": 0.0,
+          "test_return": 0.0,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.5570813749991186,
+          "test_return": 0.08391394975109512,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": -1.1204452102177729,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.3433288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.28393592405173373,
+          "test_sharpe": 0.8924013955938367,
+          "test_return": 0.07126548493661347,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": -0.2386395070105969,
+          "test_sharpe": -1.351020578924212,
+          "test_return": -0.009976774388055042,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.1821581303688394,
+          "test_sharpe": 0.06744760485346585,
+          "test_return": 0.008189240754118681,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.8415136483237187,
+          "test_return": 0.01840726249298487,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.842661985973993,
+          "test_sharpe": -26.14220661991331,
+          "test_return": -0.021332307429244458,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV18_MA1226",
+      "adx_trend": 20,
+      "adx_volatile": 18,
+      "ma_fast": 12,
+      "ma_slow": 26,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.39787042691078095,
+      "avg_oos_return": 0.014812635136934194,
+      "avg_oos_sharpe": -1.5692812956253326,
+      "avg_decay": 0.9910966037776656,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.36366098887762516,
+          "test_sharpe": 0.5169389803117024,
+          "test_return": 0.015977449345930372,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.13746973435432275,
+          "test_sharpe": -0.9582324478477425,
+          "test_return": -0.01968567013096148,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.4592495448489461,
+          "test_sharpe": 2.8279817464238874,
+          "test_return": 0.05962565201966707,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.08563993332531741,
+          "test_sharpe": -0.9367557778044975,
+          "test_return": -0.0789503626373294,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.2513244233056744,
+          "test_return": 0.09943576735038351,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4587909256168571,
+          "test_sharpe": 0.5293030853895235,
+          "test_return": 0.041093292331929515,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.0,
+          "test_sharpe": 0.0,
+          "test_return": 0.0,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.5570813749991186,
+          "test_return": 0.08391394975109512,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": -1.1204452102177729,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.3433288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.28393592405173373,
+          "test_sharpe": 0.8924013955938367,
+          "test_return": 0.07126548493661347,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": -0.2386395070105969,
+          "test_sharpe": -1.351020578924212,
+          "test_return": -0.009976774388055042,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.1821581303688394,
+          "test_sharpe": 0.06744760485346585,
+          "test_return": 0.008189240754118681,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.8415136483237187,
+          "test_return": 0.01840726249298487,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.842661985973993,
+          "test_sharpe": -26.14220661991331,
+          "test_return": -0.021332307429244458,
+          "confidence": "FAIL"
+        }
+      ]
+    },
+    {
+      "key": "AT20_AV20_MA1226",
+      "adx_trend": 20,
+      "adx_volatile": 20,
+      "ma_fast": 12,
+      "ma_slow": 26,
+      "n_etf": 15,
+      "n_pass_etf": 0,
+      "pass_rate": 0.0,
+      "pass": false,
+      "avg_score": -0.39787042691078095,
+      "avg_oos_return": 0.014812635136934194,
+      "avg_oos_sharpe": -1.5692812956253326,
+      "avg_decay": 0.9910966037776656,
+      "etf_summaries": [
+        {
+          "etf_code": "510300",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.36366098887762516,
+          "test_sharpe": 0.5169389803117024,
+          "test_return": 0.015977449345930372,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515650",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -0.13746973435432275,
+          "test_sharpe": -0.9582324478477425,
+          "test_return": -0.01968567013096148,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515070",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.4592495448489461,
+          "test_sharpe": 2.8279817464238874,
+          "test_return": 0.05962565201966707,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512400",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.08563993332531741,
+          "test_sharpe": -0.9367557778044975,
+          "test_return": -0.0789503626373294,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512480",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.2513244233056744,
+          "test_return": 0.09943576735038351,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "588000",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.4587909256168571,
+          "test_sharpe": 0.5293030853895235,
+          "test_return": 0.041093292331929515,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "520900",
+          "n_folds": 2,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.0,
+          "test_sharpe": 0.0,
+          "test_return": 0.0,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512880",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.3,
+          "test_sharpe": 1.5570813749991186,
+          "test_return": 0.08391394975109512,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512170",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": -1.1204452102177729,
+          "test_sharpe": -4.862759106875332,
+          "test_return": -0.02562307487238449,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512660",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.3433288513352543,
+          "test_sharpe": 0.22776283778418094,
+          "test_return": -0.020150382470734765,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512200",
+          "n_folds": 3,
+          "n_passed": 0,
+          "pass": false,
+          "score": 0.28393592405173373,
+          "test_sharpe": 0.8924013955938367,
+          "test_return": 0.07126548493661347,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512800",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": -0.2386395070105969,
+          "test_sharpe": -1.351020578924212,
+          "test_return": -0.009976774388055042,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "512980",
+          "n_folds": 4,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.1821581303688394,
+          "test_sharpe": 0.06744760485346585,
+          "test_return": 0.008189240754118681,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515050",
+          "n_folds": 3,
+          "n_passed": 1,
+          "pass": false,
+          "score": 0.5943957354703969,
+          "test_sharpe": 2.8415136483237187,
+          "test_return": 0.01840726249298487,
+          "confidence": "FAIL"
+        },
+        {
+          "etf_code": "515790",
+          "n_folds": 4,
+          "n_passed": 0,
+          "pass": false,
+          "score": -7.842661985973993,
+          "test_sharpe": -26.14220661991331,
+          "test_return": -0.021332307429244458,
+          "confidence": "FAIL"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "n_top10": 10,
+    "n_passed": 0,
+    "passing_rate": 0.0,
+    "best_key": "AT25_AV15_MA520",
+    "best_score": 0.1655576583038491,
+    "best_sharpe": 0.5713832643254465,
+    "default_comparison": null
+  }
+}

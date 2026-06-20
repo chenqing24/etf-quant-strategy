@@ -33,7 +33,7 @@ class BacktestConfig:
     """回测配置"""
     # 止盈止损
     stop_loss: float = -0.04         # 止损4%
-    stop_profit: float = 0.06        # 止盈6%
+    stop_profit: float = 0.06         # 止盈6%
     
     # 持仓管理
     min_hold_days: int = 3           # 最小持仓3天
@@ -47,16 +47,6 @@ class BacktestConfig:
     # 信号模式（兼容旧接口）
     min_score: float = 0.6           # 最小评分
     min_factors: int = 2             # 最小因子数
-    
-    # === 新增：Selector 评分模式 ===
-    
-    # === 新增：信号持续性控制 ===
-    signal_consecutive_days: int = 2  # 连续N天评分低于阈值才触发卖出
-    enable_signal_persistence: bool = False  # 启用信号持续性控制
-    
-    # === 新增：调仓配置 ===
-    rebalance_days: int = 10         # 调仓周期
-    rebalance_only_when_empty: bool = True  # 只有完全空仓才重新选择
 
 
 @dataclass
@@ -94,22 +84,7 @@ class BacktestResult:
 # ============================================================
 
 class FactorBacktester:
-    """回测引擎（US-009: 执行/策略解耦）
-
-    设计原则（2026-06-04 用户明确）:
-    - 引擎是对立的（不依赖具体策略）
-    - 引擎和策略解耦（不内置选股/评分）
-    - 所有信号由 signal_func 外部传入
-
-    引擎职责:
-    1. 日期循环
-    2. 持仓管理 (positions dict)
-    3. 调 signal_func(date, df_dict) 拿外部信号
-    4. T+1 撮合 / 仓位计算 / 损益统计
-
-    业界参考: Backtrader (Strategy 子类化) / Zipline (Pipeline + Algorithm)
-    详见: docs/ARCHITECTURE_DECOUPLING.md
-    """
+    """因子回测引擎 v8.0"""
     
     def __init__(
         self,
@@ -131,21 +106,11 @@ class FactorBacktester:
         self.weights = weights or {}
         self.factor_direction = factor_direction or {}
         self.config = config or BacktestConfig()
-        
-        # === 新增：Selector 模式初始化 ===
-        self._selector = None
-        self._selector_scores = {}  # 缓存每日评分 {date: {code: score}}
-        
-        # === 新增：信号持续性控制 ===
-        self._consecutive_low_score_days = 0  # 连续低分天数计数器
-        
-        # === 排除列表（大盘参考 ETF 等不参与交易）===
-        self._exclude_codes = set()
     
     def backtest(
         self,
         price_data: Dict[str, pd.DataFrame],
-        signal_func: Callable = None,  # US-009: 必传 (date, df_dict) -> {code: Signal}
+        signal_func: Callable[[pd.DataFrame], pd.Series] = None,
         score_func: Callable[[pd.DataFrame], pd.Series] = None,
         benchmark_data: pd.DataFrame = None,
         start_date: str = None,
@@ -196,21 +161,8 @@ class FactorBacktester:
                 if current_price == 0:
                     current_price = pos['entry_price']
                 
-                # 获取当前评分（用于信号持续性控制，US-009: 由 signal_func 外部计算）
-                current_score = None
-                if self.config.enable_signal_persistence and signal_func is not None:
-                    df_for_signals = getattr(self, '_full_data', None) or price_data
-                    signals = signal_func(current_date, df_for_signals)
-                    sig = signals.get(code)
-                    if sig is not None:
-                        current_score = getattr(sig, 'confidence', 1.0)
-                
                 # 检查是否需要平仓
-                should_close, reason = self._check_exit(
-                    pos, current_price, current_date, 
-                    current_score=current_score,
-                    price_data=price_data
-                )
+                should_close, reason = self._check_exit(pos, current_price, current_date)
                 
                 if should_close:
                     # T+1开盘价成交
@@ -235,38 +187,13 @@ class FactorBacktester:
                     closed_today.add(code)  # 标记为当日已平仓
             
             # === 开仓检查 ===
-            # 只有完全空仓或启用调仓时才选择新标的
-            should_rebalance = (
-                self.config.rebalance_only_when_empty and len(positions) == 0
-            ) or not self.config.rebalance_only_when_empty
-            
-            if len(positions) < self.config.max_positions and should_rebalance:
-                candidates = []
-                
-                # US-009: 引擎解耦 — 优先用 signal_func 拿信号（无 use_selector 硬编码）
-                if signal_func is not None:
-                    # 优先用 _full_data（含历史 120+ 天），否则用 OOS 切片
-                    df_for_signals = getattr(self, '_full_data', None) or price_data
-                    # 外部传入信号函数: signal_func(date, df_dict) -> {code: Signal}
-                    signals = signal_func(current_date, df_for_signals)
-                    scored_candidates = []
-                    for code, sig in signals.items():
-                        if sig.action != 'buy':
-                            continue
-                        exclude_codes = getattr(self, '_exclude_codes', set())
-                        if code in positions or code in closed_today or code in exclude_codes:
-                            continue
-                        confidence = getattr(sig, 'confidence', 1.0)
-                        scored_candidates.append((code, confidence))
-                    scored_candidates.sort(key=lambda x: -x[1])
-                    candidates = scored_candidates
-                else:
-                    # 兼容旧路径: signal_func/score_func 模式
-                    candidates = self._get_candidates(
-                        current_date, current_prices, positions, 
-                        signal_func, score_func,
-                        price_data, valid_factors
-                    )
+            if len(positions) < self.config.max_positions:
+                # 获取候选ETF
+                candidates = self._get_candidates(
+                    current_date, current_prices, positions, 
+                    signal_func, score_func,
+                    price_data, valid_factors
+                )
                 
                 for code, score in candidates:
                     # 检查：不在持仓中，不在当日已平仓中
@@ -365,9 +292,7 @@ class FactorBacktester:
         self, 
         pos: Dict, 
         current_price: float,
-        current_date: str,
-        current_score: float = None,
-        price_data: Dict[str, pd.DataFrame] = None,
+        current_date: str
     ) -> Tuple[bool, str]:
         """
         检查是否需要平仓
@@ -376,7 +301,6 @@ class FactorBacktester:
         1. 止损：任何时候触发，优先保护本金
         2. 止盈：需满足min_hold_days，避免频繁交易
         3. 到期：达到max_hold_days强制平仓
-        4. 信号持续性：评分低于阈值 + 连续N天低分 + 已持仓满min_hold_days
         """
         pnl_pct = (current_price / pos['entry_price']) - 1
         hold_days = pos['hold_days']
@@ -390,18 +314,7 @@ class FactorBacktester:
             if pnl_pct >= self.config.stop_profit:
                 return True, '止盈'
         
-        # 3. === 新增：信号持续性控制 ===
-        if (self.config.enable_signal_persistence and 
-            current_score is not None and
-            hold_days >= self.config.min_hold_days):
-            if current_score < self.config.min_score:
-                self._consecutive_low_score_days += 1
-                if self._consecutive_low_score_days >= self.config.signal_consecutive_days:
-                    return True, f'信号下降({self._consecutive_low_score_days}天,<{self.config.min_score})'
-            else:
-                self._consecutive_low_score_days = 0
-        
-        # 4. 到期（最低优先级）
+        # 3. 到期（最低优先级）
         if hold_days >= self.config.max_hold_days:
             return True, '到期'
         

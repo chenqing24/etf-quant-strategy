@@ -198,7 +198,7 @@ class TestE2E_BackupRestore(unittest.TestCase):
         original_count = self.writer.get_record_count()
         
         # 执行备份
-        from scripts.maintenance.backup_sqlite import SQLiteBackupManager
+        from scripts.backup_sqlite import SQLiteBackupManager
         manager = SQLiteBackupManager(self.db_path, self.backup_dir)
         backup_path = manager.backup('manual')
         
