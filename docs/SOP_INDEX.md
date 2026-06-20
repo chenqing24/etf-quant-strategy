@@ -1,3 +1,6 @@
+# SOP文档索引
+
+```yaml
 ---
 file: SOP_INDEX.md
 purpose: SOP文档索引，快速定位SOP入口
@@ -7,9 +10,7 @@ status: active
 last_review: 2026-06-07
 review_interval: weekly
 ---
-
-# SOP文档索引
-
+```
 
 > 版本: 1.2 | 创建: 2026-05-31 | 更新: 2026-06-07 (新增 SOP-07 + 文档资产清单)
 

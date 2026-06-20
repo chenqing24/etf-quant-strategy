@@ -1,15 +1,3 @@
-```yaml
----
-file: TOOLS.md
-purpose: 项目中所有可用工具索引（按用途分类）
-used_by:
-  - 所有任务（工具定位）
-status: active
-last_review: 2026-06-08
-review_interval: weekly
----
-```
-
 # 📚 ETF量化系统 - 工具清单
 
 > 本文件索引项目中所有可用工具，按用途分类
@@ -212,7 +200,7 @@ data = r.json()['data']['sh510300']['qfqday']
 | `scripts/prefetch_data.py` | 批量预获取历史数据 | ✅ 可用 |
 | `scripts/fetch_today.py` | 获取今日数据 | ✅ 可用 |
 | `scripts/migrate_csv_to_sqlite.py` | CSV迁移SQLite | ✅ 可用 |
-| `python -m src.data.monitor` | 数据质量监控（分钟级告警+完整性检查） | ✅ 可用 |
+| `scripts/daily_data_check.py` | 每日数据检查 | ✅ 可用 |
 | `scripts/repair_data.py` | 数据修复 | ✅ 可用 |
 
 ---

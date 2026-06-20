@@ -1,16 +1,3 @@
-```yaml
----
-file: SOP_04_DATA_SOURCE.md
-purpose: 接入新数据源（调研→验证→部署→测试→文档）
-used_by:
-  - 数据采集任务
-  - 新API验证
-status: active
-last_review: 2026-06-08
-review_interval: weekly
----
-```
-
 # SOP-04: 数据源接入与验证标准流程
 
 > 来源: DATA_SOURCE_REFERENCE.md / 架构设计经验
