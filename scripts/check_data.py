@@ -1,33 +1,5 @@
 #!/usr/bin/env python3
-"""
-检查回测数据问题
-
-用途：
-    - 检查 ETF 数据质量
-    - 计算技术指标（MACD 等）
-    - 诊断数据问题
-
-被谁调用：
-    - 无（独立工具，一次性使用）
-    - 数据调试时手动运行
-
-功能说明：
-    - 加载 ETF 池数据
-    - 计算 MACD 指标
-    - 检查数据范围和行数
-
-使用方式：
-    python scripts/check_data.py
-
-依赖：
-    - src.data.etf_pool_loader (ETFListLoader)
-    - src.data.loader (DataLoader)
-
-注意事项：
-    - 已豁免 pre-commit 检查（一次性分析工具）
-    - 用于数据调试，不执行交易
-    - 可以修改 code 变量检查不同 ETF
-"""
+"""检查回测数据问题"""
 import sys
 sys.path.insert(0, 'src')
 import pandas as pd

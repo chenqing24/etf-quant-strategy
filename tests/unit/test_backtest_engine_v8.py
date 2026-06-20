@@ -156,11 +156,8 @@ class TestPositionManagement(unittest.TestCase):
     def test_no_duplicate_buy(self):
         """同一ETF不能重复买入"""
         # 信号函数：始终返回True（持续触发信号）
-        def always_signal(date, df_dict):
-            # US-010 迁移: 原 always_signal(df) → (date, df_dict) -> {code: Signal}
-            from src.strategy.base import Signal
-            return {code: Signal(code=code, action='buy', price=1.0, confidence=1.0, reason='test')
-                    for code in df_dict.keys()}
+        def always_signal(df):
+            return pd.Series(True, index=df.index)
         
         # 创建回测器
         backtester = create_backtester(self.config)
@@ -192,11 +189,8 @@ class TestPositionManagement(unittest.TestCase):
     
     def test_max_positions(self):
         """最大持仓数限制"""
-        def always_signal(date, df_dict):
-            # US-010 迁移: 原 always_signal(df) → (date, df_dict) -> {code: Signal}
-            from src.strategy.base import Signal
-            return {code: Signal(code=code, action='buy', price=1.0, confidence=1.0, reason='test')
-                    for code in df_dict.keys()}
+        def always_signal(df):
+            return pd.Series(True, index=df.index)
         
         backtester = create_backtester(self.config)
         
@@ -242,9 +236,8 @@ class TestStopLossProfit(unittest.TestCase):
             max_positions=2,
         )
         
-        def signal(date, df_dict):
-            # US-010 迁移: 返回空 dict（无信号）
-            return {}
+        def signal(df):
+            return pd.Series(False, index=df.index)
         
         backtester = create_backtester(config)
         result = backtester.backtest(
@@ -275,9 +268,8 @@ class TestStopLossProfit(unittest.TestCase):
             max_positions=2,
         )
         
-        def signal(date, df_dict):
-            # US-010 迁移: 返回空 dict（无信号）
-            return {}
+        def signal(df):
+            return pd.Series(False, index=df.index)
         
         backtester = create_backtester(config)
         result = backtester.backtest(
@@ -308,11 +300,7 @@ class TestRelativeReturn(unittest.TestCase):
         
         result = backtester.backtest(
             price_data=price_data,
-            signal_func=lambda date, df_dict: {code: type('S', (), {
-                'code': code, 'action': 'buy', 'price': 1.0, 'confidence': 1.0,
-                'reason': 'test', 'stop_loss': 0.0, 'take_profit': 0.0,
-                'max_hold_days': 5, 'position_size': 0.0
-            })() for code in df_dict.keys()},
+            signal_func=lambda df: pd.Series(True, index=df.index),
             benchmark_data=bench_df,
             start_date='2023-01-01',
             end_date='2023-02-01'
@@ -342,7 +330,7 @@ class TestEdgeCases(unittest.TestCase):
         
         result = backtester.backtest(
             price_data={'510300': df},
-            signal_func=lambda date, df_dict: {},
+            signal_func=lambda df: pd.Series(False, index=df.index),  # 无信号
             benchmark_data=None,
             start_date='2023-01-01',
             end_date='2023-02-01'
@@ -358,7 +346,7 @@ class TestEdgeCases(unittest.TestCase):
         
         result = backtester.backtest(
             price_data={},
-            signal_func=lambda date, df_dict: {},
+            signal_func=lambda df: pd.Series(False, index=df.index),
             benchmark_data=None,
             start_date='2023-01-01',
             end_date='2023-02-01'
@@ -376,11 +364,7 @@ class TestEdgeCases(unittest.TestCase):
         
         result = backtester.backtest(
             price_data={'510300': df},
-            signal_func=lambda date, df_dict: {code: type('S', (), {
-                'code': code, 'action': 'buy', 'price': 1.0, 'confidence': 1.0,
-                'reason': 'test', 'stop_loss': 0.0, 'take_profit': 0.0,
-                'max_hold_days': 5, 'position_size': 0.0
-            })() for code in df_dict.keys()},
+            signal_func=lambda df: pd.Series(True, index=df.index),
             benchmark_data=None,
             start_date='2023-01-01',
             end_date='2023-01-02'

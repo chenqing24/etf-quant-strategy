@@ -1,5 +1,24 @@
 # ETF量化投资决策系统
 
+> ⚠️ **本项目（v1）已重构为 v2（etf-quant-v2），仅做历史归档，不再维护。**
+>
+> 本仓库（`etf-quant-strategy` v1）的最终快照 tag 为 [`v1-deprecated-v2-refactor`](https://github.com/chenqing24/etf-quant-strategy/releases/tag/v1-deprecated-v2-refactor)。
+>
+> **后续功能开发、bug 修复、新因子实验均在 v2 进行：**
+>
+> | 项目 | 位置 |
+> |------|------|
+> | v2 仓库 | https://github.com/chenqing24/etf-quant-v2 （待创建） |
+> | v2 本地路径 | `/home/qwenpaw/.qwenpaw/workspaces/default/etf_quant_v2` |
+> | v2 触发词 | ETF 决策 / ETF 每日检查 / 跑 ETF / ETF 评估 |
+> | v2 skill | `~/.qwenpaw/workspaces/default/skills/{etf-daily, etf-research, quant-knowledge, stock-analyze, stock-portfolio}` |
+>
+> **v1 → v2 演进说明**：[docs/V1_TO_V2_MIGRATION.md](docs/V1_TO_V2_MIGRATION.md)
+>
+> 归档日期：2026-06-20
+
+---
+
 基于7因子模型的ETF量化投资决策工具，支持自动推送钉钉通知。
 
 ## 快速开始

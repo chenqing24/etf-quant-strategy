@@ -1,0 +1,53 @@
+{
+  "experiment": "C13_max_hold_grid",
+  "best": {
+    "max_hold_days": 99999.0,
+    "avg_return": 0.6896598903474965,
+    "avg_winrate": 0.576984126984127,
+    "avg_max_drawdown": 0.01086160833390744,
+    "positive_etf_pct": 0.8285714285714286,
+    "total_trades": 105.0
+  },
+  "all_results": [
+    {
+      "max_hold_days": 99999,
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "max_hold_days": 60,
+      "avg_return": 0.05834524970952172,
+      "avg_winrate": 0.3568136228850514,
+      "avg_max_drawdown": 0.03747460520408679,
+      "positive_etf_pct": 0.4,
+      "total_trades": 350
+    },
+    {
+      "max_hold_days": 30,
+      "avg_return": 0.0014720720318144437,
+      "avg_winrate": 0.2919132492157702,
+      "avg_max_drawdown": 0.05043978947389491,
+      "positive_etf_pct": 0.3142857142857143,
+      "total_trades": 565
+    },
+    {
+      "max_hold_days": 10,
+      "avg_return": -0.05745704057742192,
+      "avg_winrate": 0.2855728922515064,
+      "avg_max_drawdown": 0.07864041665046245,
+      "positive_etf_pct": 0.11428571428571428,
+      "total_trades": 1239
+    },
+    {
+      "max_hold_days": 5,
+      "avg_return": -0.11090331819380496,
+      "avg_winrate": 0.2977575908432444,
+      "avg_max_drawdown": 0.134100608966193,
+      "positive_etf_pct": 0.14285714285714285,
+      "total_trades": 1930
+    }
+  ]
+}

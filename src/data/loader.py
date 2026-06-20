@@ -2,37 +2,10 @@
 """
 数据加载器 - 统一数据读取入口
 
-用途：
-    - 从 SQLite 数据库读取 ETF 行情数据
-    - 支持单只/批量 ETF 数据加载
-    - 提供 ETF 名称映射功能
-
-被谁调用：
-    - 所有需要读取数据的业务代码（src/ 下各类模块）
-    - scripts/ 下各类分析脚本
-    - 禁止绕过此模块直接访问数据库
-
-功能说明：
-    - 重构说明（v3.0 Phase 2）：只从 SQLite 读取（统一数据源）
-    - 移除 CSV 读取逻辑
-    - 与 DataWriter 配合使用
-    - WAL 模式支持并发读取
-
-使用方式：
-    from src.data.loader import DataLoader
-    
-    loader = DataLoader()
-    df = loader.load(codes=['159611', '510300'])
-    name = loader.get_name('159611')
-
-依赖：
-    - src.constants (DB_NAME, DATA_DIR)
-    - sqlite3
-
-注意事项：
-    - 多线程/多进程并发读取需使用 WAL 模式
-    - 历史数据查询使用 get_date_range() 返回 dict 格式
-    - 不存在的数据返回空 DataFrame（不抛异常）
+重构说明（v3.0 Phase 2）：
+- 只从 SQLite 读取（统一数据源）
+- 移除 CSV 读取逻辑
+- 与 DataWriter 配合使用
 """
 from pathlib import Path
 import sqlite3
@@ -55,36 +28,24 @@ class ETFNameLoader:
         self._name_cache: Dict[str, str] = {}
     
     def get_name(self, code: str) -> str:
-        """获取ETF名称
-
-        US-016: 优先查 etf_names 表 (1486 条全市场 ETF)，fallback 到 stock_info
-        历史 bug: 只查 stock_info，515070 等不在表里时 fallback 到 name=code,
-                  导致报告显示 "515070 515070" (目标字段重复)
-        """
+        """获取ETF名称"""
         if code in self._name_cache:
             return self._name_cache[code]
-
+        
+        # 从数据库读取
         conn = sqlite3.connect(self.db_path)
         try:
-            # US-016: 优先查 etf_names (全市场 ETF 名称)
-            cur = conn.execute('SELECT name FROM etf_names WHERE code=?', (code,))
+            cur = conn.execute('SELECT name FROM stock_info WHERE code=?', (code,))
             row = cur.fetchone()
-            if row and row[0]:
-                name = row[0]
+            if row:
+                name = row[0] or code
             else:
-                # Fallback: 查 stock_info (历史数据，可能缺)
-                cur = conn.execute('SELECT name FROM stock_info WHERE code=?', (code,))
-                row = cur.fetchone()
-                if row and row[0]:
-                    name = row[0]
-                else:
-                    # 终极 fallback: 返回 code (虽然丑，但比"目标: code code"好)
-                    name = code
-        except Exception:
+                name = code
+        except:
             name = code
         finally:
             conn.close()
-
+        
         self._name_cache[code] = name
         return name
     

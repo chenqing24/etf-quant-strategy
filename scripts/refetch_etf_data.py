@@ -46,16 +46,18 @@ import requests
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.constants import TENCENT_BASE_URL
 from src.data.writer import DataWriter
 
 # 配置
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    force=True
 )
 logger = logging.getLogger(__name__)
 
-TENcent_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+TENcent_URL = TENCENT_BASE_URL  # 规则 9: 引用 constants.py，不重复硬编码
 REQUEST_DELAY = 0.3  # 秒
 MAX_WORKERS = 10  # 并发数
 

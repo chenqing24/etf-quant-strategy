@@ -1,36 +1,8 @@
 #!/usr/bin/env python3
-"""
-信号推送模块
+"""信号推送模块
 
-用途：
-    - 生成交易信号
-    - 发送到钉钉/控制台
-    - 告警通知
-
-被谁调用：
-    - src/cli/decision.py（决策引擎发送告警）
-    - src/data/monitor.py（数据质量告警）
-    - 其他需要发送通知的模块
-
-功能说明：
-    - TradeSignal 数据类定义交易信号
-    - SignalNotifier 类发送通知（控制台）
-    - 钉钉发送功能已迁移到 ScenarioAdapter（见 src.notify.scenario）
-    - 支持买入/卖出信号
-
-使用方式：
-    from src.notify.notifier import SignalNotifier
-    
-    notifier = SignalNotifier()
-    notifier.send_signal(signal)
-
-依赖：
-    - logging
-
-注意事项：
-    - 钉钉发送使用 src.notify.scenario.notify_decision()
-    - 此模块主要负责信号格式化和控制台输出
-    - 告警消息包含数据延迟警告和交易信号
+注意：钉钉发送功能已迁移到 dingtalk_sender.py
+使用 ScenarioAdapter 进行统一的通知发送
 """
 from datetime import datetime
 from typing import Dict, List
@@ -42,10 +14,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TradeSignal:
-    """交易信号（SOP-06 v2.0: 信号快照）
-    
-    钉钉通知包含此信号完整信息，用户可复制参数记录交易
-    """
+    """交易信号"""
     date: str
     code: str
     action: str  # 'buy' or 'sell'
@@ -53,14 +22,6 @@ class TradeSignal:
     reason: str
     score: int = 0
     pnl: float = 0  # 盈亏比例
-    
-    # ── 信号快照（SOP-06 v2.0）──────────────────────────────────
-    signal_time: str = ""       # 信号发出时间 (YYYY-MM-DD HH:MM)
-    signal_price: float = 0.0  # 信号发出时的价格
-    signal_rsi: float = 0.0     # RSI(14)
-    signal_adx: float = 0.0     # ADX(14)
-    signal_score: int = 0       # 信号评分
-    # ─────────────────────────────────────────────────────────────
 
 
 class SignalNotifier:

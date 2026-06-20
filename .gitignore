@@ -4,21 +4,12 @@ etf_data_live/*.json
 etf_data_live/hot/
 etf_data_live/csv/
 
-# 顶层冷数据层 db (US-021: 不应入 git, 由实跑自动重建)
-# 注释: etf.db 与 etf_data_live/etf.db 角色不同
-# - etf_data_live/etf.db: 主 db (trade_history, etf_names 等)
-# - etf.db: 冷数据层 (daily, stock_info, etf_names) - src/data/manager.py:172
-# 历史原因: 顶层 etf.db 已被 git 跟踪 (24e005d US-016), Group C 已用 git rm --cached 处理
-# 注: Group B 误判为"旧 db 副本"实际是数据源, 不删
-etf.db
-
 # 因子数据库
 data/*.db
 data/experiments/
 
 # 备份
 etf_backups/
-.archive/
 
 # 旧数据目录（已迁移到 data/）
 src/etf_data_live/
@@ -32,11 +23,6 @@ __pycache__/
 .pytest_cache/
 .coverage
 
-# memory 软链接（内容在 ../memory/_projects/etf_strategy/，通过父项目 git 管理）
-# 但已经 tracked 的历史文件保留（如 .md 在历史 commit 里的）
-# 注：memory 是软链接，git 显示为 'D' 的原因是历史 tracked 文件不存在了
-# 新建软链接本身用 '?? memory' 标记，应忽略
-
 # IDE
 .vscode/
 .idea/
@@ -46,15 +32,6 @@ etf_reports/*.txt
 
 # 大型实验数据
 experiments_v7/
-experiments_v8/
-experiments_v8_sop/
-experiments_v9_recompute/
-
-# 测试缓存（二进制 pickle）
-.cache/
-
-# 实时生成报告（JSON）
-etf_reports/*.json
 
 # QwenPaw 配置文件（不应提交到项目）
 SOUL.md
@@ -62,27 +39,11 @@ AGENTS.md
 PROFILE.md
 MEMORY.md
 HEARTBEAT.md
-*.skill.md*.bak
-
-# US-094: 临时文件/未跟踪文件
-etf_performance.json
-etf_positions.json
-etf_trades.json
+*.skill.md
+# 临时文件（v1 归档前不处理）
+.archive/
+.cache/
+backups/
 analyze_v8_sop.py
-data/deduplicate_etf_info.json
-docs/ARCHITECTURE.md
 etf_quant_decision_skill.md
-tests/integration/test_datafacade_integration.py
-
-# US-095: src/ 根目录历史遗留 stub（已被 src.core/.data/.analysis/ 替代）
-# 这些是早期版本的简单副本，已被正式包化模块替代，0 引用
-src/data_loader.py
-src/dingtalk_sender.py
-src/indicator.py
-src/industry_mapping.py
-src/notifier.py
-src/performance_analyzer.py
-src/report_builder.py
-src/report_generator.py
-src/scenario_adapter.py
-src/trade_tracker.py
+etf_reports/realtime_score_20260525.json

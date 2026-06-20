@@ -1,0 +1,36 @@
+{
+  "experiment": "C11_disable_max_hold",
+  "fix": "max_hold_days 20 → 99999",
+  "l216_pattern_fixed": "A. 到期平仓 (93.2%)",
+  "start_date": "2021-06-16",
+  "end_date": "2026-06-15",
+  "best": {
+    "min_n": 1.0,
+    "avg_return": 0.698136116416545,
+    "avg_winrate": 0.576984126984127,
+    "avg_max_drawdown": 0.009798189636424273,
+    "positive_etf_pct": 0.8285714285714286,
+    "total_trades": 105.0,
+    "etf_count": 35.0
+  },
+  "all_results": [
+    {
+      "min_n": 1,
+      "avg_return": 0.698136116416545,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.009798189636424273,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105,
+      "etf_count": 35
+    },
+    {
+      "min_n": 2,
+      "avg_return": 0.6807445715154542,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.009684902232612496,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105,
+      "etf_count": 35
+    }
+  ]
+}

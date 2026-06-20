@@ -151,6 +151,34 @@ def main():
         for alert in daily_report['alerts']:
             print(f"  [{alert['severity']}] {alert['factor']}: {alert['message']}")
 
+    # 【A 新增】5 天连续 IC < 0.02 检测
+    print("\n【5 天连续检测】")
+    print("-" * 70)
+    consecutive_alerts = []
+    if len(history) >= 5:
+        for factor_name in FACTOR_FUNCS.keys():
+            last_5 = history[-5:]
+            ic_values = [day['factors'].get(factor_name, {}).get('ic_5d', np.nan) for day in last_5]
+            valid_ics = [ic for ic in ic_values if not np.isnan(ic)]
+            if len(valid_ics) == 5 and all(ic < 0.02 for ic in valid_ics):
+                consecutive_alerts.append({
+                    'factor': factor_name,
+                    'consecutive_days': 5,
+                    'ic_values': ic_values,
+                    'message': f"{factor_name} 5d IC 连续 5 天 < 0.02 (值: {[round(ic, 4) for ic in ic_values]})",
+                    'severity': 'CRITICAL',
+                })
+    if consecutive_alerts:
+        print(f"🔴 {len(consecutive_alerts)} 个连续 5 天告警:")
+        for alert in consecutive_alerts:
+            print(f"  [CRITICAL] {alert['factor']}: {alert['message']}")
+        # 写告警文件（钉钉可读）
+        alert_path = Path("data/monitor_consecutive_alerts.json")
+        alert_path.write_text(json.dumps(consecutive_alerts, ensure_ascii=False, indent=2, default=str), encoding='utf-8')
+        print(f"\n📄 告警文件: {alert_path}")
+    else:
+        print(f"  ✅ 全部因子 5d IC 正常（无连续 5 天 < 0.02）")
+
 
 if __name__ == "__main__":
     main()

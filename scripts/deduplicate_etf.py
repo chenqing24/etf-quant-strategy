@@ -1,33 +1,5 @@
 #!/usr/bin/env python3
-"""
-ETF去重分析 - 识别性质和特征高度相似的ETF
-
-用途：
-    - 分析 ETF 之间的相似性
-    - 识别需要去重的 ETF 对
-    - 辅助 ETF 池筛选
-
-被谁调用：
-    - 无（独立工具，一次性使用）
-    - ETF 池优化时手动运行
-
-功能说明：
-    - 对比 37 只 ETF 的价格走势
-    - 计算相关性矩阵
-    - 识别高度相似的 ETF（相关性 > 0.9）
-
-使用方式：
-    python scripts/deduplicate_etf.py
-
-依赖：
-    - sqlite3
-    - json
-
-注意事项：
-    - 已豁免 pre-commit 检查（一次性分析工具）
-    - 输出到 etf_data_live/duplicates_analysis.json
-    - 仅供参考，不执行实际去重
-"""
+"""ETF去重分析 - 识别性质和特征高度相似的ETF"""
 import sqlite3
 import json
 

@@ -1,0 +1,232 @@
+[
+  {
+    "factors": [
+      "MACD红柱",
+      "DMA多头"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "布林上轨突破"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "SAR趋势"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "ADX趋势"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "RSI适中"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "KDJ金叉"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "OBV多头"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "放量"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "资金流入"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  },
+  {
+    "factors": [
+      "MACD红柱",
+      "相对3日收益"
+    ],
+    "metrics": {
+      "total_return": 0.0,
+      "relative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "daily_volatility": 0.0,
+      "sharpe_relative": 0.0,
+      "calmar_ratio": 0.0,
+      "win_rate": 0.0,
+      "trade_count": 0,
+      "annual_trades": 0.0,
+      "profit_loss_ratio": 0.0,
+      "avg_profit": 0.0,
+      "avg_loss": 0.0
+    },
+    "score": -20.0,
+    "trade_count": 0
+  }
+]

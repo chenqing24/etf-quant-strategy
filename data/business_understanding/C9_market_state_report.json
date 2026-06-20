@@ -1,0 +1,49 @@
+{
+  "experiment": "C9_market_state_v4",
+  "user_constraints": {
+    "1": "5 年回测（2021-06 ~ 2026-06）",
+    "2": "MA60 趋势过滤",
+    "3": "趋势市 MA5 主导 / 震荡市 RSI 主导"
+  },
+  "weights_trend": {
+    "MA5": 0.6,
+    "RSI": 0.2,
+    "OBV": 0.2
+  },
+  "weights_range": {
+    "MA5": 0.2,
+    "RSI": 0.6,
+    "OBV": 0.2
+  },
+  "start_date": "2021-06-16",
+  "end_date": "2026-06-15",
+  "best": {
+    "min_n": 1.0,
+    "avg_return": -0.047319897572141605,
+    "avg_winrate": 0.27640276076330933,
+    "avg_max_drawdown": 0.06767323580956836,
+    "positive_etf_pct": 0.17142857142857143,
+    "total_trades": 772.0,
+    "etf_count": 35.0
+  },
+  "all_results": [
+    {
+      "min_n": 1,
+      "avg_return": -0.047319897572141605,
+      "avg_winrate": 0.27640276076330933,
+      "avg_max_drawdown": 0.06767323580956836,
+      "positive_etf_pct": 0.17142857142857143,
+      "total_trades": 772,
+      "etf_count": 35
+    },
+    {
+      "min_n": 2,
+      "avg_return": -0.04168915368951532,
+      "avg_winrate": 0.2646474738465932,
+      "avg_max_drawdown": 0.061844332968466253,
+      "positive_etf_pct": 0.2571428571428571,
+      "total_trades": 735,
+      "etf_count": 35
+    }
+  ]
+}

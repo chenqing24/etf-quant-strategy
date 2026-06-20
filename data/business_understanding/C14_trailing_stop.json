@@ -1,0 +1,53 @@
+{
+  "experiment": "C14_trailing_stop",
+  "best": {
+    "trailing_stop": NaN,
+    "avg_return": 0.6896598903474965,
+    "avg_winrate": 0.576984126984127,
+    "avg_max_drawdown": 0.01086160833390744,
+    "positive_etf_pct": 0.8285714285714286,
+    "total_trades": 105.0
+  },
+  "all_results": [
+    {
+      "trailing_stop": null,
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "trailing_stop": 0.05,
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "trailing_stop": 0.1,
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "trailing_stop": 0.15,
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    },
+    {
+      "trailing_stop": 0.2,
+      "avg_return": 0.6896598903474965,
+      "avg_winrate": 0.576984126984127,
+      "avg_max_drawdown": 0.01086160833390744,
+      "positive_etf_pct": 0.8285714285714286,
+      "total_trades": 105
+    }
+  ]
+}

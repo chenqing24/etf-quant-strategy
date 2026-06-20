@@ -1,20 +1,7 @@
-```yaml
----
-file: MODULES.md
-purpose: 模块依赖关系（职责、接口、依赖）
-used_by:
-  - 架构设计
-  - 重构决策
-status: active
-last_review: 2026-06-08
-review_interval: weekly
----
-```
-
 # 模块说明
 
 > 描述每个模块的职责、接口和依赖关系
-> 更新时间: 2026-06-01 | v3.0 架构整理后
+> 生成时间: 2026-05-28 | 参考: INTERFACE_CONTRACT.md
 
 ---
 
@@ -333,70 +320,19 @@ def send_message(content: str, at_mobiles: List[str] = None):
 
 ### 5.1 decision_cli
 
-**文件**: `src/cli/decision.py`
+**文件**: `src/decision_cli.py`
 
 **职责**: 命令行入口，分发命令到各模块
 
-**核心决策流程**（TODO-004 双模式）:
-
 ```python
-class ETFDecisionEngine:
-    """ETF量化决策引擎"""
-    
-    def run_full_evaluation(self):
-        """完整策略评估（14:30定时任务）"""
-        # Step 1: 预热实时数据
-        self._prefetch_realtime_data()
-        
-        # Step 2: 加载历史数据（DataLoader）
-        loader = DataLoader()
-        self._etf_data = loader.load(min_rows=100)
-        
-        # Step 3: 遍历ETF，7因子打分（Selector.evaluate）
-        signals = []
-        for code, df in self._etf_data.items():
-            score, reasons = Selector().evaluate(df, latest_date)
-            if score >= 6:  # 阈值
-                signals.append({'code': code, 'score': score, 'reasons': reasons})
-        
-        # Step 4: 判断市场模式（V9_BACKLOG 决策）
-        # 有信号 = 趋势市，执行买入
-        # 无信号 = 震荡市，空仓观望
-        if signals:
-            market_mode = "趋势市"
-            execute_trades(signals)
-        else:
-            market_mode = "震荡市"
-            # 不触发新买入
-        
-        # Step 5: 钉钉通知（ScenarioAdapter）
-        adapter = ScenarioAdapter.for_mobile()
-        adapter.build_and_send(results)  # 标注 market_mode
+# 模式
+-m daily     # 每日决策
+-m eval      # 完整评估
+-m trade     # 记录交易
+-m history   # 查看历史
+-m perf      # 绩效分析
+-m update_pool  # 更新ETF池
 ```
-
-**阈值常量**:
-- 评分阈值: `score >= 6` (7因子加权)
-- 最小数据行: `min_rows=100`
-
-**依赖关系**:
-```python
-ETFDecisionEngine
-  ├── DataLoader.load()
-  ├── Selector.evaluate()  # 7因子评分
-  ├── ScenarioAdapter.for_mobile().build_and_send()
-  └── TradeTracker.record_*()
-
-# v9 双模式（v1.2）
-# - 趋势市：有信号（评分≥6）= 执行买入
-# - 震荡市：无信号 = 空仓观望
-```
-
-**v9 双模式标记**（TODO-004~006 完成）:
-| 字段 | 说明 | 文件 |
-|------|------|------|
-| `market_mode` | 趋势市/震荡市 | `decision.py` |
-| `adx_14` | ADX趋势强度 | `indicator.py` |
-| `ADX14: xx 📈强趋势` | 趋势状态显示 | `report_builder.py` |
 
 ---
 
@@ -428,60 +364,6 @@ ETFDecisionEngine
 ### 7.3 接口约束
 - 禁止跨层直接调用（如CLI不能直接调DataSourceRouter）
 - 必须通过统一入口
-
----
-
-## 八、新增模块说明（v3.0 后）
-
-### 8.1 DataWriter (src/data/writer.py)
-**职责**：统一数据写入入口
-- 所有 SQLite 写入必须经过此模块
-- 启动时自动检查并补全必需列
-- 启用 WAL 模式提升并发性能
-- 增量更新 + 防重复写入
-
-**主要方法**：
-- `write_daily(code, df, source)` - 写入日线数据
-- `write_daily_batch(records)` - 批量写入
-- `_ensure_columns()` - 启动时检查列
-
-### 8.2 DataLoader (src/data/loader.py)
-**职责**：统一数据读取入口
-- 只从 SQLite 读取
-- 与 DataWriter 配合使用
-
-**主要方法**：
-- `load(min_rows, codes)` - 加载多只ETF
-- `load_single(code, min_rows)` - 加载单只
-- `get_etf_list()` - 获取所有ETF
-- `get_latest_date(code)` - 最新日期
-- `get_date_range(code)` - 日期范围
-- `get_record_count(code)` - 记录数
-
-### 8.3 DataMonitor (src/data/monitor.py)
-**职责**：数据质量监控
-- 新鲜度检查（分钟级，阈值80分钟）
-- 完整性检查（交易日，阈值50条/20%缺失）
-- 存储健康检查
-- 钉钉通知
-
-### 8.4 Validators (scripts/validators/)
-**职责**：过拟合验证
-- WalkForwardEngine - 滚动窗口
-- MonteCarloEngine - 统计显著性
-- CrossEtfValidator - 跨ETF泛化
-- ComprehensiveValidator - 综合评分
-
-### 8.5 脚本工具（2026-06-01 分类）
-```
-scripts/data/         数据采集（3个）
-scripts/analysis/     分析（14个）
-scripts/filter/       筛选（5个）
-scripts/experiment/   实验（3个）
-scripts/maintenance/  维护（12个）
-scripts/validators/   验证器（4个）
-scripts/factor_mining/ 因子挖掘（2个）
-```
 
 ---
 

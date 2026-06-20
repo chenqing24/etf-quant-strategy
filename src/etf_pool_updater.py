@@ -7,6 +7,14 @@ from typing import Dict, List, Set
 import json
 import os
 import logging
+import subprocess
+import threading
+
+from src.constants import (
+    THREAD_JOIN_TIMEOUT,
+    SUBPROCESS_TIMEOUT,
+    SUBPROCESS_TIMEOUT_LONG,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -374,7 +382,7 @@ ETF总数: {len(pool)}只
                 latest = df_ind[df_ind['date'] == latest_date].iloc[0]
                 
                 # 7因子打分
-                from src.core.selector import ETFSelector
+                from .selector import ETFSelector
                 selector = ETFSelector()
                 score, reasons = selector.evaluate(df_ind, latest_date)
                 
@@ -394,9 +402,6 @@ ETF总数: {len(pool)}只
     
     def _send_dingtalk(self, msg: str, session: dict = None):
         """发送钉钉消息"""
-        import subprocess
-from src.constants import THREAD_JOIN_TIMEOUT, SUBPROCESS_TIMEOUT, SUBPROCESS_TIMEOUT_LONG, json
-        
         if session is None:
             try:
                 result = subprocess.run(
@@ -433,8 +438,6 @@ from src.constants import THREAD_JOIN_TIMEOUT, SUBPROCESS_TIMEOUT, SUBPROCESS_TI
         scored_etfs = self._get_etf_scores(pool)
         
         # 先获取session（复用）
-        import subprocess
-from src.constants import THREAD_JOIN_TIMEOUT, SUBPROCESS_TIMEOUT, SUBPROCESS_TIMEOUT_LONG, json
         session = None
         try:
             result = subprocess.run(

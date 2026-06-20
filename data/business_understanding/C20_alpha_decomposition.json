@@ -1,0 +1,74 @@
+[
+  {
+    "scenario":"S1_C11_baseline (4因子入场 + sell_ma5\/rsi\/obv + MA60)",
+    "avg_return":0.5667289789,
+    "win_rate":0.3722222222,
+    "max_drawdown":0.0197190474,
+    "alpha":0.2345955327,
+    "alpha_p":0.0365212751,
+    "alpha_pct":0.6363636364,
+    "rescued":7,
+    "total_etfs":11,
+    "avg_trades":4.9090909091
+  },
+  {
+    "scenario":"S2_仅BOLL+MA60入场 (剥离因子入场)",
+    "avg_return":0.5667289789,
+    "win_rate":0.3722222222,
+    "max_drawdown":0.0197190474,
+    "alpha":0.2345955327,
+    "alpha_p":0.0365212751,
+    "alpha_pct":0.6363636364,
+    "rescued":7,
+    "total_etfs":11,
+    "avg_trades":4.9090909091
+  },
+  {
+    "scenario":"S3_剥离sell_ma5 (保留sell_rsi+sell_obv+MA60)",
+    "avg_return":0.5667289789,
+    "win_rate":0.3722222222,
+    "max_drawdown":0.0197190474,
+    "alpha":0.2345955327,
+    "alpha_p":0.0365212751,
+    "alpha_pct":0.6363636364,
+    "rescued":7,
+    "total_etfs":11,
+    "avg_trades":4.9090909091
+  },
+  {
+    "scenario":"S4_无sell_signal (仅max_hold=99999控制)",
+    "avg_return":0.8100045897,
+    "win_rate":0.366017316,
+    "max_drawdown":0.0179324406,
+    "alpha":0.4778711434,
+    "alpha_p":0.002288561,
+    "alpha_pct":0.8181818182,
+    "rescued":9,
+    "total_etfs":11,
+    "avg_trades":4.5454545455
+  },
+  {
+    "scenario":"S5_buy&hold (无策略)",
+    "avg_return":0.3321334462,
+    "win_rate":0.0,
+    "max_drawdown":0.0,
+    "alpha":0.0,
+    "alpha_p":1.0,
+    "alpha_pct":0.6363636364,
+    "rescued":7,
+    "total_etfs":11,
+    "avg_trades":1.0
+  },
+  {
+    "scenario":"S6_仅暴跌保护MA60 (剥离sell_ma5\/rsi\/obv)",
+    "avg_return":0.5667289789,
+    "win_rate":0.3722222222,
+    "max_drawdown":0.0197190474,
+    "alpha":0.2345955327,
+    "alpha_p":0.0365212751,
+    "alpha_pct":0.6363636364,
+    "rescued":7,
+    "total_etfs":11,
+    "avg_trades":4.9090909091
+  }
+]

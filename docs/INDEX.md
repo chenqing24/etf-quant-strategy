@@ -1,16 +1,3 @@
-```yaml
----
-file: INDEX.md
-purpose: ETF量化系统场景索引（快速定位工具和文档）
-used_by:
-  - 所有任务（文档定位）
-  - 新人入门
-status: active
-last_review: 2026-06-08
-review_interval: weekly
----
-```
-
 # 📋 ETF量化系统 - 场景索引
 
 > 快速定位工具和文档 | 更新: 2026-05-31
@@ -32,8 +19,6 @@ review_interval: weekly
 | **修复数据问题** | `scripts/repair_data.py` | `scripts/` |
 | **补充历史数据** | AKTools + DataWriter | 见下方工作流 |
 | **获取ETF池** | `ETFListLoader.load()` | `src/data/etf_pool_loader.py` |
-| **查询决策快照** | `DecisionSnapshotRepository.list_recent()` | `src/trade/decision_snapshot.py`（US-003）|
-| **查询历史决策快照** | `DecisionSnapshotRepository.get_by_code()` | `src/trade/decision_snapshot.py` |
 
 ---
 
@@ -81,41 +66,6 @@ from src.data.loader import ETFNameLoader
 loader = ETFNameLoader()
 name = loader.get_name('510300')
 ```
-
-### 决策快照查询（US-001/US-003）
-
-```python
-from src.trade.decision_snapshot import DecisionSnapshotRepository
-
-repo = DecisionSnapshotRepository()
-recent = repo.list_recent(limit=10)                  # 最近10条
-by_code = repo.get_by_code('159611', limit=50)       # 按ETF代码
-by_id = repo.get_by_id(snapshot_id=123)               # 按主键
-```
-
-**`decision_snapshot` 表速查**（schema 007）：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | INTEGER PK | 自增主键 |
-| `snapshot_time` | TEXT NOT NULL | ISO 8601 时间戳 |
-| `code` | TEXT NOT NULL | ETF代码 |
-| `action` | TEXT NOT NULL | 'buy' / 'sell' |
-| `cost` | REAL | 决策时价格 |
-| `target_price` | REAL | 目标价 = cost × (1 + stop_gain) |
-| `stop_loss_price` | REAL | 止损价 = cost × (1 + stop_loss) |
-| `stop_profit_price` | REAL | 止盈价（同 target_price）|
-| `risk_reward_ratio` | REAL | 盈亏比 |
-| `max_hold_days` | INTEGER | 计划持仓天数 |
-| `model_name` | TEXT | 模型名 |
-| `strategy_json` | TEXT | strategy 配置（JSON）|
-| `evaluation_json` | TEXT | evaluation 指标（JSON）|
-| `rationale` | TEXT | 决策理由 |
-| `created_at` | TEXT DEFAULT NOW | 数据库写入时间 |
-
-**索引**：`idx_snapshot_time`、`idx_snapshot_code`
-
-**关联**：`trade_history.snapshot_ref = "snapshot:{decision_snapshot.id}"`
 
 ---
 
@@ -290,70 +240,35 @@ etf_strategy/
 > 审查频率：每周
 > **每次新增/删除/修改文档后，必须更新此清单**
 
-### 活跃文档（有 metadata 头部）
+### 活跃文档（被代码引用）
 
-| 文件 | 用途 | 使用者 |状态 | metadata | 最后审查 |
-|------|------|--------|------|:--------:|----------|
-| `SOP_01_DATA_MINING.md` | 因子挖掘标准流程 | 所有因子研究任务 | 活跃 | ✅ | 2026-06-08 |
-| `SOP_02_REFACTOR_DEV.md` | 重构开发流程 | 所有开发任务 | 活跃 | ✅ | 2026-06-08 |
-| `SOP_03_EXPERIMENT.md` | 实验执行流程 | 所有实验任务 | 活跃 | ✅ | 2026-06-08 |
-| `SOP_04_DATA_SOURCE.md` | 数据源接入流程 | 数据采集任务 | 活跃 | ✅ | 2026-06-08 |
-| `SOP_05_DUAL_MODE.md` | 双模式决策 | 每日决策 | 活跃 | ✅ | 2026-06-08 |
-| `SOP_06_MANUAL_TRADE.md` | 手动交易记录 | decision_cli, tracker | 活跃 | ✅ | 2026-06-08 |
-| `SOP_07_V9_MISSION_INTEGRATION.md` | v9因子集成 | US-026 | 活跃 | ✅ | 2026-06-08 |
-| `SOP_INDEX.md` | SOP文档索引 | 所有SOP入口 | 活跃 | ✅ | 2026-06-08 |
-| `POSITION_MANAGEMENT.md` | 持仓参数 + 核心池定义（14只） + 决策快照机制（v8.1） | etf_pool_loader.py, selector.py | 活跃 | ✅ | 2026-06-10 |
-| `TRADE_RECORD_SPEC.md` | 交易字段规范 v1.1（含 target/stop）| tracker.py | 活跃 | ✅ | 2026-06-10 |
-| `SOP_06_MANUAL_TRADE.md` | 手动交易 v2.2（含 target/stop 录入）| decision_cli, tracker | 活跃 | ✅ | 2026-06-10 |
-| `SOP_06_V2_DESIGN.md` | SOP-06 v2.2 设计 + 决策快照持久化 | 设计参考 | 活跃 | ✅ | 2026-06-10 |
-| `INTERFACE_CONTRACT.md` | 接口契约 v2.1（含 DecisionSnapshot）| 架构设计 | 活跃 | ✅ | 2026-06-10 |
-| `ARCHITECTURE_DECOUPLING.md` | 架构解耦设计 | 架构重构 | 活跃 | ✅ | 2026-06-08 |
-| `EVALUATION_SYSTEM_V7.md` | 评估系统设计 | 回测引擎 | 活跃 | ✅ | 2026-06-08 |
-| `DATA_SOURCE_REFERENCE.md` | 数据源参考 | 数据采集 | 活跃 | ✅ | 2026-06-08 |
-| `MODULES.md` | 模块依赖 | 架构设计 | 活跃 | ✅ | 2026-06-08 |
-| `TOOLS.md` | 工具清单 | 所有任务 | 活跃 | ✅ | 2026-06-08 |
+| 文件 | 用途 | 使用者 | 状态 | 最后审查 |
+|------|------|--------|------|----------|
+| `SOP_01_DATA_MINING.md` | 因子挖掘标准流程 | 所有因子研究任务 | 活跃 | 2026-06-07 |
+| `SOP_02_REFACTOR_DEV.md` | 重构开发流程 | 所有开发任务 | 活跃 | 2026-06-07 |
+| `SOP_03_EXPERIMENT.md` | 实验执行流程 | 所有实验任务 | 活跃 | 2026-06-07 |
+| `SOP_04_DATA_SOURCE.md` | 数据源接入流程 | 数据采集任务 | 活跃 | 2026-06-07 |
+| `SOP_05_DUAL_MODE.md` | 双模式决策 | 每日决策 | 活跃 | 2026-06-07 |
+| `SOP_06_MANUAL_TRADE.md` | 手动交易记录 | decision_cli, tracker | 活跃 | 2026-06-07 |
+| `SOP_07_V9_MISSION_INTEGRATION.md` | v9因子集成 | US-026 | 活跃 | 2026-06-07 |
+| `SOP_INDEX.md` | SOP文档索引 | 所有SOP入口 | 活跃 | 2026-06-07 |
+| `POSITION_MANAGEMENT.md` | 持仓参数配置 | tracker.py | 活跃 | 2026-06-07 |
+| `TRADE_RECORD_SPEC.md` | 交易字段规范 | tracker.py | 活跃 | 2026-06-07 |
+| `ARCHITECTURE_DECOUPLING.md` | 架构解耦设计 | 架构重构 | 活跃 | 2026-06-07 |
+| `CHANGELOG.md` | 变更记录 | 所有开发 | 活跃 | 2026-06-07 |
+| `EVALUATION_SYSTEM_V7.md` | 评估系统设计 | 回测引擎 | 活跃 | 2026-06-07 |
+| `DATA_SOURCE_REFERENCE.md` | 数据源参考 | 数据采集 | 活跃 | 2026-06-07 |
+| `MODULES.md` | 模块依赖 | 架构设计 | 活跃 | 2026-06-07 |
+| `TOOLS.md` | 工具清单 | 所有任务 | 活跃 | 2026-06-07 |
 
-### 需补充 metadata 的活跃文档
+### 归档文档（不再维护）
 
-| 文件 | 用途 | 优先级 |
-|------|------|--------|
-| `CHANGELOG.md` | 变更记录 | 🟡 中 |
-| `README.md` | 主入口文档 | 🟡 中 |
-| `BACKTEST_ENGINE_V8_DESIGN.md` | 回测引擎设计 | 🟢 低 |
-| `DATA_LAYER.md` | 数据层设计 | 🟢 低 |
-| `FACTOR_MINING_PLAN_v2.md` | 因子挖掘计划 | 🟢 低 |
-
-### 废弃文档（建议归档）
-
-| 文件 | 原因 | 替代文档 |
-|------|------|----------|
-| `ARCHITECTURE.md` | 旧版架构 | ARCHITECTURE_DECOUPLING.md |
-| `ARCHITECTURE_DESIGN.md` | 旧版架构 | ARCHITECTURE_DESIGN_V3.md |
-| `ARCHITECTURE_DESIGN_V3.md` | 旧版架构 | ARCHITECTURE_FULL.md |
-| `ARCHITECTURE_FULL.md` | 旧版架构 | ARCHITECTURE_DECOUPLING.md |
-| `ARCHITECTURE_MINDMAP.md` | 旧版架构 | ARCHITECTURE_DECOUPLING.md |
-| `EXPERIMENT_REPORT_V7.md` | 旧版实验报告 | archive/experiment_reports/ |
-| `EXPERIMENT_REPORT_V8.md` | 旧版实验报告 | archive/experiment_reports/ |
-| `FISH_BODY_V3_REPORT.md` | 旧版实验报告 | archive/experiment_reports/ |
-| `8FACTOR_MINING_PLAN.md` | 旧版计划 | SOP_01_DATA_MINING.md |
-| `MINING_PLAN_V6.md` | 旧版计划 | SOP_01_DATA_MINING.md |
-| `MINING_PLAN_V8.md` | 旧版计划 | SOP_01_DATA_MINING.md |
-| `TOP3_COMPLETE_REPORT.md` | 旧版TOP报告 | TOP3_FULL_DIMENSION_REPORT.md |
-| `TOP3_DIMENSION_REPORT.md` | 旧版TOP报告 | archive/top3/ |
-| `TOP3_FULL_TABLE.md` | 旧版TOP报告 | archive/top3/ |
-| `EXECUTION_PLAN_V2.md` | 旧版执行计划 | SOP_03_EXPERIMENT.md |
-| `STRATEGY_IMPROVEMENT.md` | 旧版策略改进 | 已有新文档 |
-| `TODO_REFACTOR.md` | 旧TODO | ISSUES.md |
-| `TODAY_PLAN.md` | 临时文档 | 删除 |
-
-### 归档文档（已在 archive/）
-
-|目录 | 内容 | 归档日期 |
-|------|------|----------|
-| `archive/architecture/` | 旧版架构文档 | 2026-06-07 |
-| `archive/experiment_reports/` | 旧版实验报告 | 2026-06-07 |
-| `archive/plans/` | 旧版计划文档 | 2026-06-07 |
-| `archive/top3/` | 旧版TOP3报告 | 2026-06-07 |
+| 文件 | 状态 | 归档日期 | 原因 |
+|------|------|----------|------|
+| `archive/architecture/*` | 废弃 | 2026-06-07 | 已被 ARCHITECTURE_DECOUPLING.md 替代 |
+| `archive/experiment_reports/*` | 废弃 | 2026-06-07 | 实验报告归档 |
+| `archive/top3/*` | 废弃 | 2026-06-07 | 已被 v7/v8 实验报告替代 |
+| `archive/plans/*` | 废弃 | 2026-06-07 | 计划文档归档 |
 
 ### 文档 metadata 头部（示例）
 
@@ -367,7 +282,7 @@ used_by:
   - src/cli/decision.py
   - src/trade/tracker.py
 status: active
-last_review: 2026-06-08
+last_review: 2026-06-07
 review_interval: weekly
 ---
 ```
@@ -383,6 +298,5 @@ review_interval: weekly
 
 ---
 
-*文档版本: v5.1 | 更新: 2026-06-10*
-*变更：US-001 加 decision_snapshot 表速查 + 5 文档 v1.1/v2.2/v8.1/v2.2/v2.1 链接*
-*变更：US-087 完善文档资产清单 -16个活跃文档已添加metadata，更新废弃文档列表*
+*文档版本: v4.0 | 更新: 2026-06-07*
+*变更：增加第十一章"文档资产清单"，SOP-02 要求更新此清单*

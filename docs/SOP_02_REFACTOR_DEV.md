@@ -1,3 +1,6 @@
+# SOP-02: 重构与修复开发流程
+
+```yaml
 ---
 file: SOP_02_REFACTOR_DEV.md
 purpose: 问题发现→根因分析→方案设计→开发→验证→交付
@@ -8,9 +11,7 @@ status: active
 last_review: 2026-06-07
 review_interval: weekly
 ---
-
-# SOP-02: 重构与修复开发流程
-
+```
 
 > 来源: REFACTOR_RETROSPECTIVE.md / 复盘v7/v8经验
 > 版本: 1.1 | 创建: 2026-05-31 | 更新: 2026-06-07 (增加文档更新同步检查)
@@ -293,24 +294,6 @@ review_interval: weekly
 ```
 
 **教训**：文档没有"被谁使用"的声明，AI 无法知道哪些文档在用、哪些过期（US-014 复盘）
-
-### 池定义变更检查清单（US-085）
-
-修改 `src/data/etf_pool_loader.py` 的 `FALLBACK_ETF_CODES` 时，必须执行：
-
-```
-[ ] 修改 docs/POSITION_MANAGEMENT.md 第9.2节（核心池列表）
-[ ] 修改 FALLBACK_ETF_CODES（代码必须一致）
-[ ] 验证池大小（应为 15 只）
-[ ] 验证排除清单（债券/港股/红利/证券/黄金）
-[ ] 运行单元测试（ETFListLoader 测试）
-[ ] 更新 docs/INDEX.md 的"文档资产清单"
-[ ] 提交 Git
-```
-
-**教训 85**：临时兜底变永久（33只替代15只），缺乏池定义文档
-- 根因：FALLBACK_ETF_CODES 本是数据库故障时的兜底，被当成永久核心池
-- 预防：核心池定义必须写入 POSITION_MANAGEMENT.md，不能只靠代码注释
 
 ### 测试覆盖率要求
 

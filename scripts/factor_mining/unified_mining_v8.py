@@ -1,41 +1,19 @@
 #!/usr/bin/env python3
 """
 ETF多因子挖掘 v8.0 - 统一回测引擎版
+====================================
 
-用途：
-    - 多因子挖掘实验（v8 版本）
-    - 生成因子组合
-    - 评估策略表现
+【三个一致性】
+1. 工具调用一致：DataLoader + IndicatorCalculator + RelativeCalculator + FactorBacktester
+2. 执行流程一致：单因子测试 → 组合测试 → 过拟合验证 → 完整评价
+3. 评价标准一致：8个核心指标
 
-被谁调用：
-    - 无（独立工具，手动执行）
-    - 实验研究时使用
-
-功能说明：
-    【三个一致性】
-    1. 工具调用一致：DataLoader + IndicatorCalculator + RelativeCalculator + FactorBacktester
-    2. 执行流程一致：单因子测试 → 组合测试 → 过拟合验证 → 完整评价
-    3. 评价标准一致：8个核心指标
-
-    【v8.0 核心改进】
-    - 唯一回测引擎：FactorBacktester (src/backtest/engine.py)
-    - T+1 开盘价成交：避免 look-ahead bias
-    - 持仓管理：closed_today 防止重复买入
-    - min_hold_days：止盈需满足最小持仓
-    - 相对收益：计算与大盘的相对收益
-
-使用方式：
-    python scripts/factor_mining/unified_mining_v8.py
-
-依赖：
-    - src.data.loader (DataLoader)
-    - src.indicators.wrapper (IndicatorCalculator)
-    - src.backtest.engine (FactorBacktester)
-
-注意事项：
-    - 已豁免 pre-commit 检查（因子挖掘脚本）
-    - 与 experiment_v8_sop.py 的区别：此版本未完整执行 SOP
-    - 结果保存到 data/experiments_v8/ 目录
+【v8.0核心改进】
+- 唯一回测引擎：FactorBacktester (src/backtest/engine.py)
+- T+1开盘价成交：避免look-ahead bias
+- 持仓管理：closed_today防止重复买入
+- min_hold_days：止盈需满足最小持仓
+- 相对收益：计算与大盘的相对收益
 """
 import sys
 import json

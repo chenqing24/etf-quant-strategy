@@ -1,0 +1,1019 @@
+{
+  "mission": "V8-001-v2",
+  "step": "SOP-01 Step 8 (修复后更新)",
+  "timestamp": "2026-06-02T04:23:38.585640",
+  "v7_pass_rate": 0.7155555555555555,
+  "strong_signal_count": 59,
+  "top3_updated": [
+    {
+      "rank": 1,
+      "combo": "T2_MA多头 单因子",
+      "etf": "515050",
+      "rationale": "V7 5折WF: 3/3折通过, Sharpe=2.040",
+      "next_step": "小仓位实盘验证（100股，1万元）"
+    },
+    {
+      "rank": 2,
+      "combo": "T4_ADX趋势 单因子",
+      "etf": "510300",
+      "rationale": "V7 5折WF: 3/3折通过, Sharpe=1.991",
+      "next_step": "模拟盘验证 30 天"
+    },
+    {
+      "rank": 3,
+      "combo": "V2_OBV多头 单因子",
+      "etf": "515050",
+      "rationale": "V7 5折WF: 3/3折通过, Sharpe=1.971",
+      "next_step": "回测完整周期 + 参数稳定性分析"
+    }
+  ],
+  "factor_ranking": [
+    {
+      "factor": "N2_5日反转",
+      "n_etfs": 7,
+      "avg_sharpe": 1.535599723440545,
+      "etfs": [
+        "512480",
+        "588000",
+        "510300",
+        "515050",
+        "512200"
+      ]
+    },
+    {
+      "factor": "T4_ADX趋势",
+      "n_etfs": 6,
+      "avg_sharpe": 1.608091844249272,
+      "etfs": [
+        "510300",
+        "512400",
+        "512480",
+        "588000",
+        "515070"
+      ]
+    },
+    {
+      "factor": "V2_OBV多头",
+      "n_etfs": 6,
+      "avg_sharpe": 1.5678001313078098,
+      "etfs": [
+        "515050",
+        "512480",
+        "588000",
+        "515070",
+        "510300"
+      ]
+    },
+    {
+      "factor": "M2_动量5日",
+      "n_etfs": 6,
+      "avg_sharpe": 1.3399897060047232,
+      "etfs": [
+        "512480",
+        "588000",
+        "515050",
+        "512400",
+        "512170"
+      ]
+    },
+    {
+      "factor": "T2_MA多头",
+      "n_etfs": 5,
+      "avg_sharpe": 1.5872310686871565,
+      "etfs": [
+        "515050",
+        "588000",
+        "512480",
+        "510300",
+        "515070"
+      ]
+    },
+    {
+      "factor": "T1_MACD红柱",
+      "n_etfs": 5,
+      "avg_sharpe": 1.5667689172079309,
+      "etfs": [
+        "515050",
+        "588000",
+        "512480",
+        "520900",
+        "515070"
+      ]
+    },
+    {
+      "factor": "M1_动量3日",
+      "n_etfs": 5,
+      "avg_sharpe": 1.2287223445868842,
+      "etfs": [
+        "512480",
+        "588000",
+        "520900",
+        "512400",
+        "515070"
+      ]
+    },
+    {
+      "factor": "V1_放量",
+      "n_etfs": 4,
+      "avg_sharpe": 1.504112403162591,
+      "etfs": [
+        "588000",
+        "512480",
+        "515070",
+        "510300"
+      ]
+    },
+    {
+      "factor": "N1_3日反转",
+      "n_etfs": 4,
+      "avg_sharpe": 1.4678603733831377,
+      "etfs": [
+        "520900",
+        "510300",
+        "588000",
+        "512880"
+      ]
+    },
+    {
+      "factor": "M3_RSI适中",
+      "n_etfs": 3,
+      "avg_sharpe": 1.3197675589328715,
+      "etfs": [
+        "515050",
+        "512480",
+        "588000"
+      ]
+    }
+  ],
+  "top_combos": [
+    {
+      "etf": "515050",
+      "factor": "T2_MA多头",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 2.040444717030936,
+      "score": 1.520222358515468,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.17932420368728638,
+          "test_ret": -0.02687444843971218,
+          "test_sharpe": 0.6118810734526755,
+          "n_trades": 74,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.2710422854139875,
+          "test_ret": 0.4569867478210021,
+          "test_sharpe": 3.183481657815616,
+          "n_trades": 105,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.3499722963375161,
+          "test_ret": 0.22714156021295434,
+          "test_sharpe": 2.325971419824516,
+          "n_trades": 100,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "510300",
+      "factor": "T4_ADX趋势",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.991271171384871,
+      "score": 1.4956355856924355,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.3089314655325658,
+          "test_ret": -0.10022829874931927,
+          "test_sharpe": 0.8796613157509466,
+          "n_trades": 121,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.4343421970626281,
+          "test_ret": 0.021706562411163144,
+          "test_sharpe": 3.3776951239040427,
+          "n_trades": 102,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": -0.17052981415976043,
+          "test_ret": -0.04719968990293852,
+          "test_sharpe": 1.7164570744996235,
+          "n_trades": 77,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "515050",
+      "factor": "V2_OBV多头",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.9708682547533014,
+      "score": 1.4854341273766507,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.09396449202406804,
+          "test_ret": -0.06372865705374683,
+          "test_sharpe": 0.5092495890954033,
+          "n_trades": 85,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.175351078232591,
+          "test_ret": 0.49925726816212723,
+          "test_sharpe": 3.4424987810650514,
+          "n_trades": 119,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.38333107154213736,
+          "test_ret": 0.1732986659949169,
+          "test_sharpe": 1.9608563940994495,
+          "n_trades": 99,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "512480",
+      "factor": "N2_5日反转",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.9581166732122182,
+      "score": 1.479058336606109,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": 0.0033755483274799103,
+          "test_ret": 0.15901125363810467,
+          "test_sharpe": 2.0031792062193996,
+          "n_trades": 16,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.16238680196558458,
+          "test_ret": 0.1478813442057463,
+          "test_sharpe": 2.3732737402455717,
+          "n_trades": 11,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.35116599321219083,
+          "test_ret": 0.05718193791631135,
+          "test_sharpe": 1.4978970731716843,
+          "n_trades": 16,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "512480",
+      "factor": "V2_OBV多头",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.9518613922760348,
+      "score": 1.4759306961380174,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.12555280392659637,
+          "test_ret": 0.22186421108371515,
+          "test_sharpe": 1.6155972558928657,
+          "n_trades": 79,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.005540207973558364,
+          "test_ret": 0.19596979843713108,
+          "test_sharpe": 2.149549617868128,
+          "n_trades": 94,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.26436452359946544,
+          "test_ret": 0.19889947357759158,
+          "test_sharpe": 2.09043730306711,
+          "n_trades": 91,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "512480",
+      "factor": "M2_动量5日",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.948648092942254,
+      "score": 1.4743240464711271,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": 0.018130283827928875,
+          "test_ret": 0.28641841965192827,
+          "test_sharpe": 1.9371554031398126,
+          "n_trades": 48,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.2979248417654848,
+          "test_ret": 0.17115009309599113,
+          "test_sharpe": 1.919488295868309,
+          "n_trades": 45,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.45453840542948776,
+          "test_ret": 0.1829576154020518,
+          "test_sharpe": 1.9893005798186398,
+          "n_trades": 57,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "520900",
+      "factor": "N1_3日反转",
+      "n_passed": 2,
+      "n_folds": 2,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.9061447213728484,
+      "score": 1.4530723606864242,
+      "fold_details": [
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.02016394884890429,
+          "test_ret": 0.03475264139510293,
+          "test_sharpe": 2.577445725183278,
+          "n_trades": 5,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.054916590244007225,
+          "test_ret": 0.020697283648929872,
+          "test_sharpe": 1.2348437175624192,
+          "n_trades": 5,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "588000",
+      "factor": "N2_5日反转",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.888100202076459,
+      "score": 1.4440501010382296,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.01137865777174804,
+          "test_ret": 0.14768101008256176,
+          "test_sharpe": 1.6178440205698381,
+          "n_trades": 11,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.13630235231081372,
+          "test_ret": 0.07397244082089661,
+          "test_sharpe": 1.892120934989444,
+          "n_trades": 7,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.22361247347440785,
+          "test_ret": 0.07006076864649871,
+          "test_sharpe": 2.154335650670095,
+          "n_trades": 15,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "510300",
+      "factor": "N1_3日反转",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.8765038232493294,
+      "score": 1.4382519116246648,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.017731459871001436,
+          "test_ret": 0.008812033708121135,
+          "test_sharpe": 0.7639457919297508,
+          "n_trades": 13,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.0089194261628803,
+          "test_ret": 0.06410435300355101,
+          "test_sharpe": 2.7814267589372497,
+          "n_trades": 5,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.07291638671167214,
+          "test_ret": 0.017585857711227566,
+          "test_sharpe": 2.0841389188809876,
+          "n_trades": 3,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "588000",
+      "factor": "V1_放量",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.860955370225355,
+      "score": 1.4304776851126775,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": 0.08025085299833735,
+          "test_ret": 0.26823462200426484,
+          "test_sharpe": 1.199202518896834,
+          "n_trades": 15,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.341344086827795,
+          "test_ret": 0.0963193333298096,
+          "test_sharpe": 1.8661816722413915,
+          "n_trades": 14,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.35721001132808067,
+          "test_ret": 0.11066433979308112,
+          "test_sharpe": 2.5174819195378393,
+          "n_trades": 10,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "515050",
+      "factor": "T1_MACD红柱",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.8518015036774005,
+      "score": 1.4259007518387001,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.1666593798671851,
+          "test_ret": 0.03720791632423262,
+          "test_sharpe": 1.0341373167872758,
+          "n_trades": 85,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.17994807080472747,
+          "test_ret": 0.2984557401906827,
+          "test_sharpe": 2.7251307274257255,
+          "n_trades": 99,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.2599685672529096,
+          "test_ret": 0.1365201277387285,
+          "test_sharpe": 1.7961364668192001,
+          "n_trades": 86,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "588000",
+      "factor": "T2_MA多头",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.7459650989180275,
+      "score": 1.3729825494590138,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.14371216044022528,
+          "test_ret": 0.14443304185445716,
+          "test_sharpe": 0.9942379954323151,
+          "n_trades": 68,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.09988938779609458,
+          "test_ret": 0.16035345901508452,
+          "test_sharpe": 2.1916956855869496,
+          "n_trades": 91,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.14987293530121115,
+          "test_ret": 0.1715086378720837,
+          "test_sharpe": 2.0519616157348186,
+          "n_trades": 67,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "512480",
+      "factor": "T2_MA多头",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.7394437092513655,
+      "score": 1.3697218546256829,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.1108732508735748,
+          "test_ret": 0.17511071113270194,
+          "test_sharpe": 1.4106467944636778,
+          "n_trades": 72,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.017988506740731658,
+          "test_ret": 0.0986897818528501,
+          "test_sharpe": 1.7026830091018084,
+          "n_trades": 92,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.20434757115975588,
+          "test_ret": 0.21775261380634206,
+          "test_sharpe": 2.10500132418861,
+          "n_trades": 80,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "512480",
+      "factor": "M1_动量3日",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.7159386392307674,
+      "score": 1.3579693196153837,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": 0.015369660624787368,
+          "test_ret": 0.13192482821000148,
+          "test_sharpe": 1.1508249420691687,
+          "n_trades": 44,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.1901184085056979,
+          "test_ret": 0.053872682703893296,
+          "test_sharpe": 1.3533009149478301,
+          "n_trades": 43,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.2311350153287795,
+          "test_ret": 0.25734113371759637,
+          "test_sharpe": 2.6436900606753033,
+          "n_trades": 57,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "588000",
+      "factor": "T1_MACD红柱",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.7119712030306484,
+      "score": 1.3559856015153242,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.16651621758790622,
+          "test_ret": 0.29140522289545745,
+          "test_sharpe": 1.4208487730829433,
+          "n_trades": 56,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.13935785852220905,
+          "test_ret": 0.01731946648711019,
+          "test_sharpe": 1.3662291596691027,
+          "n_trades": 96,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.28690730611003995,
+          "test_ret": 0.19623098096432415,
+          "test_sharpe": 2.348835676339899,
+          "n_trades": 79,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "515050",
+      "factor": "M3_RSI适中",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.6926146121318284,
+      "score": 1.3463073060659143,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.20878126631835192,
+          "test_ret": -0.09831641884600714,
+          "test_sharpe": 0.4315263868660557,
+          "n_trades": 86,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.4671181171558752,
+          "test_ret": 0.15245187364831383,
+          "test_sharpe": 1.8654650255053977,
+          "n_trades": 77,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": -0.0406056641768181,
+          "test_ret": 0.30270549809744635,
+          "test_sharpe": 2.7808524240240313,
+          "n_trades": 98,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "512480",
+      "factor": "T1_MACD红柱",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.6442713088926866,
+      "score": 1.3221356544463432,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.081224570654266,
+          "test_ret": 0.10393394305958059,
+          "test_sharpe": 1.0918672371247684,
+          "n_trades": 69,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": 0.11950956798520868,
+          "test_ret": -0.032834825580502824,
+          "test_sharpe": 0.9336681797666849,
+          "n_trades": 95,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.15742072536387758,
+          "test_ret": 0.33516660294004363,
+          "test_sharpe": 2.907278509786607,
+          "n_trades": 81,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "588000",
+      "factor": "V2_OBV多头",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.5936966753667374,
+      "score": 1.2968483376833686,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.31480371626232606,
+          "test_ret": 0.09976675782304079,
+          "test_sharpe": 0.8567524114632725,
+          "n_trades": 67,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.26929125574347107,
+          "test_ret": 0.15910066164320974,
+          "test_sharpe": 2.1982205998022715,
+          "n_trades": 92,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": 0.09544473939879206,
+          "test_ret": 0.10176317326338671,
+          "test_sharpe": 1.7261170148346685,
+          "n_trades": 73,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "512400",
+      "factor": "T4_ADX趋势",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.5889834034448658,
+      "score": 1.2944917017224329,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": 0.047239616911307486,
+          "test_ret": -0.03535102823709804,
+          "test_sharpe": 1.1100596457328478,
+          "n_trades": 110,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.059898327118217576,
+          "test_ret": 0.06789529999369256,
+          "test_sharpe": 1.80207919001812,
+          "n_trades": 108,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": -0.05944531746905146,
+          "test_ret": 0.23128128372625567,
+          "test_sharpe": 1.8548113745836297,
+          "n_trades": 68,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    },
+    {
+      "etf": "512480",
+      "factor": "T3_SAR趋势",
+      "n_passed": 3,
+      "n_folds": 3,
+      "pass_rate": 1.0,
+      "avg_sharpe": 1.5617180330264866,
+      "score": 1.2808590165132432,
+      "fold_details": [
+        {
+          "fold_idx": 2,
+          "test_start": "2024-07-16",
+          "test_end": "2025-03-03",
+          "train_ret": -0.369665459892037,
+          "test_ret": 0.037925667707187194,
+          "test_sharpe": 1.3969234356223943,
+          "n_trades": 121,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 1,
+          "test_start": "2025-03-04",
+          "test_end": "2025-10-15",
+          "train_ret": -0.3721137696755286,
+          "test_ret": 0.018165250917013986,
+          "test_sharpe": 1.541742058643813,
+          "n_trades": 151,
+          "passed": true,
+          "reason": "OK"
+        },
+        {
+          "fold_idx": 0,
+          "test_start": "2025-10-16",
+          "test_end": "2026-06-01",
+          "train_ret": -0.058792710271208026,
+          "test_ret": 0.09856963164960791,
+          "test_sharpe": 1.7464886048132522,
+          "n_trades": 151,
+          "passed": true,
+          "reason": "OK"
+        }
+      ]
+    }
+  ]
+}
