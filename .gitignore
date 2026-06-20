@@ -40,3 +40,10 @@ PROFILE.md
 MEMORY.md
 HEARTBEAT.md
 *.skill.md
+# 临时文件（v1 归档前不处理）
+.archive/
+.cache/
+backups/
+analyze_v8_sop.py
+etf_quant_decision_skill.md
+etf_reports/realtime_score_20260525.json
